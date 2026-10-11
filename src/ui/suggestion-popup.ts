@@ -5,14 +5,18 @@
 // Lives in a Shadow DOM host so styles never leak into the page.
 // =============================================================================
 
-import type { ToneAdvice, ToneVerdict } from "../analysis/types"
+import { SUGGESTION_STYLES, type SuggestionStyle, type ToneAdvice, type ToneVerdict } from "../analysis/types"
 
 export interface PopupHandlers {
   onAccept(): void
   onDismiss(): void
   onEditContext(): void
   onDisableChat(): void
+  /** The user picked another style — the owner should fetch a new rewrite. */
+  onStyleChange(style: SuggestionStyle): void
 }
+
+const STYLE_LABELS: Record<SuggestionStyle, string> = { casual: "Casual", formal: "Formal", direct: "Direct" }
 
 const ACCEPT_LABEL = "Accept (Tab)"
 
@@ -91,6 +95,16 @@ const STYLES = `
   @keyframes pulse { 50% { opacity: 0.45; } }
 
   .suggestion-box { background: #f7f7f7; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
+
+  .style-row { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+  .style-row .style-label { font-size: 11px; color: #9ca3af; margin-right: 2px; }
+  .style-chip {
+    padding: 1px 9px; border-radius: 99px; border: 1px solid #e5e7eb;
+    background: white; color: #4b5563; font-size: 11px; font-weight: 500; line-height: 1.6;
+    font-family: inherit; cursor: pointer;
+  }
+  .style-chip:hover { background: #f3f4f6; }
+  .style-chip[aria-pressed="true"] { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
   .suggestion-label { font-size: 11px; font-weight: 500; color: #888; margin-bottom: 4px; }
   .suggestion-text { font-size: 12px; font-style: italic; color: #333; line-height: 1.5; }
 
@@ -141,6 +155,10 @@ const TEMPLATE = `
     </div>
     <div class="confidence-text" id="confidence"></div>
     <div class="explanation" id="explanation"></div>
+    <div class="style-row" id="style-row" role="group" aria-label="Suggestion style">
+      <span class="style-label">Style</span>
+      ${SUGGESTION_STYLES.map(s => `<button class="style-chip" data-style="${s}" aria-pressed="false">${STYLE_LABELS[s]}</button>`).join("")}
+    </div>
     <div class="suggestion-box" id="suggestion-box">
       <div class="suggestion-label">Try:</div>
       <div class="suggestion-text" id="suggestion"></div>
@@ -161,6 +179,7 @@ export class SuggestionPopup {
   private readonly root: ShadowRoot
   private handlers: PopupHandlers | null = null
   private owner: unknown = null
+  private style: SuggestionStyle = "casual"
 
   constructor() {
     this.host = document.createElement("div")
@@ -176,6 +195,15 @@ export class SuggestionPopup {
     on("accept",       () => this.handlers?.onAccept())
     on("edit-context", () => this.handlers?.onEditContext())
     on("disable-chat", () => this.handlers?.onDisableChat())
+    this.root.querySelectorAll<HTMLButtonElement>(".style-chip").forEach(chip => {
+      chip.addEventListener("click", (e) => {
+        e.stopPropagation()
+        const style = chip.dataset.style as SuggestionStyle
+        if (style === this.style) return
+        this.setStyle(style)
+        this.handlers?.onStyleChange(style)
+      })
+    })
 
     document.body.appendChild(this.host)
   }
@@ -192,9 +220,17 @@ export class SuggestionPopup {
    * Show the popup for a flagged message. `advice` is null while the model is
    * still writing the explanation and rewrite — call setAdvice() when it lands.
    */
-  show(owner: unknown, verdict: ToneVerdict, advice: ToneAdvice | null, anchor: DOMRect, handlers: PopupHandlers) {
+  show(
+    owner: unknown,
+    verdict: ToneVerdict,
+    advice: ToneAdvice | null,
+    style: SuggestionStyle,
+    anchor: DOMRect,
+    handlers: PopupHandlers,
+  ) {
     this.owner    = owner
     this.handlers = handlers
+    this.setStyle(style)
 
     const tone = verdict.tone === "red" ? "red" : "yellow"
     this.$("popup").className = "popup " + tone
@@ -213,6 +249,13 @@ export class SuggestionPopup {
     this.setAdvice(advice)
     this.$("popup").style.display = "block"
     this.position(anchor)
+  }
+
+  private setStyle(style: SuggestionStyle) {
+    this.style = style
+    this.root.querySelectorAll<HTMLElement>(".style-chip").forEach(chip => {
+      chip.setAttribute("aria-pressed", String(chip.dataset.style === style))
+    })
   }
 
   /** Fill in the explanation and rewrite, or show the "thinking" state for null. */

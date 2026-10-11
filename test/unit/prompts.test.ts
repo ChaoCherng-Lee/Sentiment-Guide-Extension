@@ -45,7 +45,7 @@ describe("buildVerdictMessages", () => {
 
 describe("buildAdviceMessages", () => {
   it("tells the model what was flagged and why", () => {
-    const [system, user] = buildAdviceMessages("you're the worst", VERDICT, null)
+    const [system, user] = buildAdviceMessages("you're the worst", VERDICT, null, "casual")
     expect(system.content).toContain("suggestion")
     expect(user.content).toContain("red")
     expect(user.content).toContain('"the worst"')
@@ -53,8 +53,28 @@ describe("buildAdviceMessages", () => {
   })
 
   it("includes chat context but not the calibration rules", () => {
-    const [system] = buildAdviceMessages("hi", VERDICT, CTX)
+    const [system] = buildAdviceMessages("hi", VERDICT, CTX, "casual")
     expect(system.content).toContain("Relationship: Close friend")
     expect(system.content).not.toContain("Calibration rules")
+  })
+
+  it("adds the instruction for the chosen style", () => {
+    const casual = buildAdviceMessages("hi", VERDICT, null, "casual")[0].content
+    const formal = buildAdviceMessages("hi", VERDICT, null, "formal")[0].content
+    const direct = buildAdviceMessages("hi", VERDICT, null, "direct")[0].content
+    expect(casual).toContain("CASUAL")
+    expect(formal).toContain("FORMAL")
+    expect(direct).toContain("DIRECT")
+    expect(new Set([casual, formal, direct]).size).toBe(3)
+  })
+})
+
+describe("style never reaches the verdict", () => {
+  // Tone judgements must not move when the user changes style. The verdict
+  // prompt has no style input at all; this guards against one being added.
+  it("verdict prompt has no style instructions", () => {
+    const [system] = buildVerdictMessages("hi", CTX)
+    expect(system.content).not.toMatch(/Suggestion style|CASUAL|FORMAL|DIRECT/)
+    expect(buildVerdictMessages.length).toBe(2)
   })
 })

@@ -8,7 +8,7 @@
 // =============================================================================
 
 import { browser } from "#imports"
-import type { ChatContext } from "../analysis/types"
+import type { ChatContext, SuggestionStyle } from "../analysis/types"
 
 export interface Settings {
   /** Main on/off switch. */
@@ -17,6 +17,8 @@ export interface Settings {
   pausedUntil: number | null
   /** Hashed conversation IDs the user switched checking off for. */
   disabledConversations: string[]
+  /** Default style for rewrites; chats can override it. */
+  suggestionStyle: SuggestionStyle
   /** Ollama model to use; null picks the best installed Gemma model. */
   model: string | null
 }
@@ -25,6 +27,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enabled: true,
   pausedUntil: null,
   disabledConversations: [],
+  suggestionStyle: "casual",
   model: null,
 }
 
@@ -99,6 +102,18 @@ export function subscribeSettings(cb: (settings: Settings) => void): () => void 
 
 export interface ChatData {
   context?: ChatContext
+  /** Style chosen for this chat in the suggestion popup. */
+  style?: SuggestionStyle
+}
+
+/**
+ * Style for a chat: the one picked for it, else Formal if the context form
+ * says the chat is formal, else the user's default.
+ */
+export function resolveStyle(settings: Settings, chat: ChatData): SuggestionStyle {
+  if (chat.style) return chat.style
+  if (chat.context?.q2 === "formal") return "formal"
+  return settings.suggestionStyle
 }
 
 const chatKey = (hash: string) => "chat_" + hash

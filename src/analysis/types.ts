@@ -33,6 +33,11 @@ export const GREEN_VERDICT: ToneVerdict = {
   tone_tags_detected: false,
 }
 
+/** What the rewrites should sound like. Affects advice only, never the verdict. */
+export type SuggestionStyle = "casual" | "formal" | "direct"
+
+export const SUGGESTION_STYLES: SuggestionStyle[] = ["casual", "formal", "direct"]
+
 export type Platform = "whatsapp" | "instagram" | "gmail" | "outlook"
 
 /** Answers from the per-chat context form. */

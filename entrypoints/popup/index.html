@@ -115,6 +115,16 @@
       .btn.primary:hover { background: #4338ca; }
       [hidden] { display: none !important; }
 
+      .segmented { display: flex; gap: 4px; }
+      .segmented button {
+        flex: 1; padding: 6px 4px; border-radius: 8px;
+        border: 1px solid #e5e7eb; background: #f9fafb; color: #374151;
+        font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer;
+      }
+      .segmented button:hover { background: #f3f4f6; }
+      .segmented button[aria-checked="true"] { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
+      .hint { font-size: 11px; color: #6b7280; margin-top: 6px; min-height: 16px; }
+
       .shortcut { font-size: 11px; color: #9ca3af; margin-top: 8px; }
       kbd {
         font-family: inherit; font-size: 10px; background: #f3f4f6;
@@ -153,6 +163,16 @@
         <button class="btn primary" id="resume">Resume now</button>
       </div>
       <div class="shortcut">Shortcut: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> turns it on or off</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">Suggestion style</div>
+      <div class="segmented" id="style" role="radiogroup" aria-label="Suggestion style">
+        <button role="radio" data-style="casual" aria-checked="false">Casual</button>
+        <button role="radio" data-style="formal" aria-checked="false">Formal</button>
+        <button role="radio" data-style="direct" aria-checked="false">Direct</button>
+      </div>
+      <div class="hint" id="styleHint"></div>
     </div>
 
     <div class="section">

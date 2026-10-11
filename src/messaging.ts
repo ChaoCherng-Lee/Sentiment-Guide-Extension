@@ -1,6 +1,6 @@
 // Typed messages between content scripts / pages and the background worker.
 import { browser } from "#imports"
-import type { ChatContext, ToneAdvice, ToneVerdict } from "./analysis/types"
+import type { ChatContext, SuggestionStyle, ToneAdvice, ToneVerdict } from "./analysis/types"
 
 export type Message =
   /** Step 1: fast verdict for every message. */
@@ -17,6 +17,7 @@ export type Message =
       text: string
       verdict: ToneVerdict
       context: ChatContext | null
+      style: SuggestionStyle
       eventId: string
       contactHash: string | null
       sessionId: string

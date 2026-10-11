@@ -4,7 +4,7 @@
 import { chatJSON } from "./ollama"
 import { buildAdviceMessages, buildVerdictMessages } from "./prompts"
 import { ADVICE_SCHEMA, VERDICT_SCHEMA, validateAdvice, validateVerdict } from "./schema"
-import type { ChatContext, ToneAdvice, ToneVerdict } from "./types"
+import type { ChatContext, SuggestionStyle, ToneAdvice, ToneVerdict } from "./types"
 
 export interface ModelCallOptions {
   model: string
@@ -21,8 +21,9 @@ export async function adviseTone(
   text: string,
   verdict: ToneVerdict,
   context: ChatContext | null,
+  style: SuggestionStyle,
   opts: ModelCallOptions,
 ): Promise<ToneAdvice> {
-  const raw = await chatJSON({ ...opts, messages: buildAdviceMessages(text, verdict, context), format: ADVICE_SCHEMA })
+  const raw = await chatJSON({ ...opts, messages: buildAdviceMessages(text, verdict, context, style), format: ADVICE_SCHEMA })
   return validateAdvice(raw, text)
 }

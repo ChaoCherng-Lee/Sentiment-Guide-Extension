@@ -6,6 +6,7 @@
 //   npm run eval -- --category emoji      # one category
 //   npm run eval -- --limit 20 --model gemma3:4b
 //   npm run eval -- --advice              # also time step 2 on flagged messages
+//   npm run eval -- --advice --style formal
 //
 // Accuracy comes from step 1 (the verdict), which decides what gets flagged.
 //
@@ -21,7 +22,7 @@ import path from "node:path"
 import { parseArgs } from "node:util"
 import { listModels, pickModel, warmUp } from "../src/analysis/ollama"
 import { adviseTone, judgeTone } from "../src/analysis/tone"
-import type { ChatContext, Tone, ToneVerdict } from "../src/analysis/types"
+import type { ChatContext, SuggestionStyle, Tone, ToneVerdict } from "../src/analysis/types"
 
 interface Case {
   id: number
@@ -52,6 +53,7 @@ const { values: args } = parseArgs({
     model:    { type: "string" },
     file:     { type: "string", default: path.join(DIR, "messages.jsonl") },
     advice:   { type: "boolean", default: false },
+    style:    { type: "string", default: "casual" },
   },
 })
 
@@ -154,7 +156,7 @@ async function main() {
       const outcome: Outcome = { case: c, result, ms: performance.now() - start }
       if (args.advice && result.tone !== "green") {
         const adviceStart = performance.now()
-        outcome.suggestion = (await adviseTone(c.text, result, ctx, { model, timeoutMs: 120_000 })).suggestion
+        outcome.suggestion = (await adviseTone(c.text, result, ctx, args.style as SuggestionStyle, { model, timeoutMs: 120_000 })).suggestion
         outcome.adviceMs   = performance.now() - adviceStart
       }
       outcomes.push(outcome)

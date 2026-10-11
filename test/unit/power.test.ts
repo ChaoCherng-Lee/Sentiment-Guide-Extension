@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   DEFAULT_SETTINGS, MAX_DISABLED_CONVERSATIONS, getSettings, isActive, isConversationDisabled,
-  pauseUntil, resume, setConversationDisabled, setEnabled, tomorrowMorning, updateSettings,
+  pauseUntil, resolveStyle, resume, setConversationDisabled, setEnabled, tomorrowMorning, updateSettings,
 } from "../../src/settings/store"
 
 const NOW = new Date("2026-10-12T15:30:00").getTime()
@@ -43,6 +43,22 @@ describe("pause controls", () => {
     expect(t.getDate()).toBe(13)
     expect(t.getHours()).toBe(7)
     expect(t.getMinutes()).toBe(0)
+  })
+})
+
+describe("resolveStyle", () => {
+  const formalCtx = { platform: "gmail", q1: "teacher", q2: "formal", q3: "no", q4: "no", q5: "normal", savedAt: 0 } as const
+
+  it("uses the default style", () => {
+    expect(resolveStyle({ ...DEFAULT_SETTINGS, suggestionStyle: "direct" }, {})).toBe("direct")
+  })
+
+  it("pre-selects Formal for a chat the context form calls formal", () => {
+    expect(resolveStyle(DEFAULT_SETTINGS, { context: formalCtx })).toBe("formal")
+  })
+
+  it("prefers the style picked for the chat over everything else", () => {
+    expect(resolveStyle(DEFAULT_SETTINGS, { context: formalCtx, style: "casual" })).toBe("casual")
   })
 })
 

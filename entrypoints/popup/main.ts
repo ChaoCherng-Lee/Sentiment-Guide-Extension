@@ -1,7 +1,9 @@
 // popup — runs inside the extension action popup
+import type { SuggestionStyle } from "../../src/analysis/types"
 import { sendMessage } from "../../src/messaging"
 import {
   getSettings, isActive, pauseUntil, resume, setEnabled, type Settings, subscribeSettings, tomorrowMorning,
+  updateSettings,
 } from "../../src/settings/store"
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
@@ -32,8 +34,32 @@ $("pause1h").addEventListener("click", () => pauseUntil(Date.now() + HOUR))
 $("pauseTomorrow").addEventListener("click", () => pauseUntil(tomorrowMorning()))
 $("resume").addEventListener("click", () => resume())
 
-getSettings().then(renderPower)
-subscribeSettings(renderPower)
+// ── Suggestion style ────────────────────────────────────────────────────────
+
+const STYLE_HINTS: Record<SuggestionStyle, string> = {
+  casual: "Like texting a friend — slang and emoji are fine",
+  formal: "Polite full sentences — for teachers or email",
+  direct: "Short and clear — keeps your point, drops the harshness",
+}
+
+function renderStyle(s: Settings) {
+  document.querySelectorAll<HTMLElement>("#style [data-style]").forEach(btn => {
+    btn.setAttribute("aria-checked", String(btn.dataset.style === s.suggestionStyle))
+  })
+  $("styleHint").textContent = STYLE_HINTS[s.suggestionStyle]
+}
+
+document.querySelectorAll<HTMLElement>("#style [data-style]").forEach(btn => {
+  btn.addEventListener("click", () => updateSettings({ suggestionStyle: btn.dataset.style as SuggestionStyle }))
+})
+
+function render(s: Settings) {
+  renderPower(s)
+  renderStyle(s)
+}
+
+getSettings().then(render)
+subscribeSettings(render)
 
 // ── AI status ───────────────────────────────────────────────────────────────
 

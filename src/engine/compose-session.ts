@@ -5,7 +5,7 @@
 // Gmail can have several compose windows open, so there is one per box.
 // =============================================================================
 
-import type { ChatContext, ToneAdvice, ToneVerdict } from "../analysis/types"
+import type { ChatContext, SuggestionStyle, ToneAdvice, ToneVerdict } from "../analysis/types"
 import { type CheckFailure, sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
 import { getPhraseRange } from "../ui/dom-range"
@@ -25,6 +25,10 @@ export interface SessionDeps {
   conversation(): { id: string | null; context: ChatContext | null }
   onEditContext(): void
   onDisableChat(): void
+  /** Style for rewrites in the current chat. */
+  style(): SuggestionStyle
+  /** Remember a style picked in the popup for the current chat. */
+  onStyleChange(style: SuggestionStyle): void
   /** Every finished check reports here, so the engine can show AI status. */
   onCheckDone(outcome: { ok: true } | { ok: false; reason: CheckFailure }): void
 }
@@ -33,6 +37,7 @@ export interface SessionDeps {
 interface Flag {
   text: string
   verdict: ToneVerdict
+  style: SuggestionStyle
   advice: ToneAdvice | null
 }
 
@@ -129,7 +134,7 @@ export class ComposeSession {
     if (verdict.tone === "green") { this.clearUI(); return }
 
     // Flag it straight away, then fill in the explanation and rewrite
-    this.flag    = { text, verdict, advice: null }
+    this.flag    = { text, verdict, style: this.deps.style(), advice: null }
     this.eventId = crypto.randomUUID()
     this.highlighter.show(verdict.flagged_phrase, verdict.tone)
     this.showPopup()
@@ -143,6 +148,7 @@ export class ComposeSession {
       text:        flag.text,
       verdict:     flag.verdict,
       context:     conv.context,
+      style:       flag.style,
       eventId:     this.eventId!,
       contactHash: conv.id,
       sessionId:   this.id,
@@ -161,18 +167,31 @@ export class ComposeSession {
 
   private showPopup() {
     if (!this.flag) return
-    const { verdict, advice } = this.flag
+    const { verdict, advice, style } = this.flag
     const range  = getPhraseRange(this.box, verdict.flagged_phrase)
     const anchor = range?.getClientRects()[0] ?? this.box.getBoundingClientRect()
-    this.deps.popup.show(this, verdict, advice, anchor, {
+    this.deps.popup.show(this, verdict, advice, style, anchor, {
       onAccept:      () => this.accept(),
       onDismiss:     () => this.dismiss(),
       onEditContext: () => { this.deps.popup.hide(); this.deps.onEditContext() },
       onDisableChat: () => this.deps.onDisableChat(),
+      onStyleChange: (s) => this.changeStyle(s),
     })
   }
 
   // ── User actions ──────────────────────────────────────────────────────────
+
+  /** Rewrite the flagged message again in another style. */
+  private changeStyle(style: SuggestionStyle) {
+    const old = this.flag
+    if (!old) return
+    this.deps.onStyleChange(style)
+    // A new Flag object, so a rewrite still on its way for the old style is ignored
+    this.flag    = { ...old, style, advice: null }
+    this.eventId = crypto.randomUUID()
+    this.deps.popup.setAdvice(null)
+    this.fetchAdvice(this.flag, this.deps.conversation())
+  }
 
   private reportAcceptance(accepted: boolean) {
     if (!this.eventId) return

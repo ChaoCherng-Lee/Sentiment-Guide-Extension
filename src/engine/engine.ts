@@ -4,11 +4,11 @@
 // pause settings. Each content script just calls startEngine().
 // =============================================================================
 
-import type { ChatContext } from "../analysis/types"
+import type { ChatContext, SuggestionStyle } from "../analysis/types"
 import { sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
 import {
-  DEFAULT_SETTINGS, getChatData, getSettings, isActive, isConversationDisabled,
+  DEFAULT_SETTINGS, getChatData, getSettings, isActive, isConversationDisabled, resolveStyle,
   setConversationDisabled, type Settings, subscribeSettings, updateChatData,
 } from "../settings/store"
 import { showContextForm } from "../ui/context-form"
@@ -28,7 +28,12 @@ export function startEngine(adapter: PlatformAdapter) {
   const sessions = new Map<HTMLElement, ComposeSession>()
   const askedThisSession = new Set<string>()   // chats whose form we already offered
 
-  const conversation: { id: string | null; context: ChatContext | null } = { id: null, context: null }
+  const conversation: {
+    id: string | null
+    context: ChatContext | null
+    /** Style picked for this chat in the popup, if any */
+    style: SuggestionStyle | undefined
+  } = { id: null, context: null, style: undefined }
   let settings: Settings = DEFAULT_SETTINGS
   let wasActive = false
 
@@ -92,6 +97,11 @@ export function startEngine(adapter: PlatformAdapter) {
         conversation: () => conversation,
         onEditContext: openContextForm,
         onDisableChat: turnChatOff,
+        style: () => resolveStyle(settings, { context: conversation.context ?? undefined, style: conversation.style }),
+        onStyleChange: (style) => {
+          conversation.style = style
+          if (conversation.id) updateChatData(conversation.id, { style })
+        },
         onCheckDone: (outcome) => {
           if (!active()) return
           if (outcome.ok) chip.hide()
@@ -137,12 +147,14 @@ export function startEngine(adapter: PlatformAdapter) {
     if (id === conversation.id) return
     conversation.id      = id
     conversation.context = null
+    conversation.style   = undefined
     sessions.forEach(s => s.reset())
     applyActiveState()
     if (!id) return
 
-    const { context } = await getChatData(id)
+    const { context, style } = await getChatData(id)
     if (conversation.id !== id) return   // switched again while loading
+    conversation.style = style
 
     const fresh = context && Date.now() - context.savedAt < CONTEXT_TTL_MS
     if (context && (fresh || askedThisSession.has(id))) {

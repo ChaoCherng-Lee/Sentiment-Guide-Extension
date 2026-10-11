@@ -159,7 +159,7 @@ export default defineBackground(() => {
 
   async function getAdvice(msg: MessageOf<"GET_ADVICE">): Promise<Responses["GET_ADVICE"]> {
     const res = await runModelCall(msg.sessionId, (model, signal, timeoutMs) =>
-      adviseTone(msg.text, msg.verdict, msg.context, { model, signal, timeoutMs }))
+      adviseTone(msg.text, msg.verdict, msg.context, msg.style, { model, signal, timeoutMs }))
     if (!res.ok) return res
 
     const { verdict } = msg
