@@ -26,10 +26,12 @@ window._sgCurrentContext  = null   // cached context answers for current chat
 window._sgCurrentChatHash = null   // hash of active contact name
 window._sgSessionChats    = new Set() // hashes seen this session (skip re-asking)
 window._sgCurrentEventId  = null   // Supabase event ID for the popup currently shown
+window._sgHighlight       = null   // { phrase, tone } currently highlighted
+window._sgRetryTimer      = null   // single pending findAndWatch retry
 
 const _SG_PUNCT_DEBOUNCE_MS = 80
 const _SG_PAUSE_DEBOUNCE_MS = 1200
-const _SG_MIN_TEXT_LEN      = 8
+const _SG_MIN_TEXT_LEN      = 3
 const _SG_CONTEXT_TTL_MS    = 7 * 24 * 60 * 60 * 1000   // 7 days
 
 // Question definitions for the context form
@@ -90,12 +92,29 @@ const _SG_QUESTIONS = [
 // Delay startup — WhatsApp loads its UI dynamically
 setTimeout(init, 3000)
 
-// Re-attach if the compose box disappears (e.g. navigating between chats)
+// Re-attach if the compose box disappears (e.g. navigating between chats).
+// Throttled: WhatsApp mutates the DOM constantly, so check at most every 500 ms.
+let _sgObserverQueued = false
 const _sgInitObserver = new MutationObserver(() => {
-  if (window._sgInput && document.contains(window._sgInput)) return
-  findAndWatch()
+  if (_sgObserverQueued) return
+  _sgObserverQueued = true
+  setTimeout(() => {
+    _sgObserverQueued = false
+    if (window._sgInput && document.contains(window._sgInput)) return
+    findAndWatch()
+  }, 500)
 })
 _sgInitObserver.observe(document.documentElement, { childList: true, subtree: true })
+
+// Keep highlights glued to the text when the page scrolls or resizes
+window.addEventListener("scroll", refreshHighlight, true)
+window.addEventListener("resize", refreshHighlight)
+
+// Clear the popup when the message is sent with the send button
+document.addEventListener("click", (e) => {
+  const btn = e.target.closest?.('[data-testid="send"], [data-icon="send"], button[aria-label="Send"]')
+  if (btn) onMessageSent()
+}, true)
 
 function init() {
   findAndWatch()
@@ -129,7 +148,13 @@ function findAndWatch() {
   if (window._sgInput && document.contains(window._sgInput)) return
 
   const inputBox = getComposeBox()
-  if (!inputBox) { setTimeout(findAndWatch, 2000); return }
+  if (!inputBox) {
+    // Only one retry pending at a time — the observer also calls us
+    if (!window._sgRetryTimer) {
+      window._sgRetryTimer = setTimeout(() => { window._sgRetryTimer = null; findAndWatch() }, 2000)
+    }
+    return
+  }
 
   console.log("Sentiment Guide: found compose box")
   injectPopup()
@@ -142,6 +167,7 @@ function findAndWatch() {
     clearTimeout(punctTimer)
     clearTimeout(pauseTimer)
 
+    refreshHighlight()
     if (!text) { removeHighlight(); hidePopup(); return }
     if (text.length < _SG_MIN_TEXT_LEN) return
     if (window._sgIgnored.has(text)) return
@@ -157,16 +183,18 @@ function findAndWatch() {
   })
 
   inputBox.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      removeHighlight(); hidePopup()
-      window._sgLastText = ""; window._sgIgnored.clear()
-    }
+    if (e.key === "Enter" && !e.shiftKey) onMessageSent()
     if (e.key === "Tab" && window._sgPopupOpen) {
       e.preventDefault(); doAcceptSuggestion()
     }
   })
 
   window._sgInput = inputBox
+}
+
+function onMessageSent() {
+  removeHighlight(); hidePopup()
+  window._sgLastText = ""; window._sgIgnored.clear()
 }
 
 function getComposeBox() {
@@ -177,13 +205,12 @@ function getComposeBox() {
     '[contenteditable="true"][role="textbox"][aria-label]',
     '[data-testid="conversation-compose-box-input"] [contenteditable="true"]'
   ]
+  // No "any contenteditable" fallback — it can latch onto the search bar
   for (const sel of selectors) {
     const el = document.querySelector(sel)
-    if (el) return el
+    if (el && !el.closest("#side")) return el
   }
-  const candidates = Array.from(document.querySelectorAll('[contenteditable="true"]'))
-    .filter(el => { const r = el.getBoundingClientRect(); return r.width > 50 && r.height > 10 })
-  return candidates[candidates.length - 1] || null
+  return null
 }
 
 // =============================================================================
@@ -193,6 +220,7 @@ function getComposeBox() {
 // =============================================================================
 
 function analyseOutgoing(text) {
+  // A request is running — its callback re-checks the latest text when it lands
   if (window._sgRequestInFlight) return
   if (text === window._sgLastText) return
   if (window._sgIgnored.has(text)) return
@@ -217,6 +245,14 @@ function analyseOutgoing(text) {
 
       if (chrome?.runtime?.lastError) return
       if (!result) return
+
+      // Drop stale results: the box changed while the model was thinking.
+      // Re-check whatever is there now instead.
+      const current = window._sgInput?.innerText?.trim() || ""
+      if (current !== text) {
+        if (current.length >= _SG_MIN_TEXT_LEN) analyseOutgoing(current)
+        return
+      }
 
       // Empty label + explanation means Ollama was unreachable — skip silently
       if (result.tone === "green" && !result.label && !result.explanation) return
@@ -806,7 +842,8 @@ function doAcceptSuggestion() {
 
   function fallbackCopy() {
     navigator.clipboard.writeText(suggestion).then(() => {
-      acceptBtn.textContent = "✓ Copied — paste (Cmd+V)"
+      const isMac = /Mac|iPhone|iPad/.test(navigator.platform)
+      acceptBtn.textContent = `✓ Copied — paste (${isMac ? "Cmd" : "Ctrl"}+V)`
       setTimeout(() => {
         hidePopup(); removeHighlight()
         window._sgLastText    = ""
@@ -874,6 +911,8 @@ function showPopup(result) {
     suggBox.style.display = "block"
     accept.style.display  = "inline-block"
   } else {
+    // Clear the old text so Tab can't insert a stale suggestion
+    suggTxt.textContent   = ""
     suggBox.style.display = "none"
     accept.style.display  = "none"
   }
@@ -932,6 +971,12 @@ function hidePopup() {
 function showWordHighlight(inputBox, phrase, tone) {
   removeHighlight()
   if (!phrase || tone === "green") return
+  window._sgHighlight = { phrase, tone }
+  drawHighlight(inputBox, phrase, tone)
+}
+
+function drawHighlight(inputBox, phrase, tone) {
+  document.querySelectorAll(".sg-highlight").forEach(el => el.remove())
 
   const color      = tone === "red" ? "#DC2626" : "#F59E0B"
   const background = tone === "red" ? "rgba(220,38,38,0.10)" : "rgba(245,158,11,0.12)"
@@ -963,7 +1008,20 @@ function showWordHighlight(inputBox, phrase, tone) {
 }
 
 function removeHighlight() {
+  window._sgHighlight = null
   document.querySelectorAll(".sg-highlight").forEach(el => el.remove())
+}
+
+// Redraw the current highlight at the phrase's new position (after scroll,
+// resize or typing). Drops it if the phrase is no longer in the box.
+function refreshHighlight() {
+  const h = window._sgHighlight
+  if (!h || !window._sgInput) return
+  requestAnimationFrame(() => {
+    if (!window._sgHighlight) return
+    drawHighlight(window._sgInput, h.phrase, h.tone)
+    if (!document.querySelector(".sg-highlight")) window._sgHighlight = null
+  })
 }
 
 // =============================================================================
