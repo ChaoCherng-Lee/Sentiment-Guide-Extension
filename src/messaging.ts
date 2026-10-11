@@ -14,11 +14,30 @@ export type Message =
     }
   | { type: "SAVE_CONTEXT"; context: ChatContext; contactHash: string }
   | { type: "UPDATE_ACCEPTANCE"; eventId: string; accepted: boolean }
+  /** Ask whether the local model is reachable and loaded. */
+  | { type: "AI_STATUS" }
+  /** A supported site opened — load the model so the first check is fast. */
+  | { type: "WARM_UP" }
+
+/** Why a check produced no result. "cancelled" means a newer check replaced it. */
+export type CheckFailure = "offline" | "no-model" | "timeout" | "cancelled" | "error"
+
+export type CheckToneResponse =
+  | { ok: true; result: ToneResult }
+  | { ok: false; reason: CheckFailure }
+
+export interface AIStatus {
+  /** ready = loaded; idle = installed but not in memory yet (first check is slow) */
+  state: "ready" | "idle" | "offline" | "no-model"
+  model: string | null
+}
 
 export interface Responses {
-  CHECK_TONE: ToneResult | null
+  CHECK_TONE: CheckToneResponse
   SAVE_CONTEXT: void
   UPDATE_ACCEPTANCE: void
+  AI_STATUS: AIStatus
+  WARM_UP: void
 }
 
 export type MessageOf<T extends Message["type"]> = Extract<Message, { type: T }>

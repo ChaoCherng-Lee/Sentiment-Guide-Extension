@@ -5,8 +5,8 @@ import { defineConfig } from "@playwright/test"
 // Run `npm run build` first.
 export default defineConfig({
   testDir: "test/e2e",
-  timeout: 180_000,
-  expect: { timeout: 60_000 },
+  timeout: 300_000,
+  expect: { timeout: 150_000 },
   workers: 1,
   reporter: "list",
 })

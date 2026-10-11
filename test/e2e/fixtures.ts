@@ -24,6 +24,7 @@ export const test = base.extend<{ context: BrowserContext; extensionId: string }
   extensionId: async ({ context }, use) => {
     let [worker] = context.serviceWorkers()
     if (!worker) worker = await context.waitForEvent("serviceworker")
+    if (process.env.SG_DEBUG) worker.on("console", m => console.log("[background]", m.text()))
     await use(worker.url().split("/")[2])
   },
 })

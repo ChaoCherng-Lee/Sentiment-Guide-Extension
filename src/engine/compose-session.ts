@@ -6,7 +6,7 @@
 // =============================================================================
 
 import type { ChatContext, ToneResult } from "../analysis/types"
-import { sendMessage } from "../messaging"
+import { type CheckFailure, sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
 import { getPhraseRange } from "../ui/dom-range"
 import { Highlighter } from "../ui/highlight"
@@ -22,6 +22,8 @@ export interface SessionDeps {
   /** Current conversation — read at request time so chat switches apply. */
   conversation(): { id: string | null; context: ChatContext | null }
   onEditContext(): void
+  /** Every finished check reports here, so the engine can show AI status. */
+  onCheckDone(outcome: { ok: true } | { ok: false; reason: CheckFailure }): void
 }
 
 export class ComposeSession {
@@ -90,7 +92,7 @@ export class ComposeSession {
     const eventId = crypto.randomUUID()
     const conv    = this.deps.conversation()
 
-    const result = await sendMessage({
+    const res = await sendMessage({
       type:        "CHECK_TONE",
       text,
       context:     conv.context,
@@ -99,7 +101,15 @@ export class ComposeSession {
       sessionId:   this.id,
     })
     this.inFlight = false
-    if (!result) return
+    if (!res) return
+    if (!res.ok) {
+      if (res.reason !== "cancelled") this.deps.onCheckDone(res)
+      // Not checked — let the next keystroke try again
+      this.lastText = ""
+      return
+    }
+    this.deps.onCheckDone({ ok: true })
+    const result = res.result
 
     // Drop stale results: the box changed while the model was thinking.
     // Re-check whatever is there now instead.
@@ -108,9 +118,6 @@ export class ComposeSession {
       if (current.length >= MIN_TEXT_LEN) this.analyse(current)
       return
     }
-
-    // Empty label + explanation means Ollama was unreachable — skip silently
-    if (result.tone === "green" && !result.label && !result.explanation) return
 
     if (result.tone === "green") { this.clearUI(); return }
 

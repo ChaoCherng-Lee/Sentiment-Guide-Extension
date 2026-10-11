@@ -8,6 +8,7 @@ import { sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
 import { getChatData, updateChatData } from "../settings/store"
 import { showContextForm } from "../ui/context-form"
+import { StatusChip } from "../ui/status-chip"
 import { SuggestionPopup } from "../ui/suggestion-popup"
 import { ComposeSession } from "./compose-session"
 
@@ -19,6 +20,7 @@ export function startEngine(adapter: PlatformAdapter) {
   console.log("Sentiment Guide: loaded on", location.hostname)
 
   const popup    = new SuggestionPopup()
+  const chip     = new StatusChip()
   const sessions = new Map<HTMLElement, ComposeSession>()
   const askedThisSession = new Set<string>()   // chats whose form we already offered
 
@@ -52,7 +54,32 @@ export function startEngine(adapter: PlatformAdapter) {
         popup,
         conversation: () => conversation,
         onEditContext: openContextForm,
+        onCheckDone: (outcome) => {
+          if (outcome.ok) chip.set({ kind: "hidden" })
+          else if (outcome.reason === "timeout") chip.set({ kind: "slow" })
+          else if (outcome.reason === "offline" || outcome.reason === "no-model") chip.set({ kind: outcome.reason })
+        },
       }))
+    }
+    chip.setAnchor([...sessions.keys()][0] ?? null)
+  }
+
+  // ── AI status ─────────────────────────────────────────────────────────────
+
+  async function prepareModel() {
+    const status = await sendMessage({ type: "AI_STATUS" })
+    if (!status) return
+    if (status.state === "offline" || status.state === "no-model") {
+      chip.set({ kind: status.state })
+      return
+    }
+    if (status.state === "idle") {
+      // Load the model now so the first check isn't a minute-long wait
+      chip.set({ kind: "loading" })
+      await sendMessage({ type: "WARM_UP" })
+      const after = await sendMessage({ type: "AI_STATUS" })
+      if (chip.kind !== "loading") return   // a check already reported something newer
+      chip.set(after?.state === "offline" || after?.state === "no-model" ? { kind: after.state } : { kind: "hidden" })
     }
   }
 
@@ -89,6 +116,7 @@ export function startEngine(adapter: PlatformAdapter) {
   }
 
   scan()
+  prepareModel()
   onConversationChange()
   adapter.onConversationChange(onConversationChange)
 }
