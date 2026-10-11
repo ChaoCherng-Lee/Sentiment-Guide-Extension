@@ -1,0 +1,64 @@
+// =============================================================================
+// Settings store — one typed source of truth shared by the popup, options
+// page, background worker and content scripts.
+//
+// Preferences live in chrome.storage.sync (they follow the user between
+// browsers). Per-chat data lives in chrome.storage.local, keyed by a hash of
+// the conversation — never by name.
+// =============================================================================
+
+import { browser } from "#imports"
+import type { ChatContext } from "../analysis/types"
+
+export interface Settings {
+  /** Ollama model to use; null picks the best installed Gemma model. */
+  model: string | null
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  model: null,
+}
+
+const SETTINGS_KEY = "settings"
+
+export async function getSettings(): Promise<Settings> {
+  const data = await browser.storage.sync.get(SETTINGS_KEY)
+  return { ...DEFAULT_SETTINGS, ...(data[SETTINGS_KEY] as Partial<Settings> | undefined) }
+}
+
+export async function updateSettings(patch: Partial<Settings>): Promise<Settings> {
+  const next = { ...(await getSettings()), ...patch }
+  await browser.storage.sync.set({ [SETTINGS_KEY]: next })
+  return next
+}
+
+/** Calls `cb` with the full settings whenever they change anywhere. Returns an unsubscribe function. */
+export function subscribeSettings(cb: (settings: Settings) => void): () => void {
+  const listener = (changes: Record<string, { newValue?: unknown }>, area: string) => {
+    if (area !== "sync" || !(SETTINGS_KEY in changes)) return
+    cb({ ...DEFAULT_SETTINGS, ...(changes[SETTINGS_KEY].newValue as Partial<Settings> | undefined) })
+  }
+  browser.storage.onChanged.addListener(listener)
+  return () => browser.storage.onChanged.removeListener(listener)
+}
+
+// -----------------------------------------------------------------------------
+// Per-chat data
+// -----------------------------------------------------------------------------
+
+export interface ChatData {
+  context?: ChatContext
+}
+
+const chatKey = (hash: string) => "chat_" + hash
+
+export async function getChatData(hash: string): Promise<ChatData> {
+  const data = await browser.storage.local.get(chatKey(hash))
+  return (data[chatKey(hash)] as ChatData | undefined) ?? {}
+}
+
+export async function updateChatData(hash: string, patch: Partial<ChatData>): Promise<ChatData> {
+  const next = { ...(await getChatData(hash)), ...patch }
+  await browser.storage.local.set({ [chatKey(hash)]: next })
+  return next
+}

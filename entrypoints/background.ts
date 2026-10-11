@@ -4,12 +4,8 @@
 // =============================================================================
 
 import { browser, defineBackground } from "#imports"
-
-interface Context {
-  platform?: string
-  q1?: string; q2?: string; q3?: string; q4?: string; q5?: string
-  savedAt?: number
-}
+import type { ChatContext as Context, ToneResult } from "../src/analysis/types"
+import type { Message } from "../src/messaging"
 
 export default defineBackground(() => {
 
@@ -154,7 +150,7 @@ export default defineBackground(() => {
   //   SAVE_CONTEXT      — upsert context form answers to Supabase
   //   UPDATE_ACCEPTANCE — patch suggestion_accepted on an existing event row
   // -----------------------------------------------------------------------------
-  browser.runtime.onMessage.addListener((request: any, sender, sendResponse) => {
+  browser.runtime.onMessage.addListener((request: Message, sender, sendResponse) => {
     if (sender.id !== browser.runtime.id) return
 
     if (request.type === "CHECK_TONE") {
@@ -232,7 +228,7 @@ export default defineBackground(() => {
   // -----------------------------------------------------------------------------
   // TONE ANALYSIS — call Ollama, validate response, store event in Supabase
   // -----------------------------------------------------------------------------
-  async function checkTone(text: string, context: Context | null, eventId: string | null, contactHash: string | null) {
+  async function checkTone(text: string, context: Context | null, eventId: string | null, contactHash: string | null): Promise<ToneResult> {
     console.log("Sentiment Guide bg: checkTone called →", JSON.stringify(text.slice(0, 50)))
 
     const model = await resolveModel()

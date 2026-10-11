@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>WhatsApp (fixture)</title>
+<style>
+  body { margin:0; font-family: sans-serif; display:flex; height:100vh; }
+  #side { width: 260px; border-right: 1px solid #ddd; padding: 8px; }
+  #main { flex:1; display:flex; flex-direction:column; }
+  #main header { padding: 10px; border-bottom: 1px solid #ddd; }
+  #messages { flex:1; overflow:auto; padding: 10px; }
+  footer { display:flex; padding: 10px; gap: 8px; border-top: 1px solid #ddd; }
+  footer [contenteditable] { flex:1; border:1px solid #ccc; padding:8px; min-height: 20px; }
+  .message-in, .message-out { margin: 4px 0; padding: 6px 10px; border-radius: 6px; max-width: 60%; }
+  .message-in { background: #fff; border:1px solid #eee; }
+  .message-out { background: #dcf8c6; margin-left:auto; }
+</style>
+</head>
+<body>
+  <div id="side">
+    <div contenteditable="true" role="textbox" data-tab="3" aria-label="Search">search</div>
+    <div class="chat-list">
+      <button id="chat-alex">Alex</button>
+      <button id="chat-sam">Sam</button>
+    </div>
+  </div>
+  <div id="main">
+    <header><span title="Alex" dir="auto">Alex</span></header>
+    <div id="messages" role="application"></div>
+    <footer>
+      <div contenteditable="true" role="textbox" data-tab="10" aria-label="Type a message"></div>
+      <button data-icon="send" aria-label="Send">Send</button>
+    </footer>
+  </div>
+<script>
+  // Minimal behaviour: switching chats and sending messages
+  const box = document.querySelector('footer [contenteditable]')
+  const messages = document.getElementById('messages')
+  function send() {
+    const t = box.innerText.trim(); if (!t) return
+    const d = document.createElement('div'); d.className = 'message-out'; d.textContent = t
+    messages.appendChild(d); box.innerHTML = ''
+  }
+  document.querySelector('[data-icon="send"]').addEventListener('click', send)
+  box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setTimeout(send) } })
+  for (const name of ['alex', 'sam']) {
+    document.getElementById('chat-' + name).addEventListener('click', () => {
+      const n = name[0].toUpperCase() + name.slice(1)
+      const s = document.querySelector('#main header span'); s.title = n; s.textContent = n
+      messages.innerHTML = ''
+    })
+  }
+  // Test hook: add an incoming bubble
+  window.addIncoming = (text) => {
+    const d = document.createElement('div'); d.className = 'message-in'; d.textContent = text
+    messages.appendChild(d)
+  }
+</script>
+</body>
+</html>
