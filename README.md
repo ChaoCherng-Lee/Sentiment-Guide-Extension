@@ -75,15 +75,33 @@ You can skip onboarding and adjust settings later via the popup.
 3. Read the explanation, then either **Accept** the suggestion (replaces your text) or **Ignore** to send as-is
 4. For incoming messages, look for a small coloured dot on bubbles — hover to read the tone note
 
-## Files
+## Project layout
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `manifest.json` | Extension manifest (MV3) |
-| `background.js` | Service worker — calls local Ollama for tone analysis, optional Supabase logging |
-| `content_script.js` | Injected into WhatsApp Web — UI, popup, highlighting |
-| `popup.html` / `popup.js` | Extension toolbar popup — shows local Ollama connection status |
-| `onboarding.html` / `onboarding.js` | First-run setup wizard |
+| `wxt.config.ts` | Build config; the manifest is generated from it |
+| `entrypoints/background.ts` | Service worker — queues tone checks to the local Ollama, AI status, optional Supabase logging |
+| `entrypoints/whatsapp.content.ts` | Content script — picks the WhatsApp adapter and starts the engine |
+| `entrypoints/popup/`, `entrypoints/onboarding/` | Toolbar popup and first-run page |
+| `src/analysis/` | Prompts, JSON schema + validation, Ollama client, request queue |
+| `src/platforms/` | One adapter per site; all page selectors live here |
+| `src/engine/` | `ComposeSession` (one per compose box) and the engine that wires everything |
+| `src/ui/` | Suggestion popup, highlight, context form, status chip (Shadow DOM) |
+| `src/settings/store.ts` | Typed settings and per-chat data |
+| `eval/` | Labelled messages and the tone evaluation runner |
+| `test/` | Unit tests (Vitest) and end-to-end tests (Playwright + fixture pages) |
+
+## Development
+
+```
+npm run dev        # Chrome with the extension loaded, reloads on change
+npm test           # unit tests
+npm run test:e2e   # builds, then runs the extension against fixture pages + your local Ollama
+npm run eval       # tone evaluation on eval/messages.jsonl (needs Ollama running)
+```
+
+Run `npm run eval` before and after any prompt change and include the
+summary line in the commit message.
 
 ## Privacy
 
