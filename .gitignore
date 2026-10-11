@@ -22,3 +22,8 @@ build/
 .env.local
 *.key
 *.pem
+
+# WXT
+.output/
+.wxt/
+stats.html

@@ -36,11 +36,21 @@ Because the model runs on your own computer, there's no per-message API cost, no
    ```
 4. Leave Ollama running in the background — the extension talks to it over `http://localhost:11434` any time you're using WhatsApp Web
 
-### 2. Load the extension
+### 2. Build and load the extension
+
+The extension is built with [WXT](https://wxt.dev) and needs Node.js 20+.
+
+```
+npm install
+npm run build      # production build → .output/chrome-mv3
+```
 
 1. Go to `chrome://extensions` in Chrome
 2. Enable **Developer mode** (top right)
-3. Click **Load unpacked** and select this folder
+3. Click **Load unpacked** and select the `.output/chrome-mv3` folder
+
+For development, `npm run dev` opens a Chrome window with the extension
+loaded and reloads it on every change. `npm run zip` makes a store-ready zip.
 
 ### 3. Check the connection
 

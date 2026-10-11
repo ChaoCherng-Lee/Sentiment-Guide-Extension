@@ -1,21 +1,17 @@
-// popup.js — runs inside popup.html (extension action popup)
-// MV3 blocks inline scripts so this must be an external file.
+// popup — runs inside the extension action popup
 
-const MODEL = "gemma3:4b"
+const dot  = document.getElementById("statusDot")!
+const text = document.getElementById("statusText")!
+const cmd  = document.getElementById("statusCmd")!
 
-document.addEventListener("DOMContentLoaded", async () => {
-  const dot  = document.getElementById("statusDot")
-  const text = document.getElementById("statusText")
-  const cmd  = document.getElementById("statusCmd")
-
+async function checkOllama() {
   try {
     const res = await fetch("http://localhost:11434/api/tags")
     if (!res.ok) throw new Error("Ollama returned " + res.status)
 
-    const data   = await res.json()
-    const models = (data.models || []).map(m => m.name)
+    const data = await res.json()
+    const models: string[] = (data.models || []).map((m: { name: string }) => m.name)
 
-    // Check if our exact model is available
     const found =
       models.find(name => name === "gemma3:4b")      ||
       models.find(name => name === "gemma3:latest")  ||
@@ -31,11 +27,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       cmd.style.display = "block"
       cmd.textContent   = "ollama pull gemma3:4b"
     }
-
   } catch (_) {
     dot.classList.add("red")
     text.textContent  = "Ollama not detected — run:"
     cmd.style.display = "block"
     cmd.textContent   = "ollama serve"
   }
-})
+}
+
+checkOllama()
