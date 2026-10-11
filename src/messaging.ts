@@ -28,8 +28,11 @@ export type Message =
   /** A supported site opened — load the model so the first check is fast. */
   | { type: "WARM_UP" }
 
-/** Why a check produced no result. "cancelled" means a newer check replaced it. */
-export type CheckFailure = "offline" | "no-model" | "timeout" | "cancelled" | "error"
+/**
+ * Why a check produced no result. "cancelled" means a newer check replaced
+ * it; "paused" means the extension is off or paused.
+ */
+export type CheckFailure = "offline" | "no-model" | "timeout" | "cancelled" | "paused" | "error"
 
 export type ModelResponse<T> =
   | ({ ok: true } & T)

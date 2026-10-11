@@ -19,9 +19,12 @@ export const MIN_TEXT_LEN = 3
 export interface SessionDeps {
   adapter: PlatformAdapter
   popup: SuggestionPopup
+  /** False while the extension is off, paused, or off for this chat. */
+  isActive(): boolean
   /** Current conversation — read at request time so chat switches apply. */
   conversation(): { id: string | null; context: ChatContext | null }
   onEditContext(): void
+  onDisableChat(): void
   /** Every finished check reports here, so the engine can show AI status. */
   onCheckDone(outcome: { ok: true } | { ok: false; reason: CheckFailure }): void
 }
@@ -75,8 +78,9 @@ export class ComposeSession {
   // ── Typing ────────────────────────────────────────────────────────────────
 
   private onInput() {
-    const text = this.text
     clearTimeout(this.timer)
+    if (!this.deps.isActive()) return
+    const text = this.text
     this.highlighter.refresh()
 
     if (!text) { this.clearUI(); return }
@@ -118,6 +122,9 @@ export class ComposeSession {
       return
     }
 
+    // Turned off while the model was thinking
+    if (!this.deps.isActive()) return
+
     const { verdict } = res
     if (verdict.tone === "green") { this.clearUI(); return }
 
@@ -143,7 +150,7 @@ export class ComposeSession {
     // Superseded by newer text, dismissed or sent in the meantime
     if (this.flag !== flag || !res) return
     if (!res.ok) {
-      if (res.reason === "cancelled") return
+      if (res.reason === "cancelled" || res.reason === "paused") return
       this.deps.onCheckDone(res)
       flag.advice = { label: "", explanation: "Couldn't come up with a suggestion this time.", suggestion: "" }
     } else {
@@ -161,6 +168,7 @@ export class ComposeSession {
       onAccept:      () => this.accept(),
       onDismiss:     () => this.dismiss(),
       onEditContext: () => { this.deps.popup.hide(); this.deps.onEditContext() },
+      onDisableChat: () => this.deps.onDisableChat(),
     })
   }
 

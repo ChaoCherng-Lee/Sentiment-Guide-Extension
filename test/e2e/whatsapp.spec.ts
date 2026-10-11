@@ -1,14 +1,8 @@
-import { expect, test } from "./fixtures"
-
-const HARSH = "you are so stupid, just shut up already"
+import { HARSH, expect, openWhatsApp, test } from "./fixtures"
 
 test.beforeEach(async ({ page, extensionId }) => {
   expect(extensionId).toBeTruthy()
-  await page.goto("https://web.whatsapp.com/")
-  // First visit to a chat offers the context form — skip it
-  const form = page.locator("#sg-context-host")
-  await form.locator("#skip").click({ timeout: 15_000 })
-  await expect(form).toHaveCount(0)
+  await openWhatsApp(page)
 })
 
 test("flags a harsh message and Tab replaces it with the suggestion", async ({ page }) => {

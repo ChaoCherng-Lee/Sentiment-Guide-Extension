@@ -11,6 +11,7 @@ export interface PopupHandlers {
   onAccept(): void
   onDismiss(): void
   onEditContext(): void
+  onDisableChat(): void
 }
 
 const ACCEPT_LABEL = "Accept (Tab)"
@@ -119,6 +120,13 @@ const STYLES = `
     text-decoration: underline;
   }
   .edit-context-btn:hover { color: #7c3aed; }
+
+  .footer { margin-top: 8px; padding-top: 6px; border-top: 1px solid #f3f4f6; }
+  .link-btn {
+    background: none; border: none; padding: 0;
+    font-size: 11px; color: #9ca3af; cursor: pointer; font-family: inherit;
+  }
+  .link-btn:hover { color: #4b5563; text-decoration: underline; }
 `
 
 const TEMPLATE = `
@@ -142,6 +150,9 @@ const TEMPLATE = `
       <button class="btn-dismiss" id="dismiss">Dismiss</button>
       <button class="edit-context-btn" id="edit-context">Edit context</button>
     </div>
+    <div class="footer">
+      <button class="link-btn" id="disable-chat">Don't check this chat</button>
+    </div>
   </div>
 `
 
@@ -164,6 +175,7 @@ export class SuggestionPopup {
     on("dismiss",      () => this.handlers?.onDismiss())
     on("accept",       () => this.handlers?.onAccept())
     on("edit-context", () => this.handlers?.onEditContext())
+    on("disable-chat", () => this.handlers?.onDisableChat())
 
     document.body.appendChild(this.host)
   }

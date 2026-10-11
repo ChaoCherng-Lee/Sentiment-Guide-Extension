@@ -1,9 +1,45 @@
 // popup — runs inside the extension action popup
 import { sendMessage } from "../../src/messaging"
+import {
+  getSettings, isActive, pauseUntil, resume, setEnabled, type Settings, subscribeSettings, tomorrowMorning,
+} from "../../src/settings/store"
 
-const dot  = document.getElementById("statusDot")!
-const text = document.getElementById("statusText")!
-const cmd  = document.getElementById("statusCmd")!
+const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
+
+// ── On / off / pause ────────────────────────────────────────────────────────
+
+const HOUR = 60 * 60 * 1000
+
+function formatTime(ms: number) {
+  const d    = new Date(ms)
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+  return d.toDateString() === new Date().toDateString() ? time : `tomorrow ${time}`
+}
+
+function renderPower(s: Settings) {
+  const paused = s.enabled && !isActive(s)
+  $<HTMLInputElement>("enabled").checked = s.enabled
+  $("powerState").textContent = !s.enabled ? "Off" : paused ? "Paused" : "On"
+  $("powerSub").textContent   = !s.enabled
+    ? "Not checking any messages"
+    : paused ? `Back on at ${formatTime(s.pausedUntil!)}` : "Checking your messages"
+  $("pauseRow").hidden  = !s.enabled || paused
+  $("resumeRow").hidden = !paused
+}
+
+$<HTMLInputElement>("enabled").addEventListener("change", e => setEnabled((e.target as HTMLInputElement).checked))
+$("pause1h").addEventListener("click", () => pauseUntil(Date.now() + HOUR))
+$("pauseTomorrow").addEventListener("click", () => pauseUntil(tomorrowMorning()))
+$("resume").addEventListener("click", () => resume())
+
+getSettings().then(renderPower)
+subscribeSettings(renderPower)
+
+// ── AI status ───────────────────────────────────────────────────────────────
+
+const dot  = $("statusDot")
+const text = $("statusText")
+const cmd  = $("statusCmd")
 
 function showCommand(command: string) {
   cmd.style.display = "block"

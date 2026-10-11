@@ -78,6 +78,49 @@
         display: none;
       }
 
+      .power-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .power-state { font-size: 13px; font-weight: 600; }
+      .power-sub   { font-size: 11px; color: #6b7280; }
+
+      /* Toggle switch */
+      .switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider {
+        position: absolute; inset: 0; cursor: pointer;
+        background: #d1d5db; border-radius: 99px; transition: background 0.15s;
+      }
+      .slider::before {
+        content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
+        background: white; border-radius: 50%; transition: transform 0.15s;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      }
+      .switch input:checked + .slider { background: #4f46e5; }
+      .switch input:checked + .slider::before { transform: translateX(16px); }
+      .switch input:focus-visible + .slider { outline: 2px solid #a5b4fc; outline-offset: 2px; }
+
+      .pause-row { display: flex; gap: 6px; margin-top: 10px; }
+      .btn {
+        flex: 1; padding: 6px 8px; border-radius: 8px;
+        border: 1px solid #e5e7eb; background: #f9fafb; color: #374151;
+        font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer;
+      }
+      .btn:hover { background: #f3f4f6; }
+      .btn.primary { background: #4f46e5; border-color: #4f46e5; color: white; }
+      .btn.primary:hover { background: #4338ca; }
+      [hidden] { display: none !important; }
+
+      .shortcut { font-size: 11px; color: #9ca3af; margin-top: 8px; }
+      kbd {
+        font-family: inherit; font-size: 10px; background: #f3f4f6;
+        border: 1px solid #e5e7eb; border-radius: 4px; padding: 0 4px;
+      }
+
       .note {
         font-size: 11px;
         color: #9ca3af;
@@ -90,6 +133,27 @@
   <body>
     <h1>◆ Sentiment Guide</h1>
     <p class="subtitle">Tone analysis for kinder texting on WhatsApp Web</p>
+
+    <div class="section">
+      <div class="power-row">
+        <div>
+          <div class="power-state" id="powerState">On</div>
+          <div class="power-sub" id="powerSub">Checking your messages</div>
+        </div>
+        <label class="switch" title="Turn Sentiment Guide on or off">
+          <input type="checkbox" id="enabled" aria-label="Sentiment Guide on" checked />
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="pause-row" id="pauseRow">
+        <button class="btn" id="pause1h">Pause 1 hour</button>
+        <button class="btn" id="pauseTomorrow">Pause until tomorrow</button>
+      </div>
+      <div class="pause-row" id="resumeRow" hidden>
+        <button class="btn primary" id="resume">Resume now</button>
+      </div>
+      <div class="shortcut">Shortcut: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> turns it on or off</div>
+    </div>
 
     <div class="section">
       <div class="section-title">Local AI Status</div>

@@ -10,8 +10,9 @@ import { CancelledError, RequestQueue } from "../src/analysis/queue"
 import { adviseTone, judgeTone } from "../src/analysis/tone"
 import { logAcceptance, logContext, logEvent, getChildId } from "../src/backend/supabase"
 import type { AIStatus, CheckFailure, Message, MessageOf, Responses } from "../src/messaging"
-import { getSettings } from "../src/settings/store"
+import { getSettings, isActive, setEnabled, subscribeSettings, type Settings, updateSettings } from "../src/settings/store"
 
+const RESUME_ALARM          = "resume"
 const CHECK_TIMEOUT_MS      = 30_000
 /** First check after the model was unloaded includes loading it — allow for that */
 const COLD_CHECK_TIMEOUT_MS = 120_000
@@ -23,6 +24,7 @@ export default defineBackground(() => {
   let warming: Promise<void> | null = null
 
   allowOllamaRequests()
+  initPowerControls()
 
   browser.runtime.onInstalled.addListener((details) => {
     if (details.reason === "install") {
@@ -45,7 +47,9 @@ export default defineBackground(() => {
         getStatus().then(sendResponse)
         return true
       case "WARM_UP":
-        warm().then(() => sendResponse(), () => sendResponse())
+        getSettings()
+          .then(s => isActive(s) ? warm() : undefined)
+          .then(() => sendResponse(), () => sendResponse())
         return true
       case "SAVE_CONTEXT":
         logContext(msg.context, msg.contactHash)
@@ -55,6 +59,44 @@ export default defineBackground(() => {
         return false
     }
   })
+
+  // ── On / off / pause ──────────────────────────────────────────────────────
+
+  function initPowerControls() {
+    subscribeSettings(applyPowerState)
+    getSettings().then(s => {
+      // A pause that ran out while the browser was closed
+      if (s.pausedUntil !== null && s.pausedUntil <= Date.now()) updateSettings({ pausedUntil: null })
+      else applyPowerState(s)
+    })
+
+    browser.alarms.onAlarm.addListener(alarm => {
+      if (alarm.name === RESUME_ALARM) updateSettings({ pausedUntil: null })
+    })
+
+    browser.commands.onCommand.addListener(async command => {
+      if (command !== "toggle-enabled") return
+      const s = await getSettings()
+      setEnabled(!isActive(s))
+    })
+  }
+
+  async function applyPowerState(s: Settings) {
+    const active = isActive(s)
+    if (!active) queue.cancelAll("paused")
+
+    await browser.action.setBadgeText({ text: !s.enabled ? "OFF" : active ? "" : "II" })
+    await browser.action.setBadgeBackgroundColor({ color: "#6b7280" })
+    await browser.action.setTitle({
+      title: !s.enabled ? "Sentiment Guide — off" : active ? "Sentiment Guide" : "Sentiment Guide — paused",
+    })
+
+    // Wake up to resume when the pause ends (alarms survive the worker sleeping)
+    await browser.alarms.clear(RESUME_ALARM)
+    if (s.enabled && s.pausedUntil !== null && s.pausedUntil > Date.now()) {
+      browser.alarms.create(RESUME_ALARM, { when: s.pausedUntil })
+    }
+  }
 
   // ── Model ─────────────────────────────────────────────────────────────────
 
@@ -93,6 +135,8 @@ export default defineBackground(() => {
     sessionId: string,
     call: (model: string, signal: AbortSignal, timeoutMs: number) => Promise<T>,
   ): Promise<{ ok: true; value: T } | { ok: false; reason: CheckFailure }> {
+    // Off or paused: never send anything to the model
+    if (!isActive(await getSettings())) return { ok: false, reason: "paused" }
     try {
       const value = await queue.add(async (signal) => {
         const model = await resolveModel()
@@ -136,7 +180,7 @@ export default defineBackground(() => {
 })
 
 function failureReason(err: unknown): CheckFailure {
-  if (err instanceof CancelledError) return "cancelled"
+  if (err instanceof CancelledError) return err.message === "paused" ? "paused" : "cancelled"
   if (err instanceof OllamaError) {
     if (err.kind === "aborted") return "cancelled"
     if (err.kind === "bad-response") return "error"

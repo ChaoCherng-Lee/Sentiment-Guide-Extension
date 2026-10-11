@@ -73,7 +73,8 @@ You can skip onboarding and adjust settings later via the popup.
 1. Open [web.whatsapp.com](https://web.whatsapp.com) and start a chat
 2. Type a message — if it contains harsh language, a popup appears above the compose box
 3. Read the explanation, then either **Accept** the suggestion (replaces your text) or **Ignore** to send as-is
-4. For incoming messages, look for a small coloured dot on bubbles — hover to read the tone note
+4. To take a break, use the toolbar popup: switch it off, **Pause 1 hour** or **Pause until tomorrow**. `Alt+Shift+G` turns it on or off, and **Don't check this chat** in the suggestion popup turns it off for one chat. The toolbar icon shows `OFF` or `II` while it isn't checking
+5. For incoming messages, look for a small coloured dot on bubbles — hover to read the tone note
 
 ## Project layout
 

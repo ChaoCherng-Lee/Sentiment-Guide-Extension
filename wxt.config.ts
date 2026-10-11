@@ -9,7 +9,7 @@ export default defineConfig({
     description: "Tone analysis for kinder texting — like Grammarly for sentiment",
     // declarativeNetRequest strips the Origin header from our own requests to
     // Ollama, which otherwise rejects chrome-extension:// origins
-    permissions: ["storage", "declarativeNetRequestWithHostAccess"],
+    permissions: ["storage", "alarms", "declarativeNetRequestWithHostAccess"],
     host_permissions: [
       "http://127.0.0.1:11434/*",
       "http://localhost:11434/*",
@@ -20,6 +20,12 @@ export default defineConfig({
       32: "icon/32.png",
       48: "icon/48.png",
       128: "icon/128.png",
+    },
+    commands: {
+      "toggle-enabled": {
+        suggested_key: { default: "Alt+Shift+G" },
+        description: "Turn Sentiment Guide on or off",
+      },
     },
     action: {
       default_icon: { 16: "icon/16.png", 32: "icon/32.png" },
