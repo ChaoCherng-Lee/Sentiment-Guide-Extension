@@ -5,7 +5,7 @@
 // Lives in a Shadow DOM host so styles never leak into the page.
 // =============================================================================
 
-import type { ToneResult } from "../analysis/types"
+import type { ToneAdvice, ToneVerdict } from "../analysis/types"
 
 export interface PopupHandlers {
   onAccept(): void
@@ -86,6 +86,8 @@ const STYLES = `
   }
 
   .explanation { font-size: 12px; color: #555; margin-bottom: 10px; line-height: 1.6; }
+  .explanation.pending { color: #9ca3af; font-style: italic; animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.45; } }
 
   .suggestion-box { background: #f7f7f7; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
   .suggestion-label { font-size: 11px; font-weight: 500; color: #888; margin-bottom: 4px; }
@@ -174,33 +176,47 @@ export class SuggestionPopup {
     return this.owner !== null && this.owner === owner
   }
 
-  show(owner: unknown, result: ToneResult, anchor: DOMRect, handlers: PopupHandlers) {
+  /**
+   * Show the popup for a flagged message. `advice` is null while the model is
+   * still writing the explanation and rewrite — call setAdvice() when it lands.
+   */
+  show(owner: unknown, verdict: ToneVerdict, advice: ToneAdvice | null, anchor: DOMRect, handlers: PopupHandlers) {
     this.owner    = owner
     this.handlers = handlers
 
-    const tone = result.tone === "red" ? "red" : "yellow"
+    const tone = verdict.tone === "red" ? "red" : "yellow"
     this.$("popup").className = "popup " + tone
     this.$("dot").className   = "tone-dot " + tone
-    this.$("label").textContent       = result.label || (tone === "red" ? "Unkind" : "A little sharp")
-    this.$("explanation").textContent = result.explanation || ""
-    this.$("accept").textContent      = ACCEPT_LABEL
+    this.$("accept").textContent = ACCEPT_LABEL
 
     // Confidence indicator — shown only below 0.9
     const conf = this.$("confidence")
-    if (result.confidence < 0.9) {
-      conf.textContent   = result.confidence < 0.7 ? "borderline — your call" : "fairly confident"
+    if (verdict.confidence < 0.9) {
+      conf.textContent   = verdict.confidence < 0.7 ? "borderline — your call" : "fairly confident"
       conf.style.display = "block"
     } else {
       conf.style.display = "none"
     }
 
-    // Always overwrite the suggestion text so a stale one can never be accepted
-    this.$("suggestion").textContent           = result.suggestion
-    this.$("suggestion-box").style.display     = result.suggestion ? "block" : "none"
-    this.$("accept").style.display             = result.suggestion ? "inline-block" : "none"
-
+    this.setAdvice(advice)
     this.$("popup").style.display = "block"
     this.position(anchor)
+  }
+
+  /** Fill in the explanation and rewrite, or show the "thinking" state for null. */
+  setAdvice(advice: ToneAdvice | null) {
+    const red = this.$("popup").classList.contains("red")
+    this.$("label").textContent = advice?.label || (red ? "Unkind" : "A little sharp")
+
+    const expl = this.$("explanation")
+    expl.textContent = advice ? advice.explanation : "Thinking of a kinder way to say it…"
+    expl.classList.toggle("pending", !advice)
+
+    // Always overwrite the suggestion text so a stale one can never be accepted
+    const suggestion = advice?.suggestion ?? ""
+    this.$("suggestion").textContent       = suggestion
+    this.$("suggestion-box").style.display = suggestion ? "block" : "none"
+    this.$("accept").style.display         = suggestion ? "inline-block" : "none"
   }
 
   hide() {

@@ -3,23 +3,33 @@
 
 export type Tone = "green" | "yellow" | "red"
 
-export interface ToneResult {
+/**
+ * Step 1 of a check: is the message OK? Short, so the model answers in ~2 s.
+ * Every message gets one.
+ */
+export interface ToneVerdict {
   tone: Tone
   confidence: number
-  label: string
-  explanation: string
+  /** Exact substring of the message that caused concern; "" if green */
   flagged_phrase: string
-  suggestion: string
   tone_tags_detected: boolean
 }
 
-export const GREEN_RESULT: ToneResult = {
+/**
+ * Step 2, only for yellow/red: why, and a kinder way to say it. Writing this
+ * is what takes most of the model's time.
+ */
+export interface ToneAdvice {
+  label: string
+  explanation: string
+  /** Kinder rewrite of the whole message; "" if none */
+  suggestion: string
+}
+
+export const GREEN_VERDICT: ToneVerdict = {
   tone: "green",
   confidence: 1,
-  label: "",
-  explanation: "",
   flagged_phrase: "",
-  suggestion: "",
   tone_tags_detected: false,
 }
 

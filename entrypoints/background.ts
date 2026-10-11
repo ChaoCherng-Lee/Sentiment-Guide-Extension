@@ -7,10 +7,9 @@
 import { browser, defineBackground } from "#imports"
 import { listModels, OLLAMA_HOSTS, OllamaError, isLoaded, pickModel, warmUp } from "../src/analysis/ollama"
 import { CancelledError, RequestQueue } from "../src/analysis/queue"
-import { analyseTone } from "../src/analysis/tone"
-import type { ChatContext } from "../src/analysis/types"
+import { adviseTone, judgeTone } from "../src/analysis/tone"
 import { logAcceptance, logContext, logEvent, getChildId } from "../src/backend/supabase"
-import type { AIStatus, CheckFailure, CheckToneResponse, Message } from "../src/messaging"
+import type { AIStatus, CheckFailure, Message, MessageOf, Responses } from "../src/messaging"
 import { getSettings } from "../src/settings/store"
 
 const CHECK_TIMEOUT_MS      = 30_000
@@ -37,7 +36,10 @@ export default defineBackground(() => {
 
     switch (msg.type) {
       case "CHECK_TONE":
-        checkTone(msg.text, msg.context, msg.eventId, msg.contactHash, msg.sessionId).then(sendResponse)
+        checkTone(msg).then(sendResponse)
+        return true
+      case "GET_ADVICE":
+        getAdvice(msg).then(sendResponse)
         return true
       case "AI_STATUS":
         getStatus().then(sendResponse)
@@ -83,44 +85,53 @@ export default defineBackground(() => {
 
   // ── Tone check ────────────────────────────────────────────────────────────
 
-  async function checkTone(
-    text: string,
-    context: ChatContext | null,
-    eventId: string,
-    contactHash: string | null,
+  /**
+   * Run one model call through the queue. Outgoing work from a compose box
+   * shares one key, so a newer check from that box replaces an older one.
+   */
+  async function runModelCall<T>(
     sessionId: string,
-  ): Promise<CheckToneResponse> {
+    call: (model: string, signal: AbortSignal, timeoutMs: number) => Promise<T>,
+  ): Promise<{ ok: true; value: T } | { ok: false; reason: CheckFailure }> {
     try {
-      // A newer check from the same compose box replaces this one
-      const result = await queue.add(async (signal) => {
+      const value = await queue.add(async (signal) => {
         const model = await resolveModel()
         const cold  = !(await isLoaded(model))
-        return analyseTone(text, context, {
-          model,
-          signal,
-          timeoutMs: cold ? COLD_CHECK_TIMEOUT_MS : CHECK_TIMEOUT_MS,
-        })
+        return call(model, signal, cold ? COLD_CHECK_TIMEOUT_MS : CHECK_TIMEOUT_MS)
       }, { priority: "high", key: "outgoing:" + sessionId })
-
-      // Store yellow/red events in Supabase (green = nothing to log)
-      if (result.tone !== "green") {
-        logEvent({
-          id: eventId,
-          contact_hash: contactHash,
-          tone: result.tone,
-          confidence: result.confidence,
-          label: result.label,
-          flagged_phrase: result.flagged_phrase,
-          suggestion: result.suggestion,
-          tone_tags_detected: result.tone_tags_detected,
-        })
-      }
-      return { ok: true, result }
+      return { ok: true, value }
     } catch (err) {
       const reason = failureReason(err)
-      if (reason !== "cancelled") console.log("Sentiment Guide bg: check failed —", reason, (err as Error).message)
+      if (reason !== "cancelled") console.log("Sentiment Guide bg: model call failed —", reason, (err as Error).message)
       return { ok: false, reason }
     }
+  }
+
+  async function checkTone(msg: MessageOf<"CHECK_TONE">): Promise<Responses["CHECK_TONE"]> {
+    const res = await runModelCall(msg.sessionId, (model, signal, timeoutMs) =>
+      judgeTone(msg.text, msg.context, { model, signal, timeoutMs }))
+    return res.ok ? { ok: true, verdict: res.value } : res
+  }
+
+  async function getAdvice(msg: MessageOf<"GET_ADVICE">): Promise<Responses["GET_ADVICE"]> {
+    const res = await runModelCall(msg.sessionId, (model, signal, timeoutMs) =>
+      adviseTone(msg.text, msg.verdict, msg.context, { model, signal, timeoutMs }))
+    if (!res.ok) return res
+
+    const { verdict } = msg
+    if (verdict.tone !== "green") {
+      logEvent({
+        id: msg.eventId,
+        contact_hash: msg.contactHash,
+        tone: verdict.tone,
+        confidence: verdict.confidence,
+        label: res.value.label,
+        flagged_phrase: verdict.flagged_phrase,
+        suggestion: res.value.suggestion,
+        tone_tags_detected: verdict.tone_tags_detected,
+      })
+    }
+    return { ok: true, advice: res.value }
   }
 })
 

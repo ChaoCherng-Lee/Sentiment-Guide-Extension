@@ -5,7 +5,7 @@
 // Gmail can have several compose windows open, so there is one per box.
 // =============================================================================
 
-import type { ChatContext, ToneResult } from "../analysis/types"
+import type { ChatContext, ToneAdvice, ToneVerdict } from "../analysis/types"
 import { type CheckFailure, sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
 import { getPhraseRange } from "../ui/dom-range"
@@ -26,6 +26,13 @@ export interface SessionDeps {
   onCheckDone(outcome: { ok: true } | { ok: false; reason: CheckFailure }): void
 }
 
+/** A flagged message; advice is null until step 2 returns. */
+interface Flag {
+  text: string
+  verdict: ToneVerdict
+  advice: ToneAdvice | null
+}
+
 export class ComposeSession {
   readonly id = crypto.randomUUID()
   private readonly highlighter: Highlighter
@@ -35,7 +42,7 @@ export class ComposeSession {
   private readonly ignored = new Set<string>()
   private inFlight = false
   private timer: ReturnType<typeof setTimeout> | undefined
-  private result: ToneResult | null = null
+  private flag: Flag | null = null          // the flagged message on show
   private eventId: string | null = null    // Supabase event for the popup shown
 
   constructor(readonly box: HTMLElement, private readonly deps: SessionDeps) {
@@ -43,7 +50,7 @@ export class ComposeSession {
 
     const onInput = () => this.onInput()
     const onKeydown = (e: KeyboardEvent) => {
-      if (e.key === "Tab" && this.popupOpen && this.result?.suggestion) {
+      if (e.key === "Tab" && this.popupOpen && this.flag?.advice?.suggestion) {
         e.preventDefault()
         this.accept()
       }
@@ -83,23 +90,16 @@ export class ComposeSession {
   // ── Analysis ──────────────────────────────────────────────────────────────
 
   private async analyse(text: string) {
-    // A request is running — when it lands it re-checks the latest text
+    // A verdict is on its way — when it lands it re-checks the latest text
     if (this.inFlight) return
     if (text === this.lastText || this.ignored.has(text)) return
 
     this.inFlight = true
     this.lastText = text
-    const eventId = crypto.randomUUID()
     const conv    = this.deps.conversation()
 
-    const res = await sendMessage({
-      type:        "CHECK_TONE",
-      text,
-      context:     conv.context,
-      eventId,
-      contactHash: conv.id,
-      sessionId:   this.id,
-    })
+    // Step 1: fast verdict
+    const res = await sendMessage({ type: "CHECK_TONE", text, context: conv.context, sessionId: this.id })
     this.inFlight = false
     if (!res) return
     if (!res.ok) {
@@ -109,7 +109,6 @@ export class ComposeSession {
       return
     }
     this.deps.onCheckDone({ ok: true })
-    const result = res.result
 
     // Drop stale results: the box changed while the model was thinking.
     // Re-check whatever is there now instead.
@@ -119,19 +118,46 @@ export class ComposeSession {
       return
     }
 
-    if (result.tone === "green") { this.clearUI(); return }
+    const { verdict } = res
+    if (verdict.tone === "green") { this.clearUI(); return }
 
-    this.result  = result
-    this.eventId = eventId
-    this.highlighter.show(result.flagged_phrase, result.tone)
+    // Flag it straight away, then fill in the explanation and rewrite
+    this.flag    = { text, verdict, advice: null }
+    this.eventId = crypto.randomUUID()
+    this.highlighter.show(verdict.flagged_phrase, verdict.tone)
     this.showPopup()
+    this.fetchAdvice(this.flag, conv)
+  }
+
+  /** Step 2: explanation + kinder rewrite for the flagged message. */
+  private async fetchAdvice(flag: Flag, conv: { id: string | null; context: ChatContext | null }) {
+    const res = await sendMessage({
+      type:        "GET_ADVICE",
+      text:        flag.text,
+      verdict:     flag.verdict,
+      context:     conv.context,
+      eventId:     this.eventId!,
+      contactHash: conv.id,
+      sessionId:   this.id,
+    })
+    // Superseded by newer text, dismissed or sent in the meantime
+    if (this.flag !== flag || !res) return
+    if (!res.ok) {
+      if (res.reason === "cancelled") return
+      this.deps.onCheckDone(res)
+      flag.advice = { label: "", explanation: "Couldn't come up with a suggestion this time.", suggestion: "" }
+    } else {
+      flag.advice = res.advice
+    }
+    if (this.popupOpen) this.deps.popup.setAdvice(flag.advice)
   }
 
   private showPopup() {
-    if (!this.result) return
-    const range  = getPhraseRange(this.box, this.result.flagged_phrase)
+    if (!this.flag) return
+    const { verdict, advice } = this.flag
+    const range  = getPhraseRange(this.box, verdict.flagged_phrase)
     const anchor = range?.getClientRects()[0] ?? this.box.getBoundingClientRect()
-    this.deps.popup.show(this, this.result, anchor, {
+    this.deps.popup.show(this, verdict, advice, anchor, {
       onAccept:      () => this.accept(),
       onDismiss:     () => this.dismiss(),
       onEditContext: () => { this.deps.popup.hide(); this.deps.onEditContext() },
@@ -154,7 +180,7 @@ export class ComposeSession {
   }
 
   async accept() {
-    const suggestion = this.result?.suggestion
+    const suggestion = this.flag?.advice?.suggestion
     if (!suggestion) return
     const popup = this.deps.popup
 
@@ -182,7 +208,7 @@ export class ComposeSession {
   private clearUI() {
     this.highlighter.clear()
     if (this.popupOpen) this.deps.popup.hide()
-    this.result = null
+    this.flag = null
   }
 
   /** Forget everything — after sending or switching chats. */

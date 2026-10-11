@@ -5,6 +5,9 @@
 //   npm run eval                          # whole set
 //   npm run eval -- --category emoji      # one category
 //   npm run eval -- --limit 20 --model gemma3:4b
+//   npm run eval -- --advice              # also time step 2 on flagged messages
+//
+// Accuracy comes from step 1 (the verdict), which decides what gets flagged.
 //
 // Run it before and after every prompt change and put the summary line in
 // the commit message. Results are also written to eval/results/.
@@ -17,8 +20,8 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { parseArgs } from "node:util"
 import { listModels, pickModel, warmUp } from "../src/analysis/ollama"
-import { analyseTone } from "../src/analysis/tone"
-import type { ChatContext, Tone, ToneResult } from "../src/analysis/types"
+import { adviseTone, judgeTone } from "../src/analysis/tone"
+import type { ChatContext, Tone, ToneVerdict } from "../src/analysis/types"
 
 interface Case {
   id: number
@@ -30,9 +33,13 @@ interface Case {
 
 interface Outcome {
   case: Case
-  result: ToneResult | null
+  result: ToneVerdict | null
   error?: string
+  /** Step 1 time */
   ms: number
+  /** Step 2 time, with --advice, for flagged messages */
+  adviceMs?: number
+  suggestion?: string
 }
 
 const TONES: Tone[] = ["green", "yellow", "red"]
@@ -44,6 +51,7 @@ const { values: args } = parseArgs({
     limit:    { type: "string" },
     model:    { type: "string" },
     file:     { type: "string", default: path.join(DIR, "messages.jsonl") },
+    advice:   { type: "boolean", default: false },
   },
 })
 
@@ -94,6 +102,8 @@ function report(outcomes: Outcome[], model: string) {
   const caught        = shouldFlag.filter(o => flagged(predicted(o))).length
   const exact         = done.filter(o => predicted(o) === o.case.expected).length
   const avgMs         = done.reduce((s, o) => s + o.ms, 0) / Math.max(1, done.length)
+  const advised       = done.filter(o => o.adviceMs !== undefined)
+  const avgAdviceMs   = advised.reduce((s, o) => s + o.adviceMs!, 0) / Math.max(1, advised.length)
 
   console.log("\nper category (exact match)")
   for (const cat of [...new Set(done.map(o => o.case.category))]) {
@@ -106,7 +116,9 @@ function report(outcomes: Outcome[], model: string) {
     `eval: exact ${pct(exact, done.length).trim()}, ` +
     `flag recall ${pct(caught, shouldFlag.length).trim()}, ` +
     `false-positive rate ${pct(falsePositive, shouldntFlag.length).trim()}, ` +
-    `avg ${(avgMs / 1000).toFixed(2)} s (${model}, n=${done.length})`
+    `verdict avg ${(avgMs / 1000).toFixed(2)} s` +
+    (advised.length ? `, advice avg ${(avgAdviceMs / 1000).toFixed(2)} s` : "") +
+    ` (${model}, n=${done.length})`
   console.log("\n" + summary)
 
   const misses = done.filter(o => predicted(o) !== o.case.expected)
@@ -137,8 +149,15 @@ async function main() {
   for (const [i, c] of cases.entries()) {
     const start = performance.now()
     try {
-      const result = await analyseTone(c.text, fullContext(c.context), { model, timeoutMs: 120_000 })
-      outcomes.push({ case: c, result, ms: performance.now() - start })
+      const ctx    = fullContext(c.context)
+      const result = await judgeTone(c.text, ctx, { model, timeoutMs: 120_000 })
+      const outcome: Outcome = { case: c, result, ms: performance.now() - start }
+      if (args.advice && result.tone !== "green") {
+        const adviceStart = performance.now()
+        outcome.suggestion = (await adviseTone(c.text, result, ctx, { model, timeoutMs: 120_000 })).suggestion
+        outcome.adviceMs   = performance.now() - adviceStart
+      }
+      outcomes.push(outcome)
     } catch (err) {
       outcomes.push({ case: c, result: null, error: (err as Error).message, ms: performance.now() - start })
     }

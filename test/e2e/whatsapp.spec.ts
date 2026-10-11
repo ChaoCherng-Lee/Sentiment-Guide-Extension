@@ -15,9 +15,15 @@ test("flags a harsh message and Tab replaces it with the suggestion", async ({ p
   const box = page.locator("footer [contenteditable]")
   await box.pressSequentially(HARSH)
 
+  // Step 1: flagged quickly, with a "thinking" placeholder
   const popup = page.locator("#sg-popup-host .popup")
   await expect(popup).toBeVisible()
+  await expect(popup.locator("#explanation.pending")).toBeVisible()
   await expect(page.locator(".sg-highlight").first()).toBeVisible()
+
+  // Step 2: the explanation and rewrite fill in
+  await expect(popup.locator("#explanation")).not.toHaveClass(/pending/)
+  await expect(popup.locator("#accept")).toBeVisible()
   const suggestion = (await popup.locator("#suggestion").textContent())!.trim()
   expect(suggestion.length).toBeGreaterThan(0)
 

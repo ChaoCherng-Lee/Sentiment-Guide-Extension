@@ -1,15 +1,24 @@
 // Typed messages between content scripts / pages and the background worker.
 import { browser } from "#imports"
-import type { ChatContext, ToneResult } from "./analysis/types"
+import type { ChatContext, ToneAdvice, ToneVerdict } from "./analysis/types"
 
 export type Message =
+  /** Step 1: fast verdict for every message. */
   | {
       type: "CHECK_TONE"
       text: string
       context: ChatContext | null
+      /** Compose box that asked — a newer request from it supersedes older ones. */
+      sessionId: string
+    }
+  /** Step 2, for yellow/red verdicts: explanation and kinder rewrite. */
+  | {
+      type: "GET_ADVICE"
+      text: string
+      verdict: ToneVerdict
+      context: ChatContext | null
       eventId: string
       contactHash: string | null
-      /** Compose box that asked — a newer request from it supersedes older ones. */
       sessionId: string
     }
   | { type: "SAVE_CONTEXT"; context: ChatContext; contactHash: string }
@@ -22,8 +31,8 @@ export type Message =
 /** Why a check produced no result. "cancelled" means a newer check replaced it. */
 export type CheckFailure = "offline" | "no-model" | "timeout" | "cancelled" | "error"
 
-export type CheckToneResponse =
-  | { ok: true; result: ToneResult }
+export type ModelResponse<T> =
+  | ({ ok: true } & T)
   | { ok: false; reason: CheckFailure }
 
 export interface AIStatus {
@@ -33,7 +42,8 @@ export interface AIStatus {
 }
 
 export interface Responses {
-  CHECK_TONE: CheckToneResponse
+  CHECK_TONE: ModelResponse<{ verdict: ToneVerdict }>
+  GET_ADVICE: ModelResponse<{ advice: ToneAdvice }>
   SAVE_CONTEXT: void
   UPDATE_ACCEPTANCE: void
   AI_STATUS: AIStatus
