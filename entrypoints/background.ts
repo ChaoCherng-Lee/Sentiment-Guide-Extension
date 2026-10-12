@@ -14,6 +14,8 @@ import { getSettings, isActive, setEnabled, subscribeSettings, type Settings, up
 
 const RESUME_ALARM          = "resume"
 const CHECK_TIMEOUT_MS      = 30_000
+/** Advice writes an explanation, a rewrite and phrase edits — much more text */
+const ADVICE_TIMEOUT_MS     = 60_000
 /** First check after the model was unloaded includes loading it — allow for that */
 const COLD_CHECK_TIMEOUT_MS = 120_000
 
@@ -134,6 +136,7 @@ export default defineBackground(() => {
   async function runModelCall<T>(
     sessionId: string,
     call: (model: string, signal: AbortSignal, timeoutMs: number) => Promise<T>,
+    timeoutMs = CHECK_TIMEOUT_MS,
   ): Promise<{ ok: true; value: T } | { ok: false; reason: CheckFailure }> {
     // Off or paused: never send anything to the model
     if (!isActive(await getSettings())) return { ok: false, reason: "paused" }
@@ -141,7 +144,7 @@ export default defineBackground(() => {
       const value = await queue.add(async (signal) => {
         const model = await resolveModel()
         const cold  = !(await isLoaded(model))
-        return call(model, signal, cold ? COLD_CHECK_TIMEOUT_MS : CHECK_TIMEOUT_MS)
+        return call(model, signal, cold ? COLD_CHECK_TIMEOUT_MS : timeoutMs)
       }, { priority: "high", key: "outgoing:" + sessionId })
       return { ok: true, value }
     } catch (err) {
@@ -159,7 +162,7 @@ export default defineBackground(() => {
 
   async function getAdvice(msg: MessageOf<"GET_ADVICE">): Promise<Responses["GET_ADVICE"]> {
     const res = await runModelCall(msg.sessionId, (model, signal, timeoutMs) =>
-      adviseTone(msg.text, msg.verdict, msg.context, msg.style, { model, signal, timeoutMs }))
+      adviseTone(msg.text, msg.verdict, msg.context, msg.style, { model, signal, timeoutMs }), ADVICE_TIMEOUT_MS)
     if (!res.ok) return res
 
     const { verdict } = msg

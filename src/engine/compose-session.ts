@@ -8,7 +8,7 @@
 import type { ChatContext, SuggestionStyle, ToneAdvice, ToneVerdict } from "../analysis/types"
 import { type CheckFailure, sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
-import { getPhraseRange } from "../ui/dom-range"
+import { caretAfterEdit, findPhrase, getCaretOffset, getPhraseRange, rangeFromOffsets, setCaretOffset } from "../ui/dom-range"
 import { Highlighter } from "../ui/highlight"
 import type { SuggestionPopup } from "../ui/suggestion-popup"
 
@@ -39,6 +39,8 @@ interface Flag {
   verdict: ToneVerdict
   style: SuggestionStyle
   advice: ToneAdvice | null
+  /** Indexes of advice.edits the user has applied */
+  applied: Set<number>
 }
 
 export class ComposeSession {
@@ -52,6 +54,7 @@ export class ComposeSession {
   private timer: ReturnType<typeof setTimeout> | undefined
   private flag: Flag | null = null          // the flagged message on show
   private eventId: string | null = null    // Supabase event for the popup shown
+  private textAfterEdit: string | null = null  // box text right after the last applied edit
 
   constructor(readonly box: HTMLElement, private readonly deps: SessionDeps) {
     this.highlighter = new Highlighter(box)
@@ -133,8 +136,17 @@ export class ComposeSession {
     const { verdict } = res
     if (verdict.tone === "green") { this.clearUI(); return }
 
+    // Still flagged after applying an edit: if other edits from the same
+    // advice are still waiting, keep them on screen instead of starting over
+    if (text === this.textAfterEdit && this.flag && this.hasPendingEdits(this.flag)) {
+      this.flag.text    = text
+      this.flag.verdict = verdict
+      this.highlighter.show(verdict.flagged_phrase, verdict.tone)
+      return
+    }
+
     // Flag it straight away, then fill in the explanation and rewrite
-    this.flag    = { text, verdict, style: this.deps.style(), advice: null }
+    this.flag    = { text, verdict, style: this.deps.style(), advice: null, applied: new Set() }
     this.eventId = crypto.randomUUID()
     this.highlighter.show(verdict.flagged_phrase, verdict.tone)
     this.showPopup()
@@ -158,7 +170,7 @@ export class ComposeSession {
     if (!res.ok) {
       if (res.reason === "cancelled" || res.reason === "paused") return
       this.deps.onCheckDone(res)
-      flag.advice = { label: "", explanation: "Couldn't come up with a suggestion this time.", suggestion: "" }
+      flag.advice = { label: "", explanation: "Couldn't come up with a suggestion this time.", suggestion: "", edits: [] }
     } else {
       flag.advice = res.advice
     }
@@ -172,6 +184,7 @@ export class ComposeSession {
     const anchor = range?.getClientRects()[0] ?? this.box.getBoundingClientRect()
     this.deps.popup.show(this, verdict, advice, style, anchor, {
       onAccept:      () => this.accept(),
+      onApplyEdit:   (i) => this.applyEdit(i),
       onDismiss:     () => this.dismiss(),
       onEditContext: () => { this.deps.popup.hide(); this.deps.onEditContext() },
       onDisableChat: () => this.deps.onDisableChat(),
@@ -187,7 +200,7 @@ export class ComposeSession {
     if (!old) return
     this.deps.onStyleChange(style)
     // A new Flag object, so a rewrite still on its way for the old style is ignored
-    this.flag    = { ...old, style, advice: null }
+    this.flag    = { ...old, style, advice: null, applied: new Set() }
     this.eventId = crypto.randomUUID()
     this.deps.popup.setAdvice(null)
     this.fetchAdvice(this.flag, this.deps.conversation())
@@ -204,6 +217,51 @@ export class ComposeSession {
     if (text) this.ignored.add(text)
     this.reportAcceptance(false)
     this.clearUI()
+  }
+
+  /** Edits of this flag not yet applied whose words are still in the message. */
+  private hasPendingEdits(flag: Flag) {
+    const text = this.text.toLowerCase()
+    return (flag.advice?.edits ?? []).some((e, i) => !flag.applied.has(i) && text.includes(e.original.toLowerCase()))
+  }
+
+  /**
+   * Swap one phrase for its kinder version and leave the rest of the message,
+   * and the caret, where they were. The input event that follows re-checks
+   * the message.
+   */
+  async applyEdit(index: number) {
+    const flag = this.flag
+    const edit = flag?.advice?.edits[index]
+    if (!flag || !edit || flag.applied.has(index)) return
+    const popup = this.deps.popup
+
+    const at    = findPhrase(this.box, edit.original)
+    const range = at && rangeFromOffsets(this.box, at.start, at.end)
+    if (!at || !range) { popup.setEditState(index, "missing"); return }
+
+    const caret    = getCaretOffset(this.box)
+    const replaced = await this.deps.adapter.replaceText(this.box, range, edit.replacement)
+    if (this.flag !== flag) return
+    flag.applied.add(index)
+
+    if (replaced && this.text.includes(edit.replacement)) {
+      this.textAfterEdit = this.text
+      this.reportAcceptance(true)
+      popup.setEditState(index, "applied")
+      if (caret !== null) setCaretOffset(this.box, caretAfterEdit(caret, at.start, at.end, edit.replacement.length))
+      // Nothing left to apply here — let the re-check decide what comes next
+      if (!this.hasPendingEdits(flag)) popup.hide()
+      return
+    }
+
+    // The editor refused the edit — hand the words over via the clipboard
+    try {
+      await navigator.clipboard.writeText(edit.replacement)
+      popup.setEditState(index, "copied")
+    } catch (_) {
+      popup.setEditState(index, "failed")
+    }
   }
 
   async accept() {
@@ -235,7 +293,8 @@ export class ComposeSession {
   private clearUI() {
     this.highlighter.clear()
     if (this.popupOpen) this.deps.popup.hide()
-    this.flag = null
+    this.flag          = null
+    this.textAfterEdit = null
   }
 
   /** Forget everything — after sending or switching chats. */

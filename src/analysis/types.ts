@@ -24,6 +24,15 @@ export interface ToneAdvice {
   explanation: string
   /** Kinder rewrite of the whole message; "" if none */
   suggestion: string
+  /** Phrase-level fixes the user can apply one at a time (at most 3) */
+  edits: ToneEdit[]
+}
+
+/** Swap one phrase for a kinder one; `original` is verbatim from the message. */
+export interface ToneEdit {
+  original: string
+  replacement: string
+  reason: string
 }
 
 export const GREEN_VERDICT: ToneVerdict = {

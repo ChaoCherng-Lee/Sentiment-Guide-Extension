@@ -2,7 +2,9 @@
 // schema-valid JSON (structured outputs, Ollama ≥ 0.5), plus validators that
 // never trust the model anyway.
 
-import { GREEN_VERDICT, type Tone, type ToneAdvice, type ToneVerdict } from "./types"
+import { GREEN_VERDICT, type Tone, type ToneAdvice, type ToneEdit, type ToneVerdict } from "./types"
+
+export const MAX_EDITS = 3
 
 export const VERDICT_SCHEMA = {
   type: "object",
@@ -21,8 +23,21 @@ export const ADVICE_SCHEMA = {
     label:       { type: "string" },
     explanation: { type: "string" },
     suggestion:  { type: "string" },
+    edits: {
+      type: "array",
+      maxItems: MAX_EDITS,
+      items: {
+        type: "object",
+        properties: {
+          original:    { type: "string" },
+          replacement: { type: "string" },
+          reason:      { type: "string" },
+        },
+        required: ["original", "replacement", "reason"],
+      },
+    },
   },
-  required: ["label", "explanation", "suggestion"],
+  required: ["label", "explanation", "suggestion", "edits"],
 } as const
 
 const TONES: Tone[] = ["green", "yellow", "red"]
@@ -62,5 +77,39 @@ export function validateAdvice(raw: unknown, message: string): ToneAdvice {
     label:       str(r.label, 60),
     explanation: str(r.explanation, 300),
     suggestion,
+    edits:       validateEdits(r.edits, message),
   }
+}
+
+/**
+ * Keep only edits that can be applied to `message`:
+ * - `original` must appear in the message. Case is forgiven, but `original`
+ *   is replaced with the message's own spelling so it can be found again.
+ * - the replacement must actually change something
+ * - no two edits may touch the same part of the message
+ * At most MAX_EDITS are kept, in message order.
+ */
+export function validateEdits(raw: unknown, message: string): ToneEdit[] {
+  if (!Array.isArray(raw)) return []
+  const lower = message.toLowerCase()
+  const kept: (ToneEdit & { at: number })[] = []
+
+  for (const item of raw) {
+    const r = asRecord(item)
+    if (!r) continue
+    const wanted      = str(r.original, 100)
+    const replacement = str(r.replacement, 200)
+    if (!wanted || !replacement) continue
+    if (replacement.toLowerCase() === wanted.toLowerCase()) continue
+
+    const at = lower.indexOf(wanted.toLowerCase())
+    if (at === -1) continue
+    const end = at + wanted.length
+    if (kept.some(k => at < k.at + k.original.length && k.at < end)) continue
+
+    kept.push({ original: message.slice(at, end), replacement, reason: str(r.reason, 120), at })
+    if (kept.length === MAX_EDITS) break
+  }
+
+  return kept.sort((a, b) => a.at - b.at).map(({ at: _, ...edit }) => edit)
 }

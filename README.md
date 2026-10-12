@@ -1,18 +1,18 @@
 # Sentiment Guide Chrome Extension
 
-A Chrome extension that analyses tone as you type on WhatsApp Web — like Grammarly, but for kindness. It flags harsh or unkind language in outgoing messages and helps you understand the tone of incoming ones.
+A Chrome extension that analyses tone as you type on WhatsApp Web — like Grammarly, but for kindness. It flags harsh or unkind language in outgoing messages.
 
 ## Features
 
 - **Outgoing analysis** — as you type, a popup appears if your message sounds harsh, with an explanation and a kinder alternative you can accept in one click
-- **Incoming analysis** — a small coloured dot appears on received messages with strong tone; hover to see an explanation
+- **Incoming analysis** *(planned, Phase 3)* — opt-in tone notes on received messages; not built yet
 - **Runs entirely locally** — tone analysis is done by a local Ollama model (`gemma3:4b`) on your own machine; nothing is sent to any external AI service, and no API key is required
 - **Personalised suggestions** — an onboarding flow collects your role, age range, texting style, and goals so the model tailors its language to you
 - **Private by default** — messages never leave your device; your profile stays on-device only. Optional Supabase logging (for a parent dashboard) is off unless you configure it yourself
 
 ## How It Works
 
-Every outgoing/incoming message is sent to a local Ollama server (`http://localhost:11434`) running the `gemma3:4b` model, along with your onboarding profile as context. It returns:
+Every outgoing message is sent to a local Ollama server (`http://localhost:11434`) running the `gemma3:4b` model, along with your onboarding profile as context. It returns:
 - `tone` — `green`, `yellow`, or `red`
 - `label` — a short description (e.g. "A little sharp")
 - `explanation` — 1–2 warm sentences about how the message might land
@@ -72,10 +72,12 @@ You can skip onboarding and adjust settings later via the popup.
 
 1. Open [web.whatsapp.com](https://web.whatsapp.com) and start a chat
 2. Type a message — if it contains harsh language, a popup appears above the compose box
-3. Read the explanation, then either **Accept** the suggestion (replaces your text) or **Ignore** to send as-is
+3. Read the explanation, then **Apply** a single phrase swap (only those words change), **Replace all (Tab)** with the full rewrite, or **Dismiss** to send as-is
 4. Pick how rewrites should sound — **Casual**, **Formal** or **Direct** — in the toolbar popup (your default) or with the style buttons in the suggestion popup (remembered for that chat). Chats you marked as formal in the context form start in Formal
 5. To take a break, use the toolbar popup: switch it off, **Pause 1 hour** or **Pause until tomorrow**. `Alt+Shift+G` turns it on or off, and **Don't check this chat** in the suggestion popup turns it off for one chat. The toolbar icon shows `OFF` or `II` while it isn't checking
-6. For incoming messages, look for a small coloured dot on bubbles — hover to read the tone note
+6. *(Planned, Phase 3)* Opt-in tone notes on incoming messages — not built yet
+
+See [CHANGES.md](CHANGES.md) for what is new compared with the original extension.
 
 ## Project layout
 

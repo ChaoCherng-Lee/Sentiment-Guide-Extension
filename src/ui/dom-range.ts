@@ -52,11 +52,53 @@ export function rangeFromOffsets(container: Node, start: number, end: number): R
   }
 }
 
-/** Range covering the first case-insensitive match of `phrase`, or null. */
-export function getPhraseRange(container: Node, phrase: string): Range | null {
+/** Character offsets of the first case-insensitive match of `phrase`, or null. */
+export function findPhrase(container: Node, phrase: string): { start: number; end: number } | null {
   if (!phrase) return null
   const { full } = collectTextNodes(container)
   const idx = full.toLowerCase().indexOf(phrase.toLowerCase())
-  if (idx === -1) return null
-  return rangeFromOffsets(container, idx, idx + phrase.length)
+  return idx === -1 ? null : { start: idx, end: idx + phrase.length }
+}
+
+/** Range covering the first case-insensitive match of `phrase`, or null. */
+export function getPhraseRange(container: Node, phrase: string): Range | null {
+  const at = findPhrase(container, phrase)
+  return at ? rangeFromOffsets(container, at.start, at.end) : null
+}
+
+/** The caret's character offset in the container's text, or null if it isn't inside. */
+export function getCaretOffset(container: Node): number | null {
+  const sel = (container.ownerDocument ?? document).getSelection()
+  if (!sel?.rangeCount || !sel.focusNode || !container.contains(sel.focusNode)) return null
+  const doc = container.ownerDocument ?? document
+  const before = doc.createRange()
+  before.setStart(container, 0)
+  before.setEnd(sel.focusNode, sel.focusOffset)
+  return before.toString().length
+}
+
+/** Put a collapsed caret at a character offset in the container's text. */
+export function setCaretOffset(container: Node, offset: number): boolean {
+  const { nodes } = collectTextNodes(container)
+  const at = locate(nodes, offset, true) ?? locate(nodes, offset, false)
+  if (!at) return false
+  const doc = container.ownerDocument ?? document
+  const range = doc.createRange()
+  range.setStart(at.node, at.offset)
+  range.collapse(true)
+  const sel = doc.getSelection()
+  sel?.removeAllRanges()
+  sel?.addRange(range)
+  return true
+}
+
+/**
+ * Where the caret should go after [start, end) is replaced by `insertedLength`
+ * characters, so it stays next to the same text: before the edit it doesn't
+ * move, after it shifts by the change in length, inside it goes to the end.
+ */
+export function caretAfterEdit(caret: number, start: number, end: number, insertedLength: number): number {
+  if (caret <= start) return caret
+  if (caret >= end) return caret + insertedLength - (end - start)
+  return start + insertedLength
 }

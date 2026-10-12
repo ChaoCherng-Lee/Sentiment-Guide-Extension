@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { validateAdvice, validateVerdict } from "../../src/analysis/schema"
+import { MAX_EDITS, validateAdvice, validateEdits, validateVerdict } from "../../src/analysis/schema"
 
 const MSG = "ugh you are SO annoying, just leave me alone"
 
@@ -37,12 +37,15 @@ describe("validateVerdict", () => {
 
 describe("validateAdvice", () => {
   it("keeps well-formed advice", () => {
-    const advice = { label: "A little sharp", explanation: "Might sting.", suggestion: "I need some space right now" }
+    const advice = {
+      label: "A little sharp", explanation: "Might sting.", suggestion: "I need some space right now",
+      edits: [{ original: "leave me alone", replacement: "give me some space", reason: "sounds cold" }],
+    }
     expect(validateAdvice(advice, MSG)).toEqual(advice)
   })
 
   it("returns empty fields for garbage", () => {
-    expect(validateAdvice(null, MSG)).toEqual({ label: "", explanation: "", suggestion: "" })
+    expect(validateAdvice(null, MSG)).toEqual({ label: "", explanation: "", suggestion: "", edits: [] })
   })
 
   it("drops a suggestion identical to the message", () => {
@@ -54,5 +57,43 @@ describe("validateAdvice", () => {
     expect(r.label).toHaveLength(60)
     expect(r.explanation).toHaveLength(300)
     expect(r.suggestion).toHaveLength(400)
+  })
+})
+
+describe("validateEdits", () => {
+  const e = (original: string, replacement = "x", reason = "why") => ({ original, replacement, reason })
+
+  it("drops edits whose original isn't in the message", () => {
+    expect(validateEdits([e("so irritating"), e("leave me alone")], MSG).map(x => x.original)).toEqual(["leave me alone"])
+  })
+
+  it("forgives case but keeps the message's own spelling", () => {
+    expect(validateEdits([e("so annoying")], MSG)[0].original).toBe("SO annoying")
+  })
+
+  it("drops empty and no-op replacements", () => {
+    expect(validateEdits([e("ugh", ""), e("ugh", "UGH"), e("", "hi")], MSG)).toEqual([])
+  })
+
+  it("drops edits that overlap an earlier one", () => {
+    const r = validateEdits([e("SO annoying"), e("annoying, just"), e("leave me")], MSG)
+    expect(r.map(x => x.original)).toEqual(["SO annoying", "leave me"])
+  })
+
+  it("keeps at most MAX_EDITS, sorted by position in the message", () => {
+    const r = validateEdits([e("alone"), e("ugh"), e("leave"), e("annoying")], MSG)
+    expect(r).toHaveLength(MAX_EDITS)
+    expect(r.map(x => x.original)).toEqual(["ugh", "leave", "alone"])
+  })
+
+  it("keeps emoji in originals and replacements", () => {
+    const msg = "ugh 😤 just leave me alone"
+    expect(validateEdits([e("ugh 😤", "hey 🙂")], msg)).toEqual([e("ugh 😤", "hey 🙂")])
+  })
+
+  it("returns [] for garbage", () => {
+    expect(validateEdits(null, MSG)).toEqual([])
+    expect(validateEdits("nope", MSG)).toEqual([])
+    expect(validateEdits([null, 3, { original: 5 }], MSG)).toEqual([])
   })
 })

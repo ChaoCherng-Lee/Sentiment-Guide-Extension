@@ -58,6 +58,12 @@ describe("buildAdviceMessages", () => {
     expect(system.content).not.toContain("Calibration rules")
   })
 
+  it("asks for phrase edits copied exactly from the message", () => {
+    const [system] = buildAdviceMessages("hi", VERDICT, null, "casual")
+    expect(system.content).toContain("edits")
+    expect(system.content).toContain("copied EXACTLY")
+  })
+
   it("adds the instruction for the chosen style", () => {
     const casual = buildAdviceMessages("hi", VERDICT, null, "casual")[0].content
     const formal = buildAdviceMessages("hi", VERDICT, null, "formal")[0].content

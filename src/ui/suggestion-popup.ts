@@ -7,8 +7,20 @@
 
 import { SUGGESTION_STYLES, type SuggestionStyle, type ToneAdvice, type ToneVerdict } from "../analysis/types"
 
+/** What happened to one phrase edit after the user clicked Apply. */
+export type EditState = "applied" | "copied" | "missing" | "failed"
+
+const EDIT_STATE_LABELS: Record<EditState, string> = {
+  applied: "✓ Applied",
+  copied:  "✓ Copied — paste it in",
+  missing: "Not in your message anymore",
+  failed:  "Couldn't change it — edit it yourself",
+}
+
 export interface PopupHandlers {
   onAccept(): void
+  /** Apply advice.edits[index] only. */
+  onApplyEdit(index: number): void
   onDismiss(): void
   onEditContext(): void
   onDisableChat(): void
@@ -18,7 +30,7 @@ export interface PopupHandlers {
 
 const STYLE_LABELS: Record<SuggestionStyle, string> = { casual: "Casual", formal: "Formal", direct: "Direct" }
 
-const ACCEPT_LABEL = "Accept (Tab)"
+const ACCEPT_LABEL = "Replace all (Tab)"
 
 const STYLES = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -94,6 +106,25 @@ const STYLES = `
   .explanation.pending { color: #9ca3af; font-style: italic; animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: 0.45; } }
 
+  .edits { margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
+  .edit-row {
+    display: flex; align-items: center; gap: 8px;
+    border: 1px solid #f0f0f0; border-radius: 8px; padding: 6px 8px;
+  }
+  .edit-body { flex: 1; min-width: 0; font-size: 12px; line-height: 1.45; }
+  .edit-from { color: #9ca3af; text-decoration: line-through; }
+  .edit-arrow { color: #9ca3af; margin: 0 3px; }
+  .edit-to { color: #065f46; font-weight: 500; }
+  .edit-reason { font-size: 11px; color: #9ca3af; }
+  .btn-apply {
+    flex-shrink: 0; padding: 3px 10px; border-radius: 14px;
+    background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;
+    font-size: 11px; font-weight: 600; cursor: pointer; font-family: inherit;
+  }
+  .btn-apply:hover { background: #d1fae5; }
+  .btn-apply:disabled { background: none; border-color: transparent; color: #6b7280; cursor: default; font-weight: 500; }
+  .edit-row.done .edit-body { opacity: 0.6; }
+
   .suggestion-box { background: #f7f7f7; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
 
   .style-row { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
@@ -159,8 +190,9 @@ const TEMPLATE = `
       <span class="style-label">Style</span>
       ${SUGGESTION_STYLES.map(s => `<button class="style-chip" data-style="${s}" aria-pressed="false">${STYLE_LABELS[s]}</button>`).join("")}
     </div>
+    <div class="edits" id="edits" role="list" aria-label="Change just these words"></div>
     <div class="suggestion-box" id="suggestion-box">
-      <div class="suggestion-label">Try:</div>
+      <div class="suggestion-label">Or rewrite it all:</div>
       <div class="suggestion-text" id="suggestion"></div>
     </div>
     <div class="actions">
@@ -195,6 +227,12 @@ export class SuggestionPopup {
     on("accept",       () => this.handlers?.onAccept())
     on("edit-context", () => this.handlers?.onEditContext())
     on("disable-chat", () => this.handlers?.onDisableChat())
+    this.$("edits").addEventListener("click", (e) => {
+      const btn = (e.target as Element).closest<HTMLButtonElement>(".btn-apply")
+      if (!btn || btn.disabled) return
+      e.stopPropagation()
+      this.handlers?.onApplyEdit(Number(btn.dataset.index))
+    })
     this.root.querySelectorAll<HTMLButtonElement>(".style-chip").forEach(chip => {
       chip.addEventListener("click", (e) => {
         e.stopPropagation()
@@ -272,6 +310,52 @@ export class SuggestionPopup {
     this.$("suggestion").textContent       = suggestion
     this.$("suggestion-box").style.display = suggestion ? "block" : "none"
     this.$("accept").style.display         = suggestion ? "inline-block" : "none"
+    this.renderEdits(advice?.edits ?? [])
+  }
+
+  private renderEdits(edits: ToneAdvice["edits"]) {
+    const list = this.$("edits")
+    list.replaceChildren(...edits.map((edit, i) => {
+      const row = document.createElement("div")
+      row.className = "edit-row"
+      row.setAttribute("role", "listitem")
+      const body = document.createElement("div")
+      body.className = "edit-body"
+      const from = document.createElement("span")
+      from.className = "edit-from"
+      from.textContent = edit.original
+      const arrow = document.createElement("span")
+      arrow.className = "edit-arrow"
+      arrow.textContent = "→"
+      const to = document.createElement("span")
+      to.className = "edit-to"
+      to.textContent = edit.replacement
+      body.append(from, arrow, to)
+      if (edit.reason) {
+        const reason = document.createElement("div")
+        reason.className = "edit-reason"
+        reason.textContent = edit.reason
+        body.append(reason)
+      }
+      const btn = document.createElement("button")
+      btn.className = "btn-apply"
+      btn.dataset.index = String(i)
+      btn.textContent = "Apply"
+      btn.setAttribute("aria-label", `Change "${edit.original}" to "${edit.replacement}"`)
+      row.append(body, btn)
+      return row
+    }))
+    list.style.display = edits.length ? "flex" : "none"
+  }
+
+  /** Show the outcome of applying one edit in its row. */
+  setEditState(index: number, state: EditState) {
+    const row = this.$("edits").children[index]
+    const btn = row?.querySelector<HTMLButtonElement>(".btn-apply")
+    if (!row || !btn) return
+    row.classList.add("done")
+    btn.disabled = true
+    btn.textContent = EDIT_STATE_LABELS[state]
   }
 
   hide() {
