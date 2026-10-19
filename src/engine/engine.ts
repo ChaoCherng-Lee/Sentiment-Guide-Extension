@@ -84,8 +84,8 @@ export function startEngine(adapter: PlatformAdapter) {
     const title = adapter.getConversationTitle() ?? "this person"
     showContextForm(title, adapter.id, async (ctx) => {
       if (conversation.id === id) conversation.context = ctx
+      // Kept on this computer only — context answers are never uploaded (Plan 5.2)
       await updateChatData(id, { context: ctx })
-      sendMessage({ type: "SAVE_CONTEXT", context: ctx, contactHash: id })
     })
   }
 

@@ -40,7 +40,7 @@ describe("validateVerdict", () => {
 describe("validateAdvice", () => {
   it("keeps well-formed advice", () => {
     const advice = {
-      label: "A little sharp", explanation: "Might sting.", suggestion: "I need some space right now",
+      label: "A little sharp", category: "dismissive", explanation: "Might sting.", suggestion: "I need some space right now",
       edits: [{ original: "leave me alone", replacement: "give me some space", reason: "sounds cold" }],
       emoji_notes: [],
     }
@@ -48,7 +48,12 @@ describe("validateAdvice", () => {
   })
 
   it("returns empty fields for garbage", () => {
-    expect(validateAdvice(null, MSG)).toEqual({ label: "", explanation: "", suggestion: "", edits: [], emoji_notes: [] })
+    expect(validateAdvice(null, MSG)).toEqual({ label: "", category: "other", explanation: "", suggestion: "", edits: [], emoji_notes: [] })
+  })
+
+  it("only allows categories from the fixed list, so no free text can reach a parent", () => {
+    expect(validateAdvice({ category: "threat" }, MSG).category).toBe("threat")
+    expect(validateAdvice({ category: "called them a loser" }, MSG).category).toBe("other")
   })
 
   it("drops a suggestion identical to the message", () => {

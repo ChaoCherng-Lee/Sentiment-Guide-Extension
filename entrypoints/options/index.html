@@ -47,6 +47,14 @@
       }
       .btn:hover { background: #4338ca; }
       .shared-on { color: #166534; font-weight: 600; }
+      .consent h3 { font-size: 13px; margin: 12px 0 2px; }
+      .consent ul { margin: 0 0 0 18px; font-size: 13px; color: #374151; }
+      .consent li { margin: 2px 0; }
+      .agree { display: flex; gap: 8px; align-items: flex-start; margin-top: 14px; font-size: 13px; cursor: pointer; }
+      .agree input { margin-top: 3px; accent-color: #4f46e5; }
+      .btn:disabled { background: #c7c9d9; cursor: not-allowed; }
+      .btn.quiet { background: none; border: 1px solid #fca5a5; color: #b91c1c; margin-top: 10px; }
+      .btn.quiet:hover { background: #fef2f2; }
       [hidden] { display: none !important; }
     </style>
   </head>
@@ -66,15 +74,39 @@
       <section id="sharing" hidden>
         <h2 class="section">Share with a parent</h2>
         <div class="card">
-          <div id="sharingOff">
-            <p>A parent can see a weekly summary on their dashboard — how often messages were flagged and how often you took a suggestion. Ask them for the 6-digit code their dashboard shows.</p>
+          <div id="sharingOff" class="consent">
+            <p>Only if you want to: a parent can see a summary of how you're doing on their dashboard. Here's exactly what that means.</p>
+            <h3>What your parent will see</h3>
+            <ul>
+              <li>How many of your messages were flagged each week, and whether yellow or red</li>
+              <li>What kind of problem it was, like "sarcasm" or "harsh tone"</li>
+              <li>How often you took a suggestion</li>
+              <li>Which app: WhatsApp, Instagram or Gmail</li>
+            </ul>
+            <h3>What they won't see</h3>
+            <ul>
+              <li>Your messages, the flagged words or the suggested rewrites</li>
+              <li>Who you were talking to</li>
+              <li>Anything other people sent you</li>
+            </ul>
+            <h3>You stay in control</h3>
+            <ul>
+              <li>"Shared with parent: on" shows in the extension menu while it's on</li>
+              <li><strong>Unlink and delete my data</strong> (here) stops sharing and deletes everything shared</li>
+              <li>Anything shared is deleted after 90 days anyway</li>
+            </ul>
+            <label class="agree"><input type="checkbox" id="consent" /> <span>I understand, and I want to share this with my parent</span></label>
             <div class="pair-row">
-              <input id="pairCode" inputmode="numeric" maxlength="6" autocomplete="off" aria-label="Pairing code" placeholder="000000" />
-              <button class="btn" id="pairBtn">Link</button>
+              <input id="pairCode" inputmode="numeric" maxlength="6" autocomplete="off" aria-label="Pairing code from your parent" placeholder="000000" disabled />
+              <button class="btn" id="pairBtn" disabled>Link</button>
             </div>
             <p class="status" id="pairStatus" role="status"></p>
           </div>
-          <p id="sharingOn" hidden><span class="shared-on">Shared with parent: on.</span></p>
+          <div id="sharingOn" hidden>
+            <p><span class="shared-on">Shared with parent: on.</span> Your parent sees counts and categories only — never your messages.</p>
+            <button class="btn quiet" id="unlinkBtn">Unlink and delete my data</button>
+            <p class="status" id="unlinkStatus" role="status"></p>
+          </div>
         </div>
       </section>
 

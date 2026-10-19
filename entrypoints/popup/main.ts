@@ -89,6 +89,9 @@ function render(s: Settings) {
 
 $("openSites").addEventListener("click", () => browser.runtime.openOptionsPage())
 
+// The child can always see when sharing with a parent is on (Plan 5.2)
+sendMessage({ type: "SHARING_STATUS" }).then(s => { $("sharedLine").hidden = !s?.paired })
+
 getSettings().then(render)
 subscribeSettings(render)
 

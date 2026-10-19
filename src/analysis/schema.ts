@@ -4,7 +4,7 @@
 
 import { findEmoji, hasWords } from "./emoji"
 import {
-  type EmojiNote, GREEN_VERDICT, type IncomingAnalysis, type IncomingReading, INCOMING_READINGS, type Tone, type ToneAdvice,
+  type EmojiNote, FLAG_CATEGORIES, type FlagCategory, GREEN_VERDICT, type IncomingAnalysis, type IncomingReading, INCOMING_READINGS, type Tone, type ToneAdvice,
   type ToneEdit, type ToneVerdict,
 } from "./types"
 
@@ -26,6 +26,7 @@ export const ADVICE_SCHEMA = {
   type: "object",
   properties: {
     label:       { type: "string" },
+    category:    { type: "string", enum: FLAG_CATEGORIES },
     explanation: { type: "string" },
     suggestion:  { type: "string" },
     edits: {
@@ -54,7 +55,7 @@ export const ADVICE_SCHEMA = {
       },
     },
   },
-  required: ["label", "explanation", "suggestion", "edits", "emoji_notes"],
+  required: ["label", "category", "explanation", "suggestion", "edits", "emoji_notes"],
 } as const
 
 export const INCOMING_SCHEMA = {
@@ -102,6 +103,7 @@ export function validateAdvice(raw: unknown, message: string): ToneAdvice {
   if (suggestion === message.trim()) suggestion = ""
   return {
     label:       str(r.label, 60),
+    category:    FLAG_CATEGORIES.includes(r.category as FlagCategory) ? (r.category as FlagCategory) : "other",
     explanation: str(r.explanation, 300),
     suggestion,
     edits:       validateEdits(r.edits, message),

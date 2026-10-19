@@ -9,13 +9,17 @@ import { listModels, MODEL_IS_LOCAL, OLLAMA_HOSTS, OllamaError, isLoaded, pickMo
 import { readIncoming } from "../src/analysis/incoming"
 import { CancelledError, type Priority, RequestQueue } from "../src/analysis/queue"
 import { adviseTone, judgeTone } from "../src/analysis/tone"
-import { isPaired, logAcceptance, logContext, logEvent, pairWithCode, supabaseConfigured } from "../src/backend/supabase"
+import {
+  flushUploads, isPaired, logAcceptance, logEvent, pairWithCode, supabaseConfigured, unlinkAndDelete,
+} from "../src/backend/supabase"
 import type { AIStatus, CheckFailure, Message, MessageOf, Responses } from "../src/messaging"
 import { OPTIONAL_SITES } from "../src/platforms/sites"
 import type { ScriptPublicPath } from "wxt/utils/inject-script"
 import { getSettings, isActive, setEnabled, subscribeSettings, type Settings, updateSettings } from "../src/settings/store"
 
 const RESUME_ALARM          = "resume"
+/** Retry uploads that failed (offline, server down) */
+const UPLOAD_ALARM          = "upload-retry"
 const CHECK_TIMEOUT_MS      = 30_000
 /** Advice writes an explanation, a rewrite and phrase edits — much more text */
 const ADVICE_TIMEOUT_MS     = 60_000
@@ -59,12 +63,12 @@ export default defineBackground(() => {
           .then(s => isActive(s) ? warm() : undefined)
           .then(() => sendResponse(), () => sendResponse())
         return true
-      case "SAVE_CONTEXT":
-        logContext(msg.context, msg.contactHash)
-        return false
       case "UPDATE_ACCEPTANCE":
-        logAcceptance(msg.eventId, msg.accepted)
+        getSettings().then(s => logAcceptance(msg.eventId, msg.accepted, isActive(s)))
         return false
+      case "UNLINK_AND_DELETE":
+        unlinkAndDelete().then(sendResponse)
+        return true
       case "PAIR":
         pairWithCode(msg.code).then(sendResponse)
         return true
@@ -86,7 +90,9 @@ export default defineBackground(() => {
 
     browser.alarms.onAlarm.addListener(alarm => {
       if (alarm.name === RESUME_ALARM) updateSettings({ pausedUntil: null })
+      if (alarm.name === UPLOAD_ALARM) getSettings().then(s => flushUploads(isActive(s)))
     })
+    browser.alarms.create(UPLOAD_ALARM, { periodInMinutes: 15 })
 
     browser.commands.onCommand.addListener(async command => {
       if (command !== "toggle-enabled") return
@@ -230,16 +236,14 @@ export default defineBackground(() => {
 
     const { verdict } = msg
     if (verdict.tone !== "green") {
+      // What a parent may see: no text, no contact (Plan 5.2)
       logEvent({
-        id: msg.eventId,
-        contact_hash: msg.contactHash,
-        tone: verdict.tone,
+        id:         msg.eventId,
+        tone:       verdict.tone,
+        category:   res.value.category,
         confidence: verdict.confidence,
-        label: res.value.label,
-        flagged_phrase: verdict.flagged_phrase,
-        suggestion: res.value.suggestion,
-        tone_tags_detected: verdict.tone_tags_detected,
-      })
+        platform:   msg.platform,
+      }, true)
     }
     return { ok: true, advice: res.value }
   }

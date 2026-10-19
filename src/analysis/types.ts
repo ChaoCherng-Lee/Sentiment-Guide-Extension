@@ -21,6 +21,8 @@ export interface ToneVerdict {
  */
 export interface ToneAdvice {
   label: string
+  /** What kind of problem, from a fixed list — the only description a parent's dashboard ever gets */
+  category: FlagCategory
   explanation: string
   /** Kinder rewrite of the whole message; "" if none */
   suggestion: string
@@ -42,6 +44,11 @@ export interface ToneEdit {
   replacement: string
   reason: string
 }
+
+export const FLAG_CATEGORIES = [
+  "insult", "mean_joke", "sarcasm", "dismissive", "harsh_tone", "threat", "exclusion", "other",
+] as const
+export type FlagCategory = (typeof FLAG_CATEGORIES)[number]
 
 /** How a received message probably reads (incoming analysis, opt-in). */
 export type IncomingReading = "friendly" | "teasing" | "neutral" | "sarcastic" | "upset" | "angry" | "unclear"

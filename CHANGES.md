@@ -77,8 +77,16 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | Step | New for users |
 |---|---|
 | 5.1 | **Safe parent sharing (groundwork).** Sharing now needs a parent account and a pairing code: a parent signs in with email and gets a single-use 6-digit code (valid 15 minutes); the child enters it under **Sites… → Share with a parent**, which links the two. The child's extension uses an anonymous account, so no name or email is needed. The database rules let a child write only their own rows, let a parent read only the rows of children linked to them, and let nobody but the owner change or delete anything. Five wrong codes in an hour lock pairing for that hour. The Supabase keys are no longer in the source; they come from a build setting |
+| 5.2 | **Consent and sharing only counts.** Before pairing, the child sees in plain language what a parent will and won't see, and must tick "I understand" before the code box unlocks. "Shared with parent: on" shows in the toolbar popup whenever it is on. Each flagged message now shares only: yellow/red, a category from a fixed list (insult, joke that could hurt, sarcasm, dismissive, harsh tone, threat, leaving someone out, other), confidence, whether the suggestion was taken, the app and the time. **Unlink and delete my data** deletes everything shared; the server deletes events older than 90 days every night. Uploads that fail (offline) wait and are retried every 15 minutes, and nothing is uploaded while the extension is paused |
 
 ## Changed behaviour worth knowing
+
+- **5.2:** no longer shared with a parent, compared with the original
+  extension: the suggested rewrite, the flagged words, the free-text label,
+  the contact hash, whether tone tags were used, and the per-contact context
+  form answers (those now stay on this computer only). To give the dashboard
+  a safe description, the explanation step now also picks a category from a
+  fixed list; anything outside the list is stored as "other".
 
 - **5.1:** nothing is uploaded any more until a child has paired with a
   parent. Before, events were uploaded as soon as keys were filled in, to a

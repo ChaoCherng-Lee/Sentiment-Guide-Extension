@@ -107,7 +107,8 @@ See [CHANGES.md](CHANGES.md) for what is new compared with the original extensio
 ```
 npm run dev        # Chrome with the extension loaded, reloads on change
 npm test           # unit tests
-npm run test:e2e   # builds, then runs the extension against fixture pages + your local Ollama
+npm run test:e2e   # builds, then runs the extension against fixture pages (~5 min): most tests use a
+                   # stand-in model, two use your local Ollama
                    # (an e2e build, with every optional site pre-allowed — run `npm run build` before loading .output by hand)
 npm run eval       # tone evaluation on eval/messages.jsonl (needs Ollama running)
 ```
@@ -123,7 +124,7 @@ summary line in the commit message.
 - Text is only sent to your local Ollama server (`http://localhost:11434`) — never to an external server
 - Your profile is stored locally using `chrome.storage.local`
 - No API key is required or used
-- Optional sharing with a parent: only if the extension was built with a Supabase project (`WXT_SUPABASE_URL` / `WXT_SUPABASE_ANON_KEY` in `.env`, see `.env.example`) **and** the child links to a parent with a 6-digit pairing code under **Sites… → Share with a parent**. Until then nothing is sent. The database rules (`supabase/migrations/`) let each child write only their own rows and a parent read only rows of children linked to them
+- Optional sharing with a parent: only if the extension was built with a Supabase project (`WXT_SUPABASE_URL` / `WXT_SUPABASE_ANON_KEY` in `.env`, see `.env.example`) **and** the child reads what is shared, agrees, and links to a parent with a 6-digit pairing code under **Sites… → Share with a parent**. Until then nothing is sent. Only counts are shared — per flagged message: yellow/red, a category from a fixed list (e.g. "sarcasm"), confidence, whether the suggestion was taken, the app, and the time. Never message text, rewrites, flagged words, contacts, chat context, incoming readings or context answers. "Shared with parent: on" shows in the toolbar popup, **Unlink and delete my data** removes everything shared, and the server deletes events after 90 days. The database rules (`supabase/migrations/`) let each child write only their own rows and a parent read only rows of children linked to them
 
 ## Requirements
 

@@ -56,6 +56,22 @@ async function renderSharing() {
   document.getElementById("sharingOn")!.hidden  = !status?.paired
 }
 
+// Pairing only unlocks once the child has read what's shared and agreed
+document.getElementById("consent")!.addEventListener("change", e => {
+  const agreed = (e.target as HTMLInputElement).checked
+  ;(document.getElementById("pairCode") as HTMLInputElement).disabled = !agreed
+  ;(document.getElementById("pairBtn") as HTMLButtonElement).disabled = !agreed
+})
+
+document.getElementById("unlinkBtn")!.addEventListener("click", async () => {
+  if (!confirm("Stop sharing with your parent and delete everything that was shared?")) return
+  const out = document.getElementById("unlinkStatus")!
+  out.textContent = "Deleting…"
+  const ok = await sendMessage({ type: "UNLINK_AND_DELETE" })
+  out.textContent = ok ? "" : "Couldn't reach the server, so nothing was deleted yet. Try again when you're online."
+  renderSharing()
+})
+
 document.getElementById("pairBtn")!.addEventListener("click", async () => {
   const input = document.getElementById("pairCode") as HTMLInputElement
   const out   = document.getElementById("pairStatus")!

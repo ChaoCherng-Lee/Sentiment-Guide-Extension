@@ -26,17 +26,19 @@ export type Message =
       recent: ChatMessage[]
       style: SuggestionStyle
       eventId: string
-      contactHash: string | null
+      /** Site the message was written on — the only thing about it a parent may see */
+      platform: "whatsapp" | "instagram" | "gmail"
       sessionId: string
     }
   /** Opt-in: how a received message probably reads. Low priority; never logged. */
   | { type: "READ_INCOMING"; text: string; key: string }
-  | { type: "SAVE_CONTEXT"; context: ChatContext; contactHash: string }
   | { type: "UPDATE_ACCEPTANCE"; eventId: string; accepted: boolean }
   /** Link this browser to a parent with their 6-digit pairing code. */
   | { type: "PAIR"; code: string }
   /** Whether sharing with a parent is set up in this build, and paired. */
   | { type: "SHARING_STATUS" }
+  /** Delete this child's shared data on the server and unlink from the parent. */
+  | { type: "UNLINK_AND_DELETE" }
   /** Ask whether the local model is reachable and loaded. */
   | { type: "AI_STATUS" }
   /** A supported site opened — load the model so the first check is fast. */
@@ -62,10 +64,10 @@ export interface Responses {
   CHECK_TONE: ModelResponse<{ verdict: ToneVerdict }>
   GET_ADVICE: ModelResponse<{ advice: ToneAdvice }>
   READ_INCOMING: ModelResponse<{ analysis: IncomingAnalysis }>
-  SAVE_CONTEXT: void
   UPDATE_ACCEPTANCE: void
   PAIR: PairResult
   SHARING_STATUS: { configured: boolean; paired: boolean }
+  UNLINK_AND_DELETE: boolean
   AI_STATUS: AIStatus
   WARM_UP: void
 }

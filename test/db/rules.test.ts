@@ -39,7 +39,7 @@ const event = (id: number, child = CHILD) => ({
 
 async function insertEvent(user: string, id: number, child = user) {
   const e = event(id, child)
-  return as(user, `insert into events (id, child_id, tone, confidence) values ($1, $2, 'yellow', 0.8) returning id`, [e.id, e.child])
+  return as(user, `insert into events (id, child_id, tone, confidence, category, platform) values ($1, $2, 'yellow', 0.8, 'insult', 'whatsapp') returning id`, [e.id, e.child])
 }
 
 async function pair(parent = PARENT, child = CHILD) {
@@ -48,6 +48,8 @@ async function pair(parent = PARENT, child = CHILD) {
   return result
 }
 
+// A fresh database per test: starting Postgres and running every migration
+// takes a few seconds, longer while other test files run alongside
 beforeEach(async () => {
   db = new PGlite({ extensions: { pgcrypto } })
   await db.exec(STUB)
@@ -57,7 +59,7 @@ beforeEach(async () => {
   await db.query(`insert into auth.users (id, email, is_anonymous) values
     ($1, 'parent@example.com', false), ($2, null, true), ($3, null, true), ($4, null, true)`,
   [PARENT, CHILD, STRANGER, OTHER_CHILD])
-})
+}, 60_000)
 
 describe("events", () => {
   it("can't be read or written when signed out", async () => {
@@ -153,5 +155,47 @@ describe("pairing", () => {
     await pair()
     expect(await as(CHILD, "delete from links returning parent_id")).toHaveLength(1)
     expect(await as(PARENT, "select id from events")).toEqual([])
+  })
+})
+
+describe("data minimisation (5.2)", () => {
+  it("events hold no text: only tone, category, confidence, accepted, platform and time", async () => {
+    const cols = (await db.query<{ column_name: string }>(
+      "select column_name from information_schema.columns where table_schema = 'public' and table_name = 'events' order by column_name",
+    )).rows.map(r => r.column_name)
+    expect(cols).toEqual(["category", "child_id", "confidence", "created_at", "id", "platform", "suggestion_accepted", "tone"])
+  })
+
+  it("only known categories and platforms are accepted", async () => {
+    await expect(as(CHILD, `insert into events (id, tone, category) values ($1, 'red', 'called Sam a loser')`, [event(1).id]))
+      .rejects.toThrow(/check constraint/)
+    await expect(as(CHILD, `insert into events (id, tone, platform) values ($1, 'red', 'facebook')`, [event(2).id]))
+      .rejects.toThrow(/check constraint/)
+  })
+
+  it("per-contact context answers aren't kept at all", async () => {
+    const t = await db.query("select 1 from information_schema.tables where table_schema = 'public' and table_name = 'context_forms'")
+    expect(t.rows).toEqual([])
+  })
+
+  it("'Unlink and delete my data' removes the child's events and links, and nobody else's", async () => {
+    await insertEvent(CHILD, 1)
+    await insertEvent(OTHER_CHILD, 2)
+    await pair()
+    await pair(PARENT, OTHER_CHILD)
+    await as(CHILD, "select delete_my_data()")
+    expect(await as(CHILD, "select id from events")).toEqual([])
+    expect(await as(CHILD, "select * from links")).toEqual([])
+    expect(await as(PARENT, "select child_id from links")).toEqual([{ child_id: OTHER_CHILD }])
+    expect(await as(PARENT, "select id from events")).toHaveLength(1)
+  })
+
+  it("events older than 90 days are purged, and only the system can run the purge", async () => {
+    await insertEvent(CHILD, 1)
+    await insertEvent(CHILD, 2)
+    await db.query("update events set created_at = now() - interval '91 days' where id = $1", [event(1).id])
+    await expect(as(CHILD, "select purge_old_events()")).rejects.toThrow(/permission denied/)
+    expect((await db.query<{ n: number }>("select purge_old_events() as n")).rows[0].n).toBe(1)
+    expect((await db.query("select id from events")).rows).toEqual([{ id: event(2).id }])
   })
 })

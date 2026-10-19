@@ -56,6 +56,7 @@ Rules:
 const ADVICE_INSTRUCTIONS = `You are helping a young person communicate more kindly.
 A tone checker flagged the message you are given. Reply with JSON only, with these fields:
 - label: short label for the problem, max 60 characters (e.g. "A little sharp")
+- category: the kind of problem — "insult", "mean_joke", "sarcasm", "dismissive", "harsh_tone", "threat", "exclusion" (leaving someone out) or "other"
 - explanation: 1-2 warm sentences on how the message might land — age-appropriate, kind older sibling tone
 - suggestion: a kinder rewrite of the ENTIRE message that keeps the same meaning and the writer's voice
 - edits: 1 to 3 small fixes, each swapping one hurtful phrase for a kinder one:

@@ -201,7 +201,7 @@ export class ComposeSession {
       recent:      flag.recent,
       style:       flag.style,
       eventId:     this.eventId!,
-      contactHash: conv.id,
+      platform:    this.deps.adapter.id,
       sessionId:   this.id,
     })
     // Superseded by newer text, dismissed or sent in the meantime
@@ -209,7 +209,7 @@ export class ComposeSession {
     if (!res.ok) {
       if (res.reason === "cancelled" || res.reason === "paused") return
       this.deps.onCheckDone(res)
-      flag.advice = { label: "", explanation: "Couldn't come up with a suggestion this time.", suggestion: "", edits: [], emoji_notes: [] }
+      flag.advice = { label: "", category: "other", explanation: "Couldn't come up with a suggestion this time.", suggestion: "", edits: [], emoji_notes: [] }
     } else {
       flag.advice = res.advice
     }

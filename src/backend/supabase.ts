@@ -8,13 +8,13 @@
 //   the two accounts (supabase/migrations/…_auth_pairing_rls.sql). The anon
 //   key is safe to ship only because the database rules restrict every row
 //   to its owner and their linked parents.
-// - Nothing is uploaded until the child has paired.
+// - Nothing is uploaded until the child has agreed and paired.
 //
 // Plain fetch against Supabase's REST and Auth APIs — no SDK in the worker.
 // =============================================================================
 
 import { browser } from "#imports"
-import type { ChatContext } from "../analysis/types"
+import type { FlagCategory } from "../analysis/types"
 import type { PairResult } from "../messaging"
 
 const SUPABASE_URL      = (import.meta.env.WXT_SUPABASE_URL as string | undefined) ?? ""
@@ -116,47 +116,97 @@ export async function isPaired(): Promise<boolean> {
 }
 
 // -----------------------------------------------------------------------------
-// Uploads — only once paired; failures are logged and dropped (5.2 queues them)
+// Uploads (Plan 5.2) — only once paired, never while paused, and only what the
+// dashboard needs: tone, a category from a fixed list, confidence, whether
+// the suggestion was taken, the platform and the time. No text, no contact.
+// Failed uploads wait in a queue in storage.local and are retried.
 // -----------------------------------------------------------------------------
 
-async function upload(method: "POST" | "PATCH", path: string, body: unknown, headers?: Record<string, string>) {
-  if (!(await isPaired())) return
-  try {
-    await request(method, path, body, headers)
-  } catch (err) {
-    console.log("Sentiment Guide bg:", (err as Error).message)
-  }
-}
-
-export interface ToneEvent {
+/** One flagged message, as a parent's dashboard sees it. */
+export interface SharedEvent {
   id: string
-  contact_hash: string | null
   tone: "yellow" | "red"
+  category: FlagCategory
   confidence: number
-  label: string
-  flagged_phrase: string
-  suggestion: string
-  tone_tags_detected: boolean
+  platform: "whatsapp" | "instagram" | "gmail"
 }
 
-export async function logEvent(event: ToneEvent) {
+type QueuedUpload =
+  | { op: "insert"; row: SharedEvent & { suggestion_accepted: boolean | null; created_at: string } }
+  | { op: "accept"; id: string; accepted: boolean }
+
+const QUEUE_KEY = "sb_queue"
+/** A child offline for weeks shouldn't fill storage — oldest uploads go first */
+const MAX_QUEUE = 500
+
+async function readQueue(): Promise<QueuedUpload[]> {
+  return ((await browser.storage.local.get(QUEUE_KEY))[QUEUE_KEY] as QueuedUpload[] | undefined) ?? []
+}
+
+async function enqueue(item: QueuedUpload) {
+  const queue = await readQueue()
+  // Accepting an event that is still waiting to go: send it with the answer
+  const waiting = item.op === "accept" && queue.find(q => q.op === "insert" && q.row.id === item.id)
+  if (waiting && waiting.op === "insert" && item.op === "accept") waiting.row.suggestion_accepted = item.accepted
+  else queue.push(item)
+  await browser.storage.local.set({ [QUEUE_KEY]: queue.slice(-MAX_QUEUE) })
+}
+
+let flushing: Promise<void> | null = null
+
+/**
+ * Send queued uploads in order; stop at the first failure and keep the rest
+ * for the next try. `allowed` is false while the extension is off or paused.
+ */
+export function flushUploads(allowed: boolean): Promise<void> {
+  flushing ??= (async () => {
+    if (!allowed || !(await isPaired())) return
+    let queue = await readQueue()
+    while (queue.length) {
+      const item = queue[0]
+      try {
+        if (item.op === "insert") {
+          // Upsert, so a retry after a lost response doesn't fail on the same id
+          await request("POST", "events?on_conflict=id", item.row, { Prefer: "resolution=merge-duplicates" })
+        } else {
+          await request("PATCH", `events?id=eq.${encodeURIComponent(item.id)}`, { suggestion_accepted: item.accepted })
+        }
+      } catch (err) {
+        console.log("Sentiment Guide bg: upload will be retried —", (err as Error).message)
+        return
+      }
+      queue = (await readQueue()).slice(1)
+      await browser.storage.local.set({ [QUEUE_KEY]: queue })
+    }
+  })().finally(() => { flushing = null })
+  return flushing
+}
+
+export async function logEvent(event: SharedEvent, allowed: boolean) {
+  if (!(await isPaired())) return
   // child_id is filled in by the database from the signed-in account
-  await upload("POST", "events", { ...event, suggestion_accepted: null })
+  await enqueue({ op: "insert", row: { ...event, suggestion_accepted: null, created_at: new Date().toISOString() } })
+  await flushUploads(allowed)
 }
 
-export async function logAcceptance(eventId: string, accepted: boolean) {
-  await upload("PATCH", `events?id=eq.${encodeURIComponent(eventId)}`, { suggestion_accepted: accepted })
+export async function logAcceptance(eventId: string, accepted: boolean, allowed: boolean) {
+  if (!(await isPaired())) return
+  await enqueue({ op: "accept", id: eventId, accepted })
+  await flushUploads(allowed)
 }
 
-export async function logContext(context: ChatContext, contactHash: string) {
-  await upload("POST", "context_forms?on_conflict=child_id,contact_hash", {
-    contact_hash:             contactHash,
-    platform:                 context.platform,
-    relationship:             context.q1,
-    communication_style:      context.q2,
-    child_uses_tone_tags:     context.q3,
-    recipient_uses_tone_tags: context.q4,
-    conversation_mood:        context.q5,
-    saved_at:                 new Date(context.savedAt).toISOString(),
-  }, { Prefer: "resolution=merge-duplicates" })
+/**
+ * "Unlink and delete my data": deletes this child's events and links on the
+ * server, then forgets the account and anything still queued here.
+ */
+export async function unlinkAndDelete(): Promise<boolean> {
+  if (!supabaseConfigured()) return false
+  try {
+    await request("POST", "rpc/delete_my_data", {})
+  } catch (err) {
+    console.log("Sentiment Guide bg: delete failed —", (err as Error).message)
+    return false
+  }
+  await browser.storage.local.remove([SESSION_KEY, PAIRED_KEY, QUEUE_KEY])
+  return true
 }
