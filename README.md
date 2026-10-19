@@ -12,6 +12,7 @@ A Chrome extension that analyses tone as you type on WhatsApp Web, and optionall
 - **Email-aware on Gmail** — checks the paragraph you're writing as you go, and the whole email when you press Send (a flagged email waits for you to fix it or choose **Send anyway**). Rewrites default to Formal, and quoted replies and signatures are left alone
 - **Runs entirely locally** — tone analysis is done by a local Ollama model (`gemma3:4b`) on your own machine; nothing is sent to any external AI service, and no API key is required
 - **Personalised suggestions** — an onboarding flow collects your role, age range, texting style, and goals so the model tailors its language to you
+- **Parent dashboard** *(optional)* — a separate web app (`dashboard/`) where a parent sees a weekly summary: suggestions taken, yellow and red flags per week, and which apps and kinds of message. Counts only, never message text. Try it with made-up data: `cd dashboard && npm install && npm run dev`, then open `/?demo`
 - **Private by default** — messages never leave your device; your profile stays on-device only. Sharing with a parent's dashboard is optional: it needs a Supabase project configured at build time *and* the child entering their parent's pairing code
 
 ## How It Works
@@ -99,6 +100,7 @@ See [CHANGES.md](CHANGES.md) for what is new compared with the original extensio
 | `src/ui/` | Suggestion popup, highlight, context form, status chip (Shadow DOM) |
 | `src/settings/store.ts` | Typed settings and per-chat data |
 | `eval/` | Labelled messages and the tone evaluation runner |
+| `dashboard/` | Parent dashboard: a separate React web app reading the shared counts (see `dashboard/README.md`) |
 | `supabase/migrations/` | Database schema and rules for parent sharing (apply in order with `supabase db push`) |
 | `test/` | Unit tests (Vitest), database-rule tests (`test/db/`, the real migrations in PGlite) and end-to-end tests (Playwright + fixture pages) |
 

@@ -78,6 +78,7 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 |---|---|
 | 5.1 | **Safe parent sharing (groundwork).** Sharing now needs a parent account and a pairing code: a parent signs in with email and gets a single-use 6-digit code (valid 15 minutes); the child enters it under **Sites… → Share with a parent**, which links the two. The child's extension uses an anonymous account, so no name or email is needed. The database rules let a child write only their own rows, let a parent read only the rows of children linked to them, and let nobody but the owner change or delete anything. Five wrong codes in an hour lock pairing for that hour. The Supabase keys are no longer in the source; they come from a build setting |
 | 5.2 | **Consent and sharing only counts.** Before pairing, the child sees in plain language what a parent will and won't see, and must tick "I understand" before the code box unlocks. "Shared with parent: on" shows in the toolbar popup whenever it is on. Each flagged message now shares only: yellow/red, a category from a fixed list (insult, joke that could hurt, sarcasm, dismissive, harsh tone, threat, leaving someone out, other), confidence, whether the suggestion was taken, the app and the time. **Unlink and delete my data** deletes everything shared; the server deletes events older than 90 days every night. Uploads that fail (offline) wait and are retried every 15 minutes, and nothing is uploaded while the extension is paused |
+| 5.3 | **Parent dashboard.** A separate web app (`dashboard/`) where a parent signs in, gets a pairing code, and sees a weekly summary for each linked child. Good news comes first ("Took 3 of 4 suggestions this week"), then: flagged messages per week (yellow and red) for 12 weeks, the share of suggestions taken per week, and flagged messages by app and by kind for the last 4 weeks. Every chart has hover details and a "Show as a table" view, and it works in light and dark mode and on a phone. A parent can stop seeing a child's summary. `?demo` shows it with made-up data. The original had no dashboard |
 
 ## Changed behaviour worth knowing
 
@@ -140,6 +141,11 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
   30 s when the laptop was busy.
 
 ## Known problems
+
+- **The parent dashboard has only been seen with made-up data.** Like
+  sharing, it needs a real Supabase project to try for real. Its numbers are
+  unit-tested (`test/unit/dashboard-stats.test.ts`); its pages were checked
+  by eye with `?demo`, in light and dark mode and at phone width.
 
 - **Parent sharing hasn't been run against a real Supabase project.** No
   project exists yet (who hosts it, and ethics approval, are open questions in
