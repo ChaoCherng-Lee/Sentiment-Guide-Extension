@@ -5,6 +5,7 @@ A Chrome extension that analyses tone as you type on WhatsApp Web — like Gramm
 ## Features
 
 - **Outgoing analysis** — as you type, a popup appears if your message sounds harsh, with an explanation and a kinder alternative you can accept in one click
+- **Emoji-aware** — emoji count as tone: "sure 🙂" can read as cold, "💀" usually means laughing
 - **Incoming analysis** *(planned, Phase 3)* — opt-in tone notes on received messages; not built yet
 - **Runs entirely locally** — tone analysis is done by a local Ollama model (`gemma3:4b`) on your own machine; nothing is sent to any external AI service, and no API key is required
 - **Personalised suggestions** — an onboarding flow collects your role, age range, texting style, and goals so the model tailors its language to you

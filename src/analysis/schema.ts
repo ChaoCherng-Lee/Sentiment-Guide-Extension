@@ -2,9 +2,11 @@
 // schema-valid JSON (structured outputs, Ollama ≥ 0.5), plus validators that
 // never trust the model anyway.
 
-import { GREEN_VERDICT, type Tone, type ToneAdvice, type ToneEdit, type ToneVerdict } from "./types"
+import { findEmoji, hasWords } from "./emoji"
+import { type EmojiNote, GREEN_VERDICT, type Tone, type ToneAdvice, type ToneEdit, type ToneVerdict } from "./types"
 
 export const MAX_EDITS = 3
+export const MAX_EMOJI_NOTES = 3
 
 export const VERDICT_SCHEMA = {
   type: "object",
@@ -36,8 +38,20 @@ export const ADVICE_SCHEMA = {
         required: ["original", "replacement", "reason"],
       },
     },
+    emoji_notes: {
+      type: "array",
+      maxItems: MAX_EMOJI_NOTES,
+      items: {
+        type: "object",
+        properties: {
+          emoji:   { type: "string" },
+          reading: { type: "string" },
+        },
+        required: ["emoji", "reading"],
+      },
+    },
   },
-  required: ["label", "explanation", "suggestion", "edits"],
+  required: ["label", "explanation", "suggestion", "edits", "emoji_notes"],
 } as const
 
 const TONES: Tone[] = ["green", "yellow", "red"]
@@ -78,7 +92,24 @@ export function validateAdvice(raw: unknown, message: string): ToneAdvice {
     explanation: str(r.explanation, 300),
     suggestion,
     edits:       validateEdits(r.edits, message),
+    emoji_notes: validateEmojiNotes(r.emoji_notes, message),
   }
+}
+
+/** Keep notes about emoji that are really in the message, one per emoji. */
+export function validateEmojiNotes(raw: unknown, message: string): EmojiNote[] {
+  if (!Array.isArray(raw)) return []
+  const inMessage = new Set(findEmoji(message))
+  const notes: EmojiNote[] = []
+  for (const item of raw) {
+    const r = asRecord(item)
+    const emoji   = str(r?.emoji, 20)
+    const reading = str(r?.reading, 100)
+    if (!emoji || !reading || !inMessage.has(emoji) || notes.some(n => n.emoji === emoji)) continue
+    notes.push({ emoji, reading })
+    if (notes.length === MAX_EMOJI_NOTES) break
+  }
+  return notes
 }
 
 /**
@@ -99,7 +130,9 @@ export function validateEdits(raw: unknown, message: string): ToneEdit[] {
     if (!r) continue
     const wanted      = str(r.original, 100)
     const replacement = str(r.replacement, 200)
-    if (!wanted || !replacement) continue
+    if (!wanted) continue
+    // An empty replacement deletes — fine for an emoji, never for words
+    if (!replacement && (hasWords(wanted) || !findEmoji(wanted).length)) continue
     if (replacement.toLowerCase() === wanted.toLowerCase()) continue
 
     const at = lower.indexOf(wanted.toLowerCase())

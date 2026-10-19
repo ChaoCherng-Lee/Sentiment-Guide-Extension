@@ -158,3 +158,33 @@
 {"id": 158, "category": "tense", "text": "you always do this and I'm sick of it", "expected": "yellow", "context": {"q1": "classmate", "q2": "friendly", "q3": "no", "q4": "not_sure", "q5": "tense"}}
 {"id": 159, "category": "tense", "text": "you don't care about anyone but yourself", "expected": "yellow", "context": {"q1": "classmate", "q2": "friendly", "q3": "no", "q4": "not_sure", "q5": "tense"}}
 {"id": 160, "category": "tense", "text": "this is all your fault", "expected": "yellow", "context": {"q1": "classmate", "q2": "friendly", "q3": "no", "q4": "not_sure", "q5": "tense"}}
+{"id": 161, "category": "emoji", "text": "im dead 💀💀💀", "expected": "green"}
+{"id": 162, "category": "emoji", "text": "💀", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 163, "category": "emoji", "text": "NOT THE DOG 😭😭", "expected": "green"}
+{"id": 164, "category": "emoji", "text": "you're so weird 😭 i love it", "expected": "green"}
+{"id": 165, "category": "emoji", "text": "lmaooo 🤣🤣", "expected": "green"}
+{"id": 166, "category": "emoji", "text": "☠️☠️ that video", "expected": "green"}
+{"id": 167, "category": "emoji", "text": "can't wait for saturday 🥳", "expected": "green"}
+{"id": 168, "category": "emoji", "text": "good luck tomorrow!! 👍🏽", "expected": "green"}
+{"id": 169, "category": "emoji", "text": "thank you sm 🙏🏾", "expected": "green"}
+{"id": 170, "category": "emoji", "text": "aww 🥺❤️", "expected": "green"}
+{"id": 171, "category": "emoji", "text": "i forgot my lunch again 🤦‍♀️", "expected": "green"}
+{"id": 172, "category": "emoji", "text": "👀 tell me everything", "expected": "green"}
+{"id": 173, "category": "emoji", "text": "ok see you at 4 👌", "expected": "green"}
+{"id": 174, "category": "emoji", "text": "👍", "expected": "green", "context": {"q1": "teacher", "q2": "formal", "q3": "no", "q4": "no", "q5": "normal"}}
+{"id": 175, "category": "emoji", "text": "sure 🙂", "expected": "yellow"}
+{"id": 176, "category": "emoji", "text": "cool 🙃", "expected": "yellow"}
+{"id": 177, "category": "emoji", "text": "🙄", "expected": "yellow", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 178, "category": "emoji", "text": "whatever you say 🙄🙄", "expected": "yellow"}
+{"id": 179, "category": "emoji", "text": "k 😐", "expected": "yellow"}
+{"id": 180, "category": "emoji", "text": "wow thanks for inviting me 🙃", "expected": "yellow"}
+{"id": 181, "category": "emoji", "text": "nice 🥱", "expected": "yellow"}
+{"id": 182, "category": "emoji", "text": "right 🤨", "expected": "yellow"}
+{"id": 183, "category": "emoji", "text": "ok 👍", "expected": "yellow", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 184, "category": "emoji", "text": "did you even read it 🤦", "expected": "yellow"}
+{"id": 185, "category": "emoji", "text": "thanks for nothing 😒", "expected": "red"}
+{"id": 186, "category": "emoji", "text": "you're such a 🤡", "expected": "red"}
+{"id": 187, "category": "emoji", "text": "ur a 🐍 and everyone knows it", "expected": "red"}
+{"id": 188, "category": "emoji", "text": "your drawing 🤮🤮", "expected": "red"}
+{"id": 189, "category": "emoji", "text": "you 🗑️", "expected": "red"}
+{"id": 190, "category": "emoji", "text": "🖕🏻 bye", "expected": "red"}

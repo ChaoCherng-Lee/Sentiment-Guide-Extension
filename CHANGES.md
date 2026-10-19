@@ -56,11 +56,28 @@ Phase 3.
 | Step | New for users |
 |---|---|
 | 2.1 | **Fix just the bad words.** The popup lists up to 3 phrase swaps (`"shut up" → "give me a sec"`), each with its own **Apply** button. Applying one leaves the rest of the message, emoji and cursor where they were, then re-checks the message. The old Accept button is now **Replace all (Tab)** |
+| 2.2 | **Emoji count.** Passive-aggressive emoji ("sure 🙂", "whatever 🙄") and insulting ones ("you're a 🤡") are flagged, while laughing ones ("im dead 💀", "😭😭") are left alone. The popup explains how an emoji may come across, and a suggested edit can remove or swap an emoji. A single emoji such as "🙄" is now checked; before, anything under 3 characters was skipped, and "🙄" counted as 2 |
 
 ## Changed behaviour worth knowing
+
+- **2.2:** on the 50 emoji cases in the eval set, results went from 68% to
+  82% exactly right. Yellow/red messages caught went from 65% to 92%, and
+  false flags on fine messages fell from 21% to 12.5%. The extension now
+  reads emoji that WhatsApp draws as images, which were invisible to it
+  before.
 
 - **2.1:** the explanation and rewrite now take about 13–19 s instead of about
   10 s on the test laptop, because the model also writes the phrase swaps.
   The flag itself still appears after about 3 s. The time limit for the
   explanation and rewrite went from 30 s to 60 s, because some runs went past
   30 s when the laptop was busy.
+
+## Known problems
+
+- **Too strict on teasing and tone tags** (measured 2026-10-19, gemma3:4b, all
+  190 eval messages: 62% exactly right). Banter between close friends ("bro
+  you're so dumb 💀") is flagged 15 times out of 15, even with the
+  close-friend context set. Messages tagged /j or /lh are mostly flagged red
+  (3 of 16 right), and slang is right half the time. Yellow messages are often
+  rated red. The code from before 2.2 gives the same results, so this was
+  there already; it needs prompt work of its own.

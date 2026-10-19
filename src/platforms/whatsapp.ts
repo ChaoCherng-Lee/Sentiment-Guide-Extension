@@ -2,6 +2,7 @@
 // WhatsApp Web adapter — every WhatsApp selector lives in this file.
 // =============================================================================
 
+import { readText } from "../ui/dom-range"
 import { hashString } from "../util/hash"
 import type { ChatMessage, IncomingMessage, PlatformAdapter } from "./types"
 
@@ -45,7 +46,8 @@ function insertOverSelection(box: HTMLElement, select: () => void, text: string)
   return new Promise(resolve => {
     setTimeout(() => {
       box.focus()
-      document.execCommand("insertText", false, text)
+      if (text) document.execCommand("insertText", false, text)
+      else document.execCommand("delete", false)
       resolve(box.innerText !== before)
     }, 0)
   })
@@ -64,7 +66,8 @@ export const whatsapp: PlatformAdapter = {
   },
 
   getText(box) {
-    return box.innerText.trim()
+    // Not innerText: WhatsApp may draw emoji as images, which innerText skips
+    return readText(box).trim()
   },
 
   getConversationId() {

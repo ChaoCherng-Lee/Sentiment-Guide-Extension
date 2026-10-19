@@ -106,6 +106,11 @@ const STYLES = `
   .explanation.pending { color: #9ca3af; font-style: italic; animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: 0.45; } }
 
+  .emoji-notes { margin: -4px 0 10px; display: flex; flex-direction: column; gap: 2px; }
+  .emoji-note { font-size: 11px; color: #6b7280; }
+  .emoji-note .emoji { font-size: 13px; margin-right: 4px; font-style: normal; }
+  .edit-to.remove { color: #6b7280; font-style: italic; font-weight: 400; }
+
   .edits { margin-bottom: 10px; display: flex; flex-direction: column; gap: 6px; }
   .edit-row {
     display: flex; align-items: center; gap: 8px;
@@ -186,6 +191,7 @@ const TEMPLATE = `
     </div>
     <div class="confidence-text" id="confidence"></div>
     <div class="explanation" id="explanation"></div>
+    <div class="emoji-notes" id="emoji-notes" aria-label="How the emoji may come across"></div>
     <div class="style-row" id="style-row" role="group" aria-label="Suggestion style">
       <span class="style-label">Style</span>
       ${SUGGESTION_STYLES.map(s => `<button class="style-chip" data-style="${s}" aria-pressed="false">${STYLE_LABELS[s]}</button>`).join("")}
@@ -311,6 +317,21 @@ export class SuggestionPopup {
     this.$("suggestion-box").style.display = suggestion ? "block" : "none"
     this.$("accept").style.display         = suggestion ? "inline-block" : "none"
     this.renderEdits(advice?.edits ?? [])
+    this.renderEmojiNotes(advice?.emoji_notes ?? [])
+  }
+
+  private renderEmojiNotes(notes: ToneAdvice["emoji_notes"]) {
+    const list = this.$("emoji-notes")
+    list.replaceChildren(...notes.map(note => {
+      const row = document.createElement("div")
+      row.className = "emoji-note"
+      const emoji = document.createElement("span")
+      emoji.className = "emoji"
+      emoji.textContent = note.emoji
+      row.append(emoji, note.reading)
+      return row
+    }))
+    list.style.display = notes.length ? "flex" : "none"
   }
 
   private renderEdits(edits: ToneAdvice["edits"]) {
@@ -328,8 +349,8 @@ export class SuggestionPopup {
       arrow.className = "edit-arrow"
       arrow.textContent = "→"
       const to = document.createElement("span")
-      to.className = "edit-to"
-      to.textContent = edit.replacement
+      to.className = edit.replacement ? "edit-to" : "edit-to remove"
+      to.textContent = edit.replacement || "remove"
       body.append(from, arrow, to)
       if (edit.reason) {
         const reason = document.createElement("div")
@@ -341,7 +362,9 @@ export class SuggestionPopup {
       btn.className = "btn-apply"
       btn.dataset.index = String(i)
       btn.textContent = "Apply"
-      btn.setAttribute("aria-label", `Change "${edit.original}" to "${edit.replacement}"`)
+      btn.setAttribute("aria-label", edit.replacement
+        ? `Change "${edit.original}" to "${edit.replacement}"`
+        : `Remove "${edit.original}"`)
       row.append(body, btn)
       return row
     }))

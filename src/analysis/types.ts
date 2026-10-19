@@ -26,11 +26,19 @@ export interface ToneAdvice {
   suggestion: string
   /** Phrase-level fixes the user can apply one at a time (at most 3) */
   edits: ToneEdit[]
+  /** How emoji in the message may come across (at most 3) */
+  emoji_notes: EmojiNote[]
+}
+
+export interface EmojiNote {
+  emoji: string
+  reading: string
 }
 
 /** Swap one phrase for a kinder one; `original` is verbatim from the message. */
 export interface ToneEdit {
   original: string
+  /** "" removes `original` — only allowed for emoji */
   replacement: string
   reason: string
 }

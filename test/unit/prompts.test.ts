@@ -84,3 +84,23 @@ describe("style never reaches the verdict", () => {
     expect(buildVerdictMessages.length).toBe(2)
   })
 })
+
+describe("emoji in prompts", () => {
+  it("adds readings only for the emoji in the message", () => {
+    const [system] = buildVerdictMessages("ok 🙂", null)
+    expect(system.content).toContain("How the emoji in this message are often read")
+    expect(system.content).toContain("- 🙂 (can sound negative)")
+    expect(system.content).not.toContain("- 💀 (")
+  })
+
+  it("leaves the emoji block out when there are no known emoji", () => {
+    const [system] = buildVerdictMessages("see you at 5", null)
+    expect(system.content).not.toContain("How the emoji in this message are often read")
+  })
+
+  it("passes the readings to the advice step too, and asks for emoji notes", () => {
+    const [system] = buildAdviceMessages("sure 🙄", VERDICT, null, "casual")
+    expect(system.content).toContain("🙄 (can sound negative): eye roll")
+    expect(system.content).toContain("emoji_notes")
+  })
+})

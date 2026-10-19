@@ -5,16 +5,27 @@
 // Gmail can have several compose windows open, so there is one per box.
 // =============================================================================
 
+import { findEmoji, graphemeLength } from "../analysis/emoji"
 import type { ChatContext, SuggestionStyle, ToneAdvice, ToneVerdict } from "../analysis/types"
 import { type CheckFailure, sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
-import { caretAfterEdit, findPhrase, getCaretOffset, getPhraseRange, rangeFromOffsets, setCaretOffset } from "../ui/dom-range"
+import {
+  caretAfterEdit, findPhrase, getCaretOffset, getPhraseRange, rangeFromOffsets, readText, setCaretOffset,
+} from "../ui/dom-range"
 import { Highlighter } from "../ui/highlight"
 import type { SuggestionPopup } from "../ui/suggestion-popup"
 
 const PUNCT_DEBOUNCE_MS = 80
 const PAUSE_DEBOUNCE_MS = 1200
 export const MIN_TEXT_LEN = 3
+
+/**
+ * Long enough to judge: 3+ characters as a person counts them ("👍🏽" is
+ * one), or any emoji at all — "🙄" on its own can say plenty.
+ */
+export function worthChecking(text: string): boolean {
+  return graphemeLength(text) >= MIN_TEXT_LEN || findEmoji(text).length > 0
+}
 
 export interface SessionDeps {
   adapter: PlatformAdapter
@@ -92,7 +103,7 @@ export class ComposeSession {
     this.highlighter.refresh()
 
     if (!text) { this.clearUI(); return }
-    if (text.length < MIN_TEXT_LEN) return
+    if (!worthChecking(text)) return
     if (this.ignored.has(text)) return
 
     const delay = /[.!?]$/.test(text) ? PUNCT_DEBOUNCE_MS : PAUSE_DEBOUNCE_MS
@@ -126,7 +137,7 @@ export class ComposeSession {
     // Re-check whatever is there now instead.
     const current = this.text
     if (current !== text) {
-      if (current.length >= MIN_TEXT_LEN) this.analyse(current)
+      if (worthChecking(current)) this.analyse(current)
       return
     }
 
@@ -170,7 +181,7 @@ export class ComposeSession {
     if (!res.ok) {
       if (res.reason === "cancelled" || res.reason === "paused") return
       this.deps.onCheckDone(res)
-      flag.advice = { label: "", explanation: "Couldn't come up with a suggestion this time.", suggestion: "", edits: [] }
+      flag.advice = { label: "", explanation: "Couldn't come up with a suggestion this time.", suggestion: "", edits: [], emoji_notes: [] }
     } else {
       flag.advice = res.advice
     }
@@ -237,6 +248,12 @@ export class ComposeSession {
     const popup = this.deps.popup
 
     const at    = findPhrase(this.box, edit.original)
+    // Removing an emoji: take one neighbouring space with it so no double space is left
+    if (at && !edit.replacement) {
+      const full = readText(this.box)
+      if (full[at.start - 1] === " ") at.start--
+      else if (full[at.end] === " ") at.end++
+    }
     const range = at && rangeFromOffsets(this.box, at.start, at.end)
     if (!at || !range) { popup.setEditState(index, "missing"); return }
 

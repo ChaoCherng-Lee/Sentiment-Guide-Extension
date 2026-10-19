@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest"
-import { MAX_EDITS, validateAdvice, validateEdits, validateVerdict } from "../../src/analysis/schema"
+import {
+  MAX_EDITS, validateAdvice, validateEdits, validateEmojiNotes, validateVerdict,
+} from "../../src/analysis/schema"
 
 const MSG = "ugh you are SO annoying, just leave me alone"
 
@@ -40,12 +42,13 @@ describe("validateAdvice", () => {
     const advice = {
       label: "A little sharp", explanation: "Might sting.", suggestion: "I need some space right now",
       edits: [{ original: "leave me alone", replacement: "give me some space", reason: "sounds cold" }],
+      emoji_notes: [],
     }
     expect(validateAdvice(advice, MSG)).toEqual(advice)
   })
 
   it("returns empty fields for garbage", () => {
-    expect(validateAdvice(null, MSG)).toEqual({ label: "", explanation: "", suggestion: "", edits: [] })
+    expect(validateAdvice(null, MSG)).toEqual({ label: "", explanation: "", suggestion: "", edits: [], emoji_notes: [] })
   })
 
   it("drops a suggestion identical to the message", () => {
@@ -75,6 +78,16 @@ describe("validateEdits", () => {
     expect(validateEdits([e("ugh", ""), e("ugh", "UGH"), e("", "hi")], MSG)).toEqual([])
   })
 
+  it("allows an empty replacement only to remove an emoji", () => {
+    const msg = "sure 🙄 whatever"
+    expect(validateEdits([e("🙄", "")], msg)).toEqual([e("🙄", "")])
+    expect(validateEdits([e("sure 🙄", "")], msg)).toEqual([])
+  })
+
+  it("accepts an emoji as the flagged phrase", () => {
+    expect(validateVerdict({ tone: "yellow", flagged_phrase: "🙄" }, "sure 🙄").flagged_phrase).toBe("🙄")
+  })
+
   it("drops edits that overlap an earlier one", () => {
     const r = validateEdits([e("SO annoying"), e("annoying, just"), e("leave me")], MSG)
     expect(r.map(x => x.original)).toEqual(["SO annoying", "leave me"])
@@ -95,5 +108,26 @@ describe("validateEdits", () => {
     expect(validateEdits(null, MSG)).toEqual([])
     expect(validateEdits("nope", MSG)).toEqual([])
     expect(validateEdits([null, 3, { original: 5 }], MSG)).toEqual([])
+  })
+})
+
+describe("validateEmojiNotes", () => {
+  const msg = "ok 🙂 see you 👍🏽"
+
+  it("keeps notes about emoji in the message", () => {
+    const notes = [{ emoji: "🙂", reading: "can sound cold" }, { emoji: "👍🏽", reading: "a bit curt" }]
+    expect(validateEmojiNotes(notes, msg)).toEqual(notes)
+  })
+
+  it("drops notes about emoji that aren't there, duplicates and garbage", () => {
+    const notes = [
+      { emoji: "🙄", reading: "eye roll" },
+      { emoji: "🙂", reading: "cold" },
+      { emoji: "🙂", reading: "again" },
+      { emoji: "🙂" },
+      null,
+    ]
+    expect(validateEmojiNotes(notes, msg)).toEqual([{ emoji: "🙂", reading: "cold" }])
+    expect(validateEmojiNotes("nope", msg)).toEqual([])
   })
 })
