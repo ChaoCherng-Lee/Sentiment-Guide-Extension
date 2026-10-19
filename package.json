@@ -1,6 +1,6 @@
 {
   "name": "sentiment-guide",
-  "description": "Tone analysis for kinder texting \u00e2\u20ac\u201d like Grammarly for sentiment",
+  "description": "Tone analysis for kinder texting â€” like Grammarly for sentiment",
   "private": true,
   "version": "1.1.0",
   "type": "module",
@@ -15,6 +15,7 @@
     "eval": "tsx eval/run.ts"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "^1.64.0",
     "@types/node": "^26.6.5",
     "happy-dom": "^20.14.6",

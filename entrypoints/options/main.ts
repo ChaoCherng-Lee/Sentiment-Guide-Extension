@@ -2,6 +2,7 @@
 // an optional host permission; the background worker registers the site's
 // content script when it's granted.
 import { browser } from "#imports"
+import { sendMessage } from "../../src/messaging"
 import { OPTIONAL_SITES, type OptionalSite } from "../../src/platforms/sites"
 
 const list   = document.getElementById("sites")!
@@ -38,3 +39,30 @@ function row(site: OptionalSite): HTMLElement {
 }
 
 list.replaceChildren(...OPTIONAL_SITES.map(row))
+
+// ── Share with a parent ─────────────────────────────────────────────────────
+
+const PAIR_ERRORS = {
+  invalid:        "That code didn't work. Codes last 15 minutes and work once — ask for a new one.",
+  too_many:       "Too many tries. Wait an hour, then ask for a new code.",
+  not_configured: "Sharing isn't set up in this version of the extension.",
+  error:          "Couldn't reach the server. Check your internet connection and try again.",
+}
+
+async function renderSharing() {
+  const status = await sendMessage({ type: "SHARING_STATUS" })
+  document.getElementById("sharing")!.hidden    = !status?.configured
+  document.getElementById("sharingOff")!.hidden = !!status?.paired
+  document.getElementById("sharingOn")!.hidden  = !status?.paired
+}
+
+document.getElementById("pairBtn")!.addEventListener("click", async () => {
+  const input = document.getElementById("pairCode") as HTMLInputElement
+  const out   = document.getElementById("pairStatus")!
+  out.textContent = "Linking…"
+  const result = await sendMessage({ type: "PAIR", code: input.value.trim() })
+  out.textContent = !result || result === "ok" ? "" : PAIR_ERRORS[result]
+  renderSharing()
+})
+
+renderSharing()

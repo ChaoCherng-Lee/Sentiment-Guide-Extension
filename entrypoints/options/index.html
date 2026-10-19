@@ -34,6 +34,20 @@
       .switch input:focus-visible + .slider { outline: 2px solid #a5b4fc; outline-offset: 2px; }
       .note { font-size: 12px; color: #6b7280; margin-top: 20px; }
       .status { font-size: 12px; color: #b91c1c; min-height: 18px; margin-top: 8px; }
+      h2.section { font-size: 17px; margin: 36px 0 4px; }
+      .card { background: white; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(15,23,42,0.06); }
+      .pair-row { display: flex; gap: 8px; margin-top: 10px; }
+      .pair-row input {
+        width: 9ch; font: 600 18px/1 ui-monospace, monospace; letter-spacing: 0.15em;
+        padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px;
+      }
+      .btn {
+        padding: 8px 16px; border-radius: 8px; border: none; background: #4f46e5; color: white;
+        font-weight: 600; font-size: 13px; font-family: inherit; cursor: pointer;
+      }
+      .btn:hover { background: #4338ca; }
+      .shared-on { color: #166534; font-weight: 600; }
+      [hidden] { display: none !important; }
     </style>
   </head>
   <body>
@@ -49,6 +63,21 @@
       </div>
       <div id="sites"></div>
       <p class="status" id="status" role="status"></p>
+      <section id="sharing" hidden>
+        <h2 class="section">Share with a parent</h2>
+        <div class="card">
+          <div id="sharingOff">
+            <p>A parent can see a weekly summary on their dashboard — how often messages were flagged and how often you took a suggestion. Ask them for the 6-digit code their dashboard shows.</p>
+            <div class="pair-row">
+              <input id="pairCode" inputmode="numeric" maxlength="6" autocomplete="off" aria-label="Pairing code" placeholder="000000" />
+              <button class="btn" id="pairBtn">Link</button>
+            </div>
+            <p class="status" id="pairStatus" role="status"></p>
+          </div>
+          <p id="sharingOn" hidden><span class="shared-on">Shared with parent: on.</span></p>
+        </div>
+      </section>
+
       <p class="note">Switching a site off removes the permission to read that site. Whatever the site, your messages are only ever sent to the AI running on this computer.</p>
     </main>
     <script type="module" src="./main.ts"></script>

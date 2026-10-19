@@ -9,7 +9,7 @@ import { listModels, MODEL_IS_LOCAL, OLLAMA_HOSTS, OllamaError, isLoaded, pickMo
 import { readIncoming } from "../src/analysis/incoming"
 import { CancelledError, type Priority, RequestQueue } from "../src/analysis/queue"
 import { adviseTone, judgeTone } from "../src/analysis/tone"
-import { logAcceptance, logContext, logEvent, getChildId } from "../src/backend/supabase"
+import { isPaired, logAcceptance, logContext, logEvent, pairWithCode, supabaseConfigured } from "../src/backend/supabase"
 import type { AIStatus, CheckFailure, Message, MessageOf, Responses } from "../src/messaging"
 import { OPTIONAL_SITES } from "../src/platforms/sites"
 import type { ScriptPublicPath } from "wxt/utils/inject-script"
@@ -34,7 +34,6 @@ export default defineBackground(() => {
 
   browser.runtime.onInstalled.addListener((details) => {
     if (details.reason === "install") {
-      getChildId()
       browser.tabs.create({ url: browser.runtime.getURL("/onboarding.html") })
     }
   })
@@ -66,6 +65,12 @@ export default defineBackground(() => {
       case "UPDATE_ACCEPTANCE":
         logAcceptance(msg.eventId, msg.accepted)
         return false
+      case "PAIR":
+        pairWithCode(msg.code).then(sendResponse)
+        return true
+      case "SHARING_STATUS":
+        isPaired().then(paired => sendResponse({ configured: supabaseConfigured(), paired }))
+        return true
     }
   })
 

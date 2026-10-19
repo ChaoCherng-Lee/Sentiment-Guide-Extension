@@ -72,7 +72,20 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | 4.1 | **Instagram DMs.** A new options page (**Sites…** in the toolbar popup) switches optional sites on one by one; Chrome asks for permission to that site only when you switch it on, and switching it off removes the permission. Instagram direct messages then get the same checks, rewrites, chat context and incoming readings as WhatsApp. Search boxes and pages outside a DM thread are never checked |
 | 4.2 | **Gmail.** Every open compose window is checked separately. While you write, a pause checks the paragraph you're in; pressing **Send** (or Ctrl+Enter) checks the whole email first, and a flagged email waits in the popup until you fix it or choose **Send anyway**. A failed or slow check (over 20 s) never stops an email going. **Replace all** swaps only the checked paragraph, so the greeting, other paragraphs, quoted replies and signature stay as they were. Rewrites start in Formal, the model is told it's an email, and the context form doesn't pop up (it's still under **Edit context**). With chat context on, the emails in the thread are the context; with incoming analysis on, received emails get a badge next to the sender's name. The context form no longer offers Outlook, which isn't supported |
 
+### Phase 5: Parental dashboard
+
+| Step | New for users |
+|---|---|
+| 5.1 | **Safe parent sharing (groundwork).** Sharing now needs a parent account and a pairing code: a parent signs in with email and gets a single-use 6-digit code (valid 15 minutes); the child enters it under **Sites… → Share with a parent**, which links the two. The child's extension uses an anonymous account, so no name or email is needed. The database rules let a child write only their own rows, let a parent read only the rows of children linked to them, and let nobody but the owner change or delete anything. Five wrong codes in an hour lock pairing for that hour. The Supabase keys are no longer in the source; they come from a build setting |
+
 ## Changed behaviour worth knowing
+
+- **5.1:** nothing is uploaded any more until a child has paired with a
+  parent. Before, events were uploaded as soon as keys were filled in, to a
+  database anyone could read. The old tables are dropped by the new
+  migration rather than migrated, because their rows weren't tied to any
+  account. The rules are tested against the real migrations in an in-memory
+  Postgres (PGlite); a deliberately loosened rule makes the tests fail.
 
 - **4.2:** text that is already in a message box when the extension finds
   it (a restored draft, or something typed in the first half-second) is now
@@ -119,6 +132,12 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
   30 s when the laptop was busy.
 
 ## Known problems
+
+- **Parent sharing hasn't been run against a real Supabase project.** No
+  project exists yet (who hosts it, and ethics approval, are open questions in
+  the plan). The database rules are tested in PGlite with a stand-in for
+  Supabase's auth schema, and the extension's client is tested with a fake
+  server. Supabase's anonymous sign-ins must be switched on in the project.
 
 - **Gmail is tested against a hand-built page, not the real Gmail.** The
   selectors (`aria-label="Message Body"`, Send's `data-tooltip`, `.adn` /

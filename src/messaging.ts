@@ -4,6 +4,8 @@ import type {
   ChatContext, ChatMessage, IncomingAnalysis, SuggestionStyle, ToneAdvice, ToneVerdict,
 } from "./analysis/types"
 
+export type PairResult = "ok" | "invalid" | "too_many" | "not_configured" | "error"
+
 export type Message =
   /** Step 1: fast verdict for every message. */
   | {
@@ -31,6 +33,10 @@ export type Message =
   | { type: "READ_INCOMING"; text: string; key: string }
   | { type: "SAVE_CONTEXT"; context: ChatContext; contactHash: string }
   | { type: "UPDATE_ACCEPTANCE"; eventId: string; accepted: boolean }
+  /** Link this browser to a parent with their 6-digit pairing code. */
+  | { type: "PAIR"; code: string }
+  /** Whether sharing with a parent is set up in this build, and paired. */
+  | { type: "SHARING_STATUS" }
   /** Ask whether the local model is reachable and loaded. */
   | { type: "AI_STATUS" }
   /** A supported site opened — load the model so the first check is fast. */
@@ -58,6 +64,8 @@ export interface Responses {
   READ_INCOMING: ModelResponse<{ analysis: IncomingAnalysis }>
   SAVE_CONTEXT: void
   UPDATE_ACCEPTANCE: void
+  PAIR: PairResult
+  SHARING_STATUS: { configured: boolean; paired: boolean }
   AI_STATUS: AIStatus
   WARM_UP: void
 }
