@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { findEmoji, graphemeLength } from "../analysis/emoji"
-import type { ChatContext, SuggestionStyle, ToneAdvice, ToneVerdict } from "../analysis/types"
+import type { ChatContext, ChatMessage, SuggestionStyle, ToneAdvice, ToneVerdict } from "../analysis/types"
 import { type CheckFailure, sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
 import {
@@ -42,6 +42,14 @@ export interface SessionDeps {
   onStyleChange(style: SuggestionStyle): void
   /** Every finished check reports here, so the engine can show AI status. */
   onCheckDone(outcome: { ok: true } | { ok: false; reason: CheckFailure }): void
+  /** Chat context (opt-in): recent messages as context for the model. */
+  chatContext: {
+    /** The last few messages, scrubbed; [] while chat context is off. */
+    recent(): ChatMessage[]
+    /** True once — after the first flag — to offer turning it on. */
+    takeOffer(): boolean
+    choose(on: boolean): void
+  }
 }
 
 /** A flagged message; advice is null until step 2 returns. */
@@ -52,6 +60,8 @@ interface Flag {
   advice: ToneAdvice | null
   /** Indexes of advice.edits the user has applied */
   applied: Set<number>
+  /** Chat messages the verdict was given with — the advice uses the same */
+  recent: ChatMessage[]
 }
 
 export class ComposeSession {
@@ -120,9 +130,10 @@ export class ComposeSession {
     this.inFlight = true
     this.lastText = text
     const conv    = this.deps.conversation()
+    const recent  = this.deps.chatContext.recent()
 
     // Step 1: fast verdict
-    const res = await sendMessage({ type: "CHECK_TONE", text, context: conv.context, sessionId: this.id })
+    const res = await sendMessage({ type: "CHECK_TONE", text, context: conv.context, recent, sessionId: this.id })
     this.inFlight = false
     if (!res) return
     if (!res.ok) {
@@ -157,7 +168,7 @@ export class ComposeSession {
     }
 
     // Flag it straight away, then fill in the explanation and rewrite
-    this.flag    = { text, verdict, style: this.deps.style(), advice: null, applied: new Set() }
+    this.flag    = { text, verdict, style: this.deps.style(), advice: null, applied: new Set(), recent }
     this.eventId = crypto.randomUUID()
     this.highlighter.show(verdict.flagged_phrase, verdict.tone)
     this.showPopup()
@@ -171,6 +182,7 @@ export class ComposeSession {
       text:        flag.text,
       verdict:     flag.verdict,
       context:     conv.context,
+      recent:      flag.recent,
       style:       flag.style,
       eventId:     this.eventId!,
       contactHash: conv.id,
@@ -190,7 +202,7 @@ export class ComposeSession {
 
   private showPopup() {
     if (!this.flag) return
-    const { verdict, advice, style } = this.flag
+    const { verdict, advice, style, recent } = this.flag
     const range  = getPhraseRange(this.box, verdict.flagged_phrase)
     const anchor = range?.getClientRects()[0] ?? this.box.getBoundingClientRect()
     this.deps.popup.show(this, verdict, advice, style, anchor, {
@@ -200,7 +212,8 @@ export class ComposeSession {
       onEditContext: () => { this.deps.popup.hide(); this.deps.onEditContext() },
       onDisableChat: () => this.deps.onDisableChat(),
       onStyleChange: (s) => this.changeStyle(s),
-    })
+      onChatContextChoice: (on) => this.chooseChatContext(on),
+    }, { used: recent.length > 0, offer: this.deps.chatContext.takeOffer() })
   }
 
   // ── User actions ──────────────────────────────────────────────────────────
@@ -215,6 +228,15 @@ export class ComposeSession {
     this.eventId = crypto.randomUUID()
     this.deps.popup.setAdvice(null)
     this.fetchAdvice(this.flag, this.deps.conversation())
+  }
+
+  /** Answer to the chat-context offer. Turning it on re-checks this message with the chat. */
+  private chooseChatContext(on: boolean) {
+    this.deps.chatContext.choose(on)
+    if (!on) return
+    const text = this.text
+    this.lastText = ""
+    if (worthChecking(text)) this.analyse(text)
   }
 
   private reportAcceptance(accepted: boolean) {

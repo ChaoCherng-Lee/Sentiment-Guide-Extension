@@ -57,9 +57,19 @@ Phase 3.
 |---|---|
 | 2.1 | **Fix just the bad words.** The popup lists up to 3 phrase swaps (`"shut up" → "give me a sec"`), each with its own **Apply** button. Applying one leaves the rest of the message, emoji and cursor where they were, then re-checks the message. The old Accept button is now **Replace all (Tab)** |
 | 2.2 | **Emoji count.** Passive-aggressive emoji ("sure 🙂", "whatever 🙄") and insulting ones ("you're a 🤡") are flagged, while laughing ones ("im dead 💀", "😭😭") are left alone. The popup explains how an emoji may come across, and a suggested edit can remove or swap an emoji. A single emoji such as "🙄" is now checked; before, anything under 3 characters was skipped, and "🙄" counted as 2 |
+| 2.3 | **Chat context (opt-in, off by default).** After the first flag, the popup offers once to let checks read the last 6 messages in the chat, so a joke reads differently from an argument. Turning it on re-checks the message straight away. The toolbar popup has a **Chat context** switch, and the suggestion popup says when the chat was used. Messages are cut to 200 characters, with the contact's name replaced by "Them" and emails and phone numbers removed, before they leave the page. They only go to the local model and are never stored or logged |
 | tune | **Less nagging about jokes.** Messages tagged /j, /lh or /s are treated as jokes unless they're cruel even as a joke; /srs means it's meant. In chats marked "we joke and tease", teasing that comes with laughter (lol, haha, 😂, 💀) is let through. Harsh-but-mild messages are now yellow instead of red, so red means real cruelty |
 
 ## Changed behaviour worth knowing
+
+- **2.3:** 20 new eval cases: 10 messages, each after a joking thread and
+  after an arguing one. Without the chat, 1 of 10 pairs came out
+  differently (the words are identical); with it, 5 of 10 do, and 4 of 10
+  are both right. Exactly right went from 50% to 60%. The quick check takes
+  about 0.15 s longer with the chat (3.5 s vs 3.4 s on these cases). On the
+  original 190 messages the prompt change didn't hurt: exactly right 87.9%
+  (was 86.8%), false flags 11% (was 12%). One tone-tag case ("nobody likes
+  you /j") dropped from red to yellow; one more banter case is now right.
 
 - **Prompt tuning (after 2.2):** on all 190 eval messages, exactly right went
   from 62% to 87%. Fine messages wrongly flagged went from 32% to 12%, and
@@ -81,6 +91,15 @@ Phase 3.
   30 s when the laptop was busy.
 
 ## Known problems
+
+- **Chat context helps less than hoped.** gemma3:4b still flags friendly
+  teasing in a joking thread ("you're so dumb 😂" after a funny story) and
+  rates exaggerations like "I'm going to kill you 😂" red. Asking the model
+  to name the chat's mood first was tried and dropped: it was slower and it
+  judged the mood from the message itself.
+- **Chat context only hides the chat title's name.** In group chats, other
+  people's names inside messages are not removed, and nor is the user's
+  own name.
 
 - **Sarcasm and slang are hit and miss** (measured 2026-10-19, gemma3:4b, all
   190 eval messages). Sarcasm about a situation ("perfect, the bus left without

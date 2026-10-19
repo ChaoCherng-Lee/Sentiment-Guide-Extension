@@ -11,6 +11,13 @@ export const OLLAMA_URL = "http://127.0.0.1:11434"
 /** Match patterns for the Ollama server — used for host permissions and header rules. */
 export const OLLAMA_HOSTS = ["127.0.0.1", "localhost"]
 
+/**
+ * Whether the model runs on this computer. Chat context (the other person's
+ * messages) is only ever sent to a local model — if a remote one is added,
+ * this turns it off.
+ */
+export const MODEL_IS_LOCAL = OLLAMA_HOSTS.includes(new URL(OLLAMA_URL).hostname)
+
 /** Keep the model loaded between checks; a cold load can take over a minute. */
 const KEEP_ALIVE = "30m"
 const PREFERRED_MODELS = ["gemma3:4b", "gemma3:latest"]

@@ -21,6 +21,10 @@ export interface Settings {
   suggestionStyle: SuggestionStyle
   /** Ollama model to use; null picks the best installed Gemma model. */
   model: string | null
+  /** Let checks read the last few messages in the chat. Off until the user opts in. */
+  chatContext: boolean
+  /** The one-time "use the chat as context?" offer has been shown. */
+  chatContextOffered: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -29,6 +33,8 @@ export const DEFAULT_SETTINGS: Settings = {
   disabledConversations: [],
   suggestionStyle: "casual",
   model: null,
+  chatContext: false,
+  chatContextOffered: false,
 }
 
 /** chrome.storage.sync caps an item at 8 KB — keep the newest chats only. */

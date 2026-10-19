@@ -21,6 +21,11 @@ const TITLE_SELECTORS = [
 
 const SEND_BUTTON = '[data-testid="send"], [data-icon="send"], button[aria-label="Send"]'
 
+// Message bubbles in the open chat, and the element holding just their text
+// (not the time, ticks or a quoted message)
+const BUBBLES = "#main .message-in, #main .message-out"
+const BUBBLE_TEXT = ["[data-pre-plain-text] span.selectable-text", "span.selectable-text"]
+
 const CHAT_SWITCH_POLL_MS = 1200
 
 function getTitle(): string | null {
@@ -77,8 +82,18 @@ export const whatsapp: PlatformAdapter = {
 
   getConversationTitle: getTitle,
 
-  getRecentMessages(_limit: number): ChatMessage[] {
-    return []
+  getRecentMessages(limit) {
+    const out: ChatMessage[] = []
+    const bubbles = document.querySelectorAll<HTMLElement>(BUBBLES)
+    // Newest first, so only the last few bubbles are read
+    for (let i = bubbles.length - 1; i >= 0 && out.length < limit; i--) {
+      const bubble = bubbles[i]
+      const el = BUBBLE_TEXT.map(sel => bubble.querySelector<HTMLElement>(sel)).find(Boolean)
+      const text = el ? readText(el).trim() : ""
+      // Photos, stickers and deleted messages have no text — skip them
+      if (text) out.push({ from: bubble.classList.contains("message-out") ? "me" : "them", text })
+    }
+    return out.reverse()
   },
 
   observeIncoming(_cb: (msg: IncomingMessage) => void) {

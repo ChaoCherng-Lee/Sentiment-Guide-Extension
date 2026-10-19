@@ -4,7 +4,7 @@
 import { chatJSON } from "./ollama"
 import { buildAdviceMessages, buildVerdictMessages } from "./prompts"
 import { ADVICE_SCHEMA, VERDICT_SCHEMA, validateAdvice, validateVerdict } from "./schema"
-import type { ChatContext, SuggestionStyle, ToneAdvice, ToneVerdict } from "./types"
+import type { ChatContext, ChatMessage, SuggestionStyle, ToneAdvice, ToneVerdict } from "./types"
 
 export interface ModelCallOptions {
   model: string
@@ -12,8 +12,14 @@ export interface ModelCallOptions {
   timeoutMs?: number
 }
 
-export async function judgeTone(text: string, context: ChatContext | null, opts: ModelCallOptions): Promise<ToneVerdict> {
-  const raw = await chatJSON({ ...opts, messages: buildVerdictMessages(text, context), format: VERDICT_SCHEMA })
+/** `recent`: the last few messages in the chat, already scrubbed (chat-context.ts). */
+export async function judgeTone(
+  text: string,
+  context: ChatContext | null,
+  opts: ModelCallOptions,
+  recent: ChatMessage[] = [],
+): Promise<ToneVerdict> {
+  const raw = await chatJSON({ ...opts, messages: buildVerdictMessages(text, context, recent), format: VERDICT_SCHEMA })
   return applyBanterRule(validateVerdict(raw, text), text, context)
 }
 
@@ -36,7 +42,8 @@ export async function adviseTone(
   context: ChatContext | null,
   style: SuggestionStyle,
   opts: ModelCallOptions,
+  recent: ChatMessage[] = [],
 ): Promise<ToneAdvice> {
-  const raw = await chatJSON({ ...opts, messages: buildAdviceMessages(text, verdict, context, style), format: ADVICE_SCHEMA })
+  const raw = await chatJSON({ ...opts, messages: buildAdviceMessages(text, verdict, context, style, recent), format: ADVICE_SCHEMA })
   return validateAdvice(raw, text)
 }

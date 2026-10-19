@@ -26,6 +26,14 @@ export interface PopupHandlers {
   onDisableChat(): void
   /** The user picked another style — the owner should fetch a new rewrite. */
   onStyleChange(style: SuggestionStyle): void
+  /** Answer to the one-time "use the chat as context?" offer. */
+  onChatContextChoice(on: boolean): void
+}
+
+/** Chat context for this check: whether it was used, and whether to offer it. */
+export interface ChatContextState {
+  used: boolean
+  offer: boolean
 }
 
 const STYLE_LABELS: Record<SuggestionStyle, string> = { casual: "Casual", formal: "Formal", direct: "Direct" }
@@ -171,6 +179,23 @@ const STYLES = `
   }
   .edit-context-btn:hover { color: #7c3aed; }
 
+  .context-note { font-size: 11px; color: #6b7280; margin: -4px 0 8px; display: none; }
+
+  .offer {
+    display: none; margin-top: 10px; padding: 10px 12px;
+    background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 8px;
+  }
+  .offer-title { font-size: 12px; font-weight: 600; color: #4c1d95; margin-bottom: 2px; }
+  .offer-text { font-size: 11px; color: #5b21b6; line-height: 1.5; margin-bottom: 8px; }
+  .offer-actions { display: flex; gap: 6px; }
+  .offer-actions button {
+    padding: 3px 12px; border-radius: 14px; font-size: 11px; font-weight: 600;
+    font-family: inherit; cursor: pointer; border: 1px solid #c4b5fd; background: white; color: #5b21b6;
+  }
+  .offer-actions .offer-yes { background: #7c3aed; border-color: #7c3aed; color: white; }
+  .offer-actions .offer-yes:hover { background: #6d28d9; }
+  .offer-done { font-size: 11px; color: #5b21b6; }
+
   .footer { margin-top: 8px; padding-top: 6px; border-top: 1px solid #f3f4f6; }
   .link-btn {
     background: none; border: none; padding: 0;
@@ -190,6 +215,7 @@ const TEMPLATE = `
       <button class="close-btn" id="close" aria-label="Close">×</button>
     </div>
     <div class="confidence-text" id="confidence"></div>
+    <div class="context-note" id="context-note">💬 Checked with the last few messages in this chat</div>
     <div class="explanation" id="explanation"></div>
     <div class="emoji-notes" id="emoji-notes" aria-label="How the emoji may come across"></div>
     <div class="style-row" id="style-row" role="group" aria-label="Suggestion style">
@@ -205,6 +231,17 @@ const TEMPLATE = `
       <button class="btn-accept" id="accept">${ACCEPT_LABEL}</button>
       <button class="btn-dismiss" id="dismiss">Dismiss</button>
       <button class="edit-context-btn" id="edit-context">Edit context</button>
+    </div>
+    <div class="offer" id="offer" role="group" aria-label="Use the chat as context">
+      <div id="offer-ask">
+        <div class="offer-title">Check with the chat in mind?</div>
+        <div class="offer-text">Sentiment Guide can read the last 6 messages in this chat, so it knows what you're replying to — a joke reads differently from an argument. They stay on this computer and are never saved. You can turn this off any time in the extension menu.</div>
+        <div class="offer-actions">
+          <button class="offer-yes" id="offer-yes">Turn on</button>
+          <button id="offer-no">No thanks</button>
+        </div>
+      </div>
+      <div class="offer-done" id="offer-done" hidden></div>
     </div>
     <div class="footer">
       <button class="link-btn" id="disable-chat">Don't check this chat</button>
@@ -233,6 +270,8 @@ export class SuggestionPopup {
     on("accept",       () => this.handlers?.onAccept())
     on("edit-context", () => this.handlers?.onEditContext())
     on("disable-chat", () => this.handlers?.onDisableChat())
+    on("offer-yes",    () => this.answerOffer(true))
+    on("offer-no",     () => this.answerOffer(false))
     this.$("edits").addEventListener("click", (e) => {
       const btn = (e.target as Element).closest<HTMLButtonElement>(".btn-apply")
       if (!btn || btn.disabled) return
@@ -271,6 +310,7 @@ export class SuggestionPopup {
     style: SuggestionStyle,
     anchor: DOMRect,
     handlers: PopupHandlers,
+    chat: ChatContextState = { used: false, offer: false },
   ) {
     this.owner    = owner
     this.handlers = handlers
@@ -289,6 +329,11 @@ export class SuggestionPopup {
     } else {
       conf.style.display = "none"
     }
+
+    this.$("context-note").style.display = chat.used ? "block" : "none"
+    this.$("offer").style.display        = chat.offer ? "block" : "none"
+    this.$("offer-ask").hidden  = false
+    this.$("offer-done").hidden = true
 
     this.setAdvice(advice)
     this.$("popup").style.display = "block"
@@ -369,6 +414,16 @@ export class SuggestionPopup {
       return row
     }))
     list.style.display = edits.length ? "flex" : "none"
+  }
+
+  private answerOffer(on: boolean) {
+    this.$("offer-ask").hidden = true
+    const done = this.$("offer-done")
+    done.hidden = false
+    done.textContent = on
+      ? "✓ Turned on — checking this message again with the chat in mind."
+      : "OK — only your own message is checked. You can turn it on in the extension menu."
+    this.handlers?.onChatContextChoice(on)
   }
 
   /** Show the outcome of applying one edit in its row. */

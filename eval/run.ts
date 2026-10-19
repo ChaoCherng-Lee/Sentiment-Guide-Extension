@@ -3,10 +3,15 @@
 // through the real prompt + local Ollama and reports how well it does.
 //
 //   npm run eval                          # whole set
-//   npm run eval -- --category emoji      # one category
+//   npm run eval -- --category emoji      # one category (or several: emoji,slang)
 //   npm run eval -- --limit 20 --model gemma3:4b
 //   npm run eval -- --advice              # also time step 2 on flagged messages
 //   npm run eval -- --advice --style formal
+//   npm run eval -- --category context --no-recent   # same cases without the chat
+//
+// Cases with "recent" carry the last few chat messages (chat context, 2.3).
+// The "context" category has pairs: the same message after a joking thread
+// and after an argument, which should come out differently.
 //
 // Accuracy comes from step 1 (the verdict), which decides what gets flagged.
 //
@@ -22,7 +27,7 @@ import path from "node:path"
 import { parseArgs } from "node:util"
 import { listModels, pickModel, warmUp } from "../src/analysis/ollama"
 import { adviseTone, judgeTone } from "../src/analysis/tone"
-import type { ChatContext, SuggestionStyle, Tone, ToneVerdict } from "../src/analysis/types"
+import type { ChatContext, ChatMessage, SuggestionStyle, Tone, ToneVerdict } from "../src/analysis/types"
 
 interface Case {
   id: number
@@ -30,6 +35,10 @@ interface Case {
   text: string
   expected: Tone
   context?: Partial<ChatContext>
+  /** Chat messages before this one, oldest first */
+  recent?: ChatMessage[]
+  /** For context cases: what the recent messages are like ("joking", "tense") */
+  thread?: string
 }
 
 interface Outcome {
@@ -54,15 +63,21 @@ const { values: args } = parseArgs({
     file:     { type: "string", default: path.join(DIR, "messages.jsonl") },
     advice:   { type: "boolean", default: false },
     style:    { type: "string", default: "casual" },
+    "no-recent": { type: "boolean", default: false },
   },
 })
+
+const recentFor = (c: Case): ChatMessage[] => (args["no-recent"] ? [] : c.recent ?? [])
 
 function loadCases(): Case[] {
   let cases = readFileSync(args.file!, "utf8")
     .split("\n")
     .filter(line => line.trim())
     .map(line => JSON.parse(line) as Case)
-  if (args.category) cases = cases.filter(c => c.category === args.category)
+  if (args.category) {
+    const wanted = args.category.split(",")
+    cases = cases.filter(c => wanted.includes(c.category))
+  }
   if (args.limit) cases = cases.slice(0, Number(args.limit))
   return cases
 }
@@ -114,6 +129,19 @@ function report(outcomes: Outcome[], model: string) {
     console.log(`  ${cat.padEnd(12)} ${pct(ok, inCat.length)}  (${ok}/${inCat.length})`)
   }
 
+  // Context pairs: the same message after different threads should get different tones
+  const pairs = new Map<string, Outcome[]>()
+  for (const o of done.filter(o => o.case.category === "context")) {
+    pairs.set(o.case.text, [...(pairs.get(o.case.text) ?? []), o])
+  }
+  const full = [...pairs.values()].filter(p => p.length === 2)
+  if (full.length) {
+    const differ = full.filter(([a, b]) => predicted(a) !== predicted(b)).length
+    const right  = full.filter(p => p.every(o => predicted(o) === o.case.expected)).length
+    console.log(`\ncontext pairs: ${differ}/${full.length} come out differently, ${right}/${full.length} both right` +
+      (args["no-recent"] ? " (run without the chat)" : ""))
+  }
+
   const summary =
     `eval: exact ${pct(exact, done.length).trim()}, ` +
     `flag recall ${pct(caught, shouldFlag.length).trim()}, ` +
@@ -127,7 +155,8 @@ function report(outcomes: Outcome[], model: string) {
   if (misses.length) {
     console.log("\nmisses:")
     for (const o of misses) {
-      console.log(`  #${o.case.id} [${o.case.category}] expected ${o.case.expected}, got ${predicted(o)}: ${JSON.stringify(o.case.text)}`)
+      const thread = o.case.thread ? ` (${o.case.thread} thread)` : ""
+      console.log(`  #${o.case.id} [${o.case.category}]${thread} expected ${o.case.expected}, got ${predicted(o)}: ${JSON.stringify(o.case.text)}`)
     }
   }
   const errors = outcomes.filter(o => !o.result)
@@ -152,11 +181,11 @@ async function main() {
     const start = performance.now()
     try {
       const ctx    = fullContext(c.context)
-      const result = await judgeTone(c.text, ctx, { model, timeoutMs: 120_000 })
+      const result = await judgeTone(c.text, ctx, { model, timeoutMs: 120_000 }, recentFor(c))
       const outcome: Outcome = { case: c, result, ms: performance.now() - start }
       if (args.advice && result.tone !== "green") {
         const adviceStart = performance.now()
-        outcome.suggestion = (await adviseTone(c.text, result, ctx, args.style as SuggestionStyle, { model, timeoutMs: 120_000 })).suggestion
+        outcome.suggestion = (await adviseTone(c.text, result, ctx, args.style as SuggestionStyle, { model, timeoutMs: 120_000 }, recentFor(c))).suggestion
         outcome.adviceMs   = performance.now() - adviceStart
       }
       outcomes.push(outcome)

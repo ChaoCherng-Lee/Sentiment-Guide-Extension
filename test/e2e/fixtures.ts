@@ -52,6 +52,23 @@ export async function countModelCalls(worker: Worker) {
   return () => worker.evaluate(() => (globalThis as unknown as { __modelCalls: number }).__modelCalls)
 }
 
+/** Start recording what the background worker sends to the model; returns the user turns sent so far. */
+export async function recordModelRequests(worker: Worker) {
+  await worker.evaluate(() => {
+    const g = globalThis as unknown as { fetch: typeof fetch; __userTurns: string[] }
+    const original = g.fetch
+    g.__userTurns = []
+    g.fetch = (input, init) => {
+      if (String(input).includes("/api/chat") && typeof init?.body === "string") {
+        const { messages } = JSON.parse(init.body) as { messages: { role: string; content: string }[] }
+        g.__userTurns.push(messages.filter(m => m.role === "user").map(m => m.content).join("\n"))
+      }
+      return original(input, init)
+    }
+  })
+  return () => worker.evaluate(() => (globalThis as unknown as { __userTurns: string[] }).__userTurns)
+}
+
 export const test = base.extend<{ context: BrowserContext; worker: Worker; extensionId: string }>({
   context: async ({}, use) => {
     const context = await launch()

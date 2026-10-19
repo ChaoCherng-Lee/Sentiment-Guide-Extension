@@ -34,10 +34,26 @@
   // Minimal behaviour: switching chats and sending messages
   const box = document.querySelector('footer [contenteditable]')
   const messages = document.getElementById('messages')
+  // Bubbles shaped like WhatsApp's: the text sits in span.selectable-text,
+  // next to the time and (for photos) no text at all
+  function bubble(cls, text) {
+    const d = document.createElement('div'); d.className = cls
+    if (text) {
+      const c = document.createElement('div'); c.className = 'copyable-text'
+      c.setAttribute('data-pre-plain-text', '[10:30, 19/10/2026] ' + (cls === 'message-out' ? 'Me' : 'Alex') + ': ')
+      const sel = document.createElement('span'); sel.className = 'selectable-text copyable-text'
+      const inner = document.createElement('span'); inner.textContent = text
+      sel.appendChild(inner); c.appendChild(sel); d.appendChild(c)
+    } else {
+      const img = document.createElement('img'); img.alt = ''; d.appendChild(img)
+    }
+    const time = document.createElement('span'); time.className = 'time'; time.textContent = '10:30'
+    d.appendChild(time)
+    messages.appendChild(d)
+  }
   function send() {
     const t = box.innerText.trim(); if (!t) return
-    const d = document.createElement('div'); d.className = 'message-out'; d.textContent = t
-    messages.appendChild(d); box.innerHTML = ''
+    bubble('message-out', t); box.innerHTML = ''
   }
   document.querySelector('[data-icon="send"]').addEventListener('click', send)
   box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setTimeout(send) } })
@@ -48,11 +64,9 @@
       messages.innerHTML = ''
     })
   }
-  // Test hook: add an incoming bubble
-  window.addIncoming = (text) => {
-    const d = document.createElement('div'); d.className = 'message-in'; d.textContent = text
-    messages.appendChild(d)
-  }
+  // Test hooks: add bubbles ("" = a photo with no text)
+  window.addIncoming = (text) => bubble('message-in', text)
+  window.addOutgoing = (text) => bubble('message-out', text)
 </script>
 </body>
 </html>

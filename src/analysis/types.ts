@@ -57,6 +57,12 @@ export const SUGGESTION_STYLES: SuggestionStyle[] = ["casual", "formal", "direct
 
 export type Platform = "whatsapp" | "instagram" | "gmail" | "outlook"
 
+/** One message from the open chat, for context. Never stored or logged. */
+export interface ChatMessage {
+  from: "me" | "them"
+  text: string
+}
+
 /** Answers from the per-chat context form. */
 export interface ChatContext {
   platform: Platform

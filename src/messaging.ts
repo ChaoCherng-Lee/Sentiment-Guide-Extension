@@ -1,6 +1,6 @@
 // Typed messages between content scripts / pages and the background worker.
 import { browser } from "#imports"
-import type { ChatContext, SuggestionStyle, ToneAdvice, ToneVerdict } from "./analysis/types"
+import type { ChatContext, ChatMessage, SuggestionStyle, ToneAdvice, ToneVerdict } from "./analysis/types"
 
 export type Message =
   /** Step 1: fast verdict for every message. */
@@ -8,6 +8,8 @@ export type Message =
       type: "CHECK_TONE"
       text: string
       context: ChatContext | null
+      /** Last few chat messages, scrubbed; [] unless chat context is on. Never logged. */
+      recent: ChatMessage[]
       /** Compose box that asked — a newer request from it supersedes older ones. */
       sessionId: string
     }
@@ -17,6 +19,7 @@ export type Message =
       text: string
       verdict: ToneVerdict
       context: ChatContext | null
+      recent: ChatMessage[]
       style: SuggestionStyle
       eventId: string
       contactHash: string | null

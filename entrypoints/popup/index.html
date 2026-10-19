@@ -125,6 +125,8 @@
       .segmented button[aria-checked="true"] { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
       .hint { font-size: 11px; color: #6b7280; margin-top: 6px; min-height: 16px; }
 
+      .chat-title { margin-bottom: 2px; }
+
       .shortcut { font-size: 11px; color: #9ca3af; margin-top: 8px; }
       kbd {
         font-family: inherit; font-size: 10px; background: #f3f4f6;
@@ -173,6 +175,19 @@
         <button role="radio" data-style="direct" aria-checked="false">Direct</button>
       </div>
       <div class="hint" id="styleHint"></div>
+    </div>
+
+    <div class="section">
+      <div class="power-row">
+        <div>
+          <div class="section-title chat-title">Chat context</div>
+          <div class="power-sub" id="chatContextSub">Off — only your own message is checked</div>
+        </div>
+        <label class="switch" title="Let checks read the last few messages in the chat">
+          <input type="checkbox" id="chatContext" aria-label="Use recent chat messages as context" />
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
 
     <div class="section">

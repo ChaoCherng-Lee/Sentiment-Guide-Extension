@@ -53,9 +53,24 @@ document.querySelectorAll<HTMLElement>("#style [data-style]").forEach(btn => {
   btn.addEventListener("click", () => updateSettings({ suggestionStyle: btn.dataset.style as SuggestionStyle }))
 })
 
+// ── Chat context ────────────────────────────────────────────────────────────
+
+function renderChatContext(s: Settings) {
+  $<HTMLInputElement>("chatContext").checked = s.chatContext
+  $("chatContextSub").textContent = s.chatContext
+    ? "On — checks read the last 6 messages in the chat. They stay on this computer and are never saved."
+    : "Off — only your own message is checked"
+}
+
+$<HTMLInputElement>("chatContext").addEventListener("change", e => updateSettings({
+  chatContext: (e.target as HTMLInputElement).checked,
+  chatContextOffered: true,
+}))
+
 function render(s: Settings) {
   renderPower(s)
   renderStyle(s)
+  renderChatContext(s)
 }
 
 getSettings().then(render)

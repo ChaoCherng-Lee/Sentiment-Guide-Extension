@@ -5,7 +5,7 @@
 // =============================================================================
 
 import { browser, defineBackground } from "#imports"
-import { listModels, OLLAMA_HOSTS, OllamaError, isLoaded, pickModel, warmUp } from "../src/analysis/ollama"
+import { listModels, MODEL_IS_LOCAL, OLLAMA_HOSTS, OllamaError, isLoaded, pickModel, warmUp } from "../src/analysis/ollama"
 import { CancelledError, RequestQueue } from "../src/analysis/queue"
 import { adviseTone, judgeTone } from "../src/analysis/tone"
 import { logAcceptance, logContext, logEvent, getChildId } from "../src/backend/supabase"
@@ -154,15 +154,27 @@ export default defineBackground(() => {
     }
   }
 
+  /**
+   * Recent chat messages go to the model only when the user turned chat
+   * context on and the model is on this computer. They are passed straight
+   * to the prompt — never stored or logged.
+   */
+  async function allowedRecent(recent: MessageOf<"CHECK_TONE">["recent"] | undefined) {
+    if (!recent?.length || !MODEL_IS_LOCAL) return []
+    return (await getSettings()).chatContext ? recent : []
+  }
+
   async function checkTone(msg: MessageOf<"CHECK_TONE">): Promise<Responses["CHECK_TONE"]> {
+    const recent = await allowedRecent(msg.recent)
     const res = await runModelCall(msg.sessionId, (model, signal, timeoutMs) =>
-      judgeTone(msg.text, msg.context, { model, signal, timeoutMs }))
+      judgeTone(msg.text, msg.context, { model, signal, timeoutMs }, recent))
     return res.ok ? { ok: true, verdict: res.value } : res
   }
 
   async function getAdvice(msg: MessageOf<"GET_ADVICE">): Promise<Responses["GET_ADVICE"]> {
+    const recent = await allowedRecent(msg.recent)
     const res = await runModelCall(msg.sessionId, (model, signal, timeoutMs) =>
-      adviseTone(msg.text, msg.verdict, msg.context, msg.style, { model, signal, timeoutMs }), ADVICE_TIMEOUT_MS)
+      adviseTone(msg.text, msg.verdict, msg.context, msg.style, { model, signal, timeoutMs }, recent), ADVICE_TIMEOUT_MS)
     if (!res.ok) return res
 
     const { verdict } = msg

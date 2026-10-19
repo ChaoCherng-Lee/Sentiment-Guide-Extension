@@ -4,12 +4,13 @@
 // pause settings. Each content script just calls startEngine().
 // =============================================================================
 
+import { prepareRecent, RECENT_LIMIT } from "../analysis/chat-context"
 import type { ChatContext, SuggestionStyle } from "../analysis/types"
 import { sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
 import {
   DEFAULT_SETTINGS, getChatData, getSettings, isActive, isConversationDisabled, resolveStyle,
-  setConversationDisabled, type Settings, subscribeSettings, updateChatData,
+  setConversationDisabled, type Settings, subscribeSettings, updateChatData, updateSettings,
 } from "../settings/store"
 import { showContextForm } from "../ui/context-form"
 import { StatusChip } from "../ui/status-chip"
@@ -78,6 +79,27 @@ export function startEngine(adapter: PlatformAdapter) {
     })
   }
 
+  // ── Chat context (opt-in) ──────────────────────────────────────────────────
+
+  /** Settings are updated locally too, so the next check sees the change at once. */
+  function patchSettings(patch: Partial<Settings>) {
+    settings = { ...settings, ...patch }
+    updateSettings(patch)
+  }
+
+  const chatContext = {
+    // Read from the page at check time and scrubbed here, before it leaves the page
+    recent: () => settings.chatContext
+      ? prepareRecent(adapter.getRecentMessages(RECENT_LIMIT), [adapter.getConversationTitle()])
+      : [],
+    takeOffer: () => {
+      if (settings.chatContext || settings.chatContextOffered) return false
+      patchSettings({ chatContextOffered: true })
+      return true
+    },
+    choose: (on: boolean) => patchSettings({ chatContext: on, chatContextOffered: true }),
+  }
+
   // ── Compose boxes ─────────────────────────────────────────────────────────
 
   function scan() {
@@ -108,6 +130,7 @@ export function startEngine(adapter: PlatformAdapter) {
           else if (outcome.reason === "timeout") chip.set({ kind: "slow" })
           else if (outcome.reason === "offline" || outcome.reason === "no-model") chip.set({ kind: outcome.reason })
         },
+        chatContext,
       }))
     }
     chip.setAnchor([...sessions.keys()][0] ?? null)

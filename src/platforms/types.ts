@@ -1,9 +1,6 @@
-import type { Platform } from "../analysis/types"
+import type { ChatMessage, Platform } from "../analysis/types"
 
-export interface ChatMessage {
-  from: "me" | "them"
-  text: string
-}
+export type { ChatMessage }
 
 export interface IncomingMessage {
   /** Stable per message, used to cache results for the session. */
@@ -27,6 +24,7 @@ export interface PlatformAdapter {
   getConversationId(): string | null
   /** Display name for the context form. Never sent anywhere. */
   getConversationTitle(): string | null
+  /** Last `limit` text messages in the open chat, oldest first. Raw — scrub with prepareRecent(). */
   getRecentMessages(limit: number): ChatMessage[]
   observeIncoming(cb: (msg: IncomingMessage) => void): () => void
   /** Replace the whole text ("all") or one range. Resolves true if the text changed. */

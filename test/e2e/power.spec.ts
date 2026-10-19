@@ -17,7 +17,7 @@ test("switching off in the toolbar popup stops checks without a reload, and on a
 
   const toolbar = await context.newPage()
   await toolbar.goto(`chrome-extension://${extensionId}/popup.html`)
-  await toolbar.locator(".switch").click()
+  await toolbar.locator(".switch:has(#enabled)").click()
   await expect(toolbar.locator("#powerState")).toHaveText("Off")
   await expect.poll(() => badge(worker)).toBe("OFF")
 
@@ -28,7 +28,7 @@ test("switching off in the toolbar popup stops checks without a reload, and on a
   await expect(popup(page)).toBeHidden()
   expect(await calls()).toBe(0)
 
-  await toolbar.locator(".switch").click()
+  await toolbar.locator(".switch:has(#enabled)").click()
   await expect(toolbar.locator("#powerState")).toHaveText("On")
   await expect.poll(() => badge(worker)).toBe("")
   await page.bringToFront()
