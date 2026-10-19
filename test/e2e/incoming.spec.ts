@@ -49,7 +49,8 @@ test("only the last 3 are read when on; a tricky one gets a badge with a hedged 
   // Feedback is counted locally, without any text
   await tip.locator("button[data-helpful='1']").click()
   await expect(tip).toContainText("Thanks")
-  const stored = await worker.evaluate(() => chrome.storage.local.get("incomingFeedback"))
+  const stored = await worker.evaluate(() =>
+    (globalThis as unknown as { chrome: typeof import("wxt/browser").browser }).chrome.storage.local.get("incomingFeedback"))
   expect(JSON.stringify(stored)).not.toContain("ditching")
   expect(Object.values(stored.incomingFeedback as Record<string, { helpful: number }>)[0].helpful).toBe(1)
 

@@ -1,6 +1,6 @@
 # Sentiment Guide Chrome Extension
 
-A Chrome extension that analyses tone as you type on WhatsApp Web — like Grammarly, but for kindness. It flags harsh or unkind language in outgoing messages.
+A Chrome extension that analyses tone as you type on WhatsApp Web, and optionally Instagram DMs — like Grammarly, but for kindness. It flags harsh or unkind language in outgoing messages.
 
 ## Features
 
@@ -8,6 +8,7 @@ A Chrome extension that analyses tone as you type on WhatsApp Web — like Gramm
 - **Emoji-aware** — emoji count as tone: "sure 🙂" can read as cold, "💀" usually means laughing
 - **Chat context** *(opt-in, off by default)* — checks can read the last 6 messages in the chat, so a joke reads differently from an argument. Names, emails and phone numbers are taken out first, and the messages only go to your local model
 - **Incoming analysis** *(opt-in, off by default)* — a small dot on a received message says how it probably reads ("probably teasing", "might be sarcastic") when that isn't obvious; hover or focus it for a short, hedged explanation. It explains — it never judges the sender
+- **More sites, one by one** — Instagram direct messages can be switched on in the options page (**Sites…** in the toolbar popup); Chrome asks for permission to that site only then
 - **Runs entirely locally** — tone analysis is done by a local Ollama model (`gemma3:4b`) on your own machine; nothing is sent to any external AI service, and no API key is required
 - **Personalised suggestions** — an onboarding flow collects your role, age range, texting style, and goals so the model tailors its language to you
 - **Private by default** — messages never leave your device; your profile stays on-device only. Optional Supabase logging (for a parent dashboard) is off unless you configure it yourself
@@ -72,7 +73,7 @@ You can skip onboarding and adjust settings later via the popup.
 
 ## Usage
 
-1. Open [web.whatsapp.com](https://web.whatsapp.com) and start a chat
+1. Open [web.whatsapp.com](https://web.whatsapp.com) and start a chat. To use it on Instagram too, open **Sites…** in the toolbar popup and switch on **Instagram DMs**
 2. Type a message — if it contains harsh language, a popup appears above the compose box
 3. Read the explanation, then **Apply** a single phrase swap (only those words change), **Replace all (Tab)** with the full rewrite, or **Dismiss** to send as-is
 4. Pick how rewrites should sound — **Casual**, **Formal** or **Direct** — in the toolbar popup (your default) or with the style buttons in the suggestion popup (remembered for that chat). Chats you marked as formal in the context form start in Formal
@@ -91,7 +92,8 @@ See [CHANGES.md](CHANGES.md) for what is new compared with the original extensio
 | `entrypoints/whatsapp.content.ts` | Content script — picks the WhatsApp adapter and starts the engine |
 | `entrypoints/popup/`, `entrypoints/onboarding/` | Toolbar popup and first-run page |
 | `src/analysis/` | Prompts, JSON schema + validation, Ollama client, request queue |
-| `src/platforms/` | One adapter per site; all page selectors live here |
+| `src/platforms/` | One adapter per site (WhatsApp, Instagram); all page selectors live here. `sites.ts` lists the optional sites |
+| `entrypoints/options/` | Options page: switch optional sites on and off |
 | `src/engine/` | `ComposeSession` (one per compose box) and the engine that wires everything |
 | `src/ui/` | Suggestion popup, highlight, context form, status chip (Shadow DOM) |
 | `src/settings/store.ts` | Typed settings and per-chat data |
@@ -104,6 +106,7 @@ See [CHANGES.md](CHANGES.md) for what is new compared with the original extensio
 npm run dev        # Chrome with the extension loaded, reloads on change
 npm test           # unit tests
 npm run test:e2e   # builds, then runs the extension against fixture pages + your local Ollama
+                   # (an e2e build, with every optional site pre-allowed — run `npm run build` before loading .output by hand)
 npm run eval       # tone evaluation on eval/messages.jsonl (needs Ollama running)
 ```
 

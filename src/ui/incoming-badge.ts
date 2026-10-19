@@ -53,7 +53,7 @@ export class IncomingBadge {
   private readonly root: ShadowRoot
 
   constructor(
-    readonly bubble: HTMLElement,
+    anchor: HTMLElement,
     analysis: IncomingAnalysis,
     onFeedback: (helpful: boolean) => void,
   ) {
@@ -106,8 +106,6 @@ export class IncomingBadge {
       this.root.getElementById("fb")!.textContent = "Thanks — that helps make it better."
     })
 
-    // After the text, next to it, so it reads as part of the message
-    const anchor = bubble.querySelector("[data-pre-plain-text]") ?? bubble
     anchor.appendChild(this.host)
   }
 

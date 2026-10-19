@@ -1,5 +1,6 @@
 import { type BrowserContext, type Page, type Worker, test as base, chromium } from "@playwright/test"
 import path from "node:path"
+import { OPTIONAL_SITES } from "../../src/platforms/sites"
 
 const EXTENSION = path.resolve(".output/chrome-mv3")
 const FIXTURES  = path.resolve("test/fixtures")
@@ -7,6 +8,8 @@ const FIXTURES  = path.resolve("test/fixtures")
 /** Sites the extension runs on, served from local fixture pages. */
 const SITES: Record<string, string> = {
   "https://web.whatsapp.com/**": "whatsapp.html",
+  "https://www.instagram.com/**": "instagram.html",
+  "https://mail.google.com/**": "gmail.html",
 }
 
 export const HARSH = "you are so stupid, just shut up already"
@@ -28,6 +31,17 @@ export async function backgroundWorker(context: BrowserContext): Promise<Worker>
   if (!worker) worker = await context.waitForEvent("serviceworker")
   if (process.env.SG_DEBUG) worker.on("console", m => console.log("[background]", m.text()))
   return worker
+}
+
+/**
+ * Wait until the background worker has registered the optional sites'
+ * content scripts (the e2e build starts with them allowed).
+ */
+export async function sitesReady(worker: Worker) {
+  await expect.poll(() => worker.evaluate(async () => {
+    const g = globalThis as unknown as { chrome: typeof import("wxt/browser").browser }
+    return (await g.chrome.scripting.getRegisteredContentScripts()).map(s => s.id).sort().join(",")
+  })).toBe(OPTIONAL_SITES.map(s => s.id).sort().join(","))
 }
 
 /** Open the WhatsApp fixture and skip the first-visit context form. */

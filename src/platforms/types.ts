@@ -6,8 +6,10 @@ export interface IncomingMessage {
   /** Stable per message, used to cache results for the session. */
   key: string
   text: string
-  /** The bubble element, so the UI can attach a badge next to it. */
+  /** The message element (bubble or email body). */
   element: HTMLElement
+  /** Where the badge goes, if not at the end of `element`. */
+  anchor?: HTMLElement
 }
 
 /**

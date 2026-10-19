@@ -65,7 +65,18 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 |---|---|
 | 3.1 | **Help reading messages you receive (opt-in, off by default).** Switch on **Messages you receive** in the toolbar popup or during onboarding. A dot appears on a received message when it probably isn't plain friendly or neutral: teasing, sarcastic, upset, angry or hard to tell. Hover or focus the dot for a short explanation that always hedges ("probably", "might"), plus **Was this helpful?** 👍/👎, counted on this computer only with no message text. When a chat opens only its last 3 received messages are read, then new ones as they arrive; older messages are never analysed |
 
+### Phase 4: More sites
+
+| Step | New for users |
+|---|---|
+| 4.1 | **Instagram DMs.** A new options page (**Sites…** in the toolbar popup) switches optional sites on one by one; Chrome asks for permission to that site only when you switch it on, and switching it off removes the permission. Instagram direct messages then get the same checks, rewrites, chat context and incoming readings as WhatsApp. Search boxes and pages outside a DM thread are never checked |
+
 ## Changed behaviour worth knowing
+
+- **4.1:** the extension now asks for the `scripting` permission, used to
+  start the Instagram checker only after you allow Instagram. Instagram is an
+  *optional* permission, so installing the extension still only gives access
+  to WhatsApp Web and the local AI.
 
 - **3.1:** incoming readings never hold up your own checks. They wait behind
   outgoing checks, and an outgoing check interrupts a reading that is already
@@ -102,6 +113,13 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
   30 s when the laptop was busy.
 
 ## Known problems
+
+- **Instagram is tested against a hand-built page, not a real one.** The
+  adapter's selectors come from Instagram's roles and labels as of 2026-10,
+  checked against `test/fixtures/instagram/dm-thread.html`, which was written
+  by hand because saving a real DM page needs a logged-in account. Save a real
+  page into that folder (personal data removed) to check the selectors for
+  real. Instagram also changes often, so expect to update the adapter.
 
 - **Incoming badges are untested on the real WhatsApp page.** They are added
   inside the message bubble; if WhatsApp redraws an older bubble the badge can

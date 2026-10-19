@@ -1,4 +1,5 @@
 // popup — runs inside the extension action popup
+import { browser } from "#imports"
 import type { SuggestionStyle } from "../../src/analysis/types"
 import { sendMessage } from "../../src/messaging"
 import {
@@ -85,6 +86,8 @@ function render(s: Settings) {
   renderChatContext(s)
   renderIncoming(s)
 }
+
+$("openSites").addEventListener("click", () => browser.runtime.openOptionsPage())
 
 getSettings().then(render)
 subscribeSettings(render)

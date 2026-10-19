@@ -11,6 +11,8 @@ import { CancelledError, type Priority, RequestQueue } from "../src/analysis/que
 import { adviseTone, judgeTone } from "../src/analysis/tone"
 import { logAcceptance, logContext, logEvent, getChildId } from "../src/backend/supabase"
 import type { AIStatus, CheckFailure, Message, MessageOf, Responses } from "../src/messaging"
+import { OPTIONAL_SITES } from "../src/platforms/sites"
+import type { ScriptPublicPath } from "wxt/utils/inject-script"
 import { getSettings, isActive, setEnabled, subscribeSettings, type Settings, updateSettings } from "../src/settings/store"
 
 const RESUME_ALARM          = "resume"
@@ -28,6 +30,7 @@ export default defineBackground(() => {
 
   allowOllamaRequests()
   initPowerControls()
+  initSites()
 
   browser.runtime.onInstalled.addListener((details) => {
     if (details.reason === "install") {
@@ -101,6 +104,43 @@ export default defineBackground(() => {
     await browser.alarms.clear(RESUME_ALARM)
     if (s.enabled && s.pausedUntil !== null && s.pausedUntil > Date.now()) {
       browser.alarms.create(RESUME_ALARM, { when: s.pausedUntil })
+    }
+  }
+
+  // ── Optional sites (Instagram, Gmail) ─────────────────────────────────────
+
+  /**
+   * A site's content script is registered only while its host permission is
+   * granted (from the options page). Runs on every worker start, and whenever
+   * permissions change.
+   */
+  function initSites() {
+    syncSites()
+    browser.permissions.onAdded.addListener(() => syncSites(true))
+    browser.permissions.onRemoved.addListener(() => syncSites())
+  }
+
+  async function syncSites(injectIntoOpenTabs = false) {
+    for (const site of OPTIONAL_SITES) {
+      try {
+        const granted    = await browser.permissions.contains({ origins: site.origins })
+        const registered = (await browser.scripting.getRegisteredContentScripts({ ids: [site.id] })).length > 0
+        if (granted && !registered) {
+          await browser.scripting.registerContentScripts([{
+            id: site.id, matches: site.origins, js: [site.script], runAt: "document_idle", persistAcrossSessions: true,
+          }])
+          // Tabs already open on the site start working without a reload
+          if (injectIntoOpenTabs) {
+            for (const tab of await browser.tabs.query({ url: site.origins })) {
+              if (tab.id !== undefined) browser.scripting.executeScript({ target: { tabId: tab.id }, files: [("/" + site.script) as ScriptPublicPath] }).catch(() => {})
+            }
+          }
+        } else if (!granted && registered) {
+          await browser.scripting.unregisterContentScripts({ ids: [site.id] })
+        }
+      } catch (err) {
+        console.log("Sentiment Guide bg: could not update", site.id, "—", (err as Error).message)
+      }
     }
   }
 

@@ -56,7 +56,7 @@ export class IncomingWatcher {
     if (old?.attached) return
     // Forget badges whose bubbles WhatsApp has thrown away
     for (const [el, b] of this.badges) if (!b.attached) this.badges.delete(el)
-    const badge = new IncomingBadge(msg.element, analysis, helpful => recordIncomingFeedback(analysis.reading, helpful))
+    const badge = new IncomingBadge(msg.anchor ?? msg.element, analysis, helpful => recordIncomingFeedback(analysis.reading, helpful))
     this.badges.set(msg.element, badge)
   }
 }
