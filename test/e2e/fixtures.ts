@@ -83,14 +83,98 @@ export async function recordModelRequests(worker: Worker) {
   return () => worker.evaluate(() => (globalThis as unknown as { __userTurns: string[] }).__userTurns)
 }
 
-export const test = base.extend<{ context: BrowserContext; worker: Worker; extensionId: string }>({
+/**
+ * A stand-in for Ollama inside the background worker, so tests about the
+ * extension's behaviour don't wait on the real model (each real check takes
+ * ~7 s). It answers from a few rules: messages with an insult are flagged,
+ * the rewrite depends on the style, and sarcastic-looking received messages
+ * get a hedged reading. How good the real model's judgement is, is the eval's
+ * job (eval/), not these tests'. Tests that need the real model use
+ * `test.use({ realModel: true })`.
+ */
+export async function fakeModel(worker: Worker) {
+  await worker.evaluate(() => {
+    const g = globalThis as unknown as { fetch: typeof fetch }
+    const original = g.fetch
+    const FLAGS = ["stupid", "idiot", "useless", "annoying", "clown", "shut up"]
+    const SOFTER: Record<string, string> = {
+      "stupid": "frustrating", "idiot": "wrong about this", "useless": "not helping right now",
+      "annoying": "a lot right now", "clown": "being silly", "shut up": "give me a minute",
+    }
+    const REWRITES: Record<string, string> = {
+      casual: "hey I'm really annoyed rn, can we talk later?",
+      formal: "I am quite frustrated at the moment. Could we talk about this later?",
+      direct: "I'm frustrated. Let's talk later.",
+    }
+    const json = (body: unknown) => new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } })
+    /** The last fenced block of the last user turn: the message being judged. */
+    const judged = (messages: { role: string; content: string }[]) => {
+      const user = messages.filter(m => m.role === "user").at(-1)?.content ?? ""
+      return [...user.matchAll(/"""\n([\s\S]*?)\n"""/g)].at(-1)?.[1] ?? ""
+    }
+
+    g.fetch = async (input, init) => {
+      const url = String(input)
+      if (!url.startsWith("http://127.0.0.1:11434")) return original(input, init)
+      const path = new URL(url).pathname
+      if (path === "/api/tags") return json({ models: [{ name: "gemma3:4b" }] })
+      if (path === "/api/ps")   return json({ models: [{ name: "gemma3:4b" }] })
+
+      const body = JSON.parse(String(init?.body ?? "{}")) as { messages: { role: string; content: string }[]; format?: { properties?: Record<string, unknown> } }
+      if (!body.messages?.length) return json({})   // warm-up
+      // A short wait, so cancelling and queueing still happen as they would
+      await new Promise<void>((resolve, reject) => {
+        const t = setTimeout(resolve, 200)
+        init?.signal?.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("aborted", "AbortError")) })
+      })
+
+      const text  = judged(body.messages)
+      const lower = text.toLowerCase()
+      const found = FLAGS.filter(f => lower.includes(f))
+      const props = body.format?.properties ?? {}
+      let reply: unknown
+      if ("tone" in props) {
+        const at = found.length ? lower.indexOf(found[0]) : -1
+        reply = found.length
+          ? { tone: "red", confidence: 0.9, flagged_phrase: text.slice(at, at + found[0].length), tone_tags_detected: false }
+          : { tone: "green", confidence: 0.9, flagged_phrase: "", tone_tags_detected: false }
+      } else if ("label" in props) {
+        const system = body.messages.find(m => m.role === "system")?.content ?? ""
+        const style  = /Suggestion style: (\w+)/.exec(system)?.[1].toLowerCase() ?? "casual"
+        reply = {
+          label: "Insult", category: "insult",
+          explanation: "Calling someone names can really hurt, even when you're upset.",
+          suggestion: REWRITES[style] ?? REWRITES.casual,
+          edits: found.map(f => ({ original: f, replacement: SOFTER[f], reason: "Says how you feel without the insult." })),
+          emoji_notes: text.includes("🙄") ? [{ emoji: "🙄", reading: "Can read as an eye-roll." }] : [],
+        }
+      } else if ("reading" in props) {
+        reply = /🙄|ditching|whatever|ugh/i.test(text)
+          ? { reading: "sarcastic", confidence: 0.7, explanation: "This might be sarcastic." }
+          : { reading: "neutral", confidence: 0.8, explanation: "Seems like an ordinary message." }
+      } else {
+        return original(input, init)
+      }
+      return json({ message: { role: "assistant", content: JSON.stringify(reply) } })
+    }
+  })
+}
+
+export const test = base.extend<{ context: BrowserContext; worker: Worker; extensionId: string; realModel: boolean }>({
+  realModel: [false, { option: true }],
   context: async ({}, use) => {
     const context = await launch()
     await use(context)
     await context.close()
   },
-  worker: async ({ context }, use) => {
-    await use(await backgroundWorker(context))
+  worker: async ({ context, realModel }, use) => {
+    const worker = await backgroundWorker(context)
+    if (!realModel) await fakeModel(worker)
+    await use(worker)
+  },
+  // Every test gets the worker (and so the stand-in model), even if it doesn't ask for it
+  page: async ({ context, worker: _ }, use) => {
+    await use(await context.newPage())
   },
   extensionId: async ({ worker }, use) => {
     await use(worker.url().split("/")[2])

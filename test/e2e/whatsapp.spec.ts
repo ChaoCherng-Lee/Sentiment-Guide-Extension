@@ -5,24 +5,28 @@ test.beforeEach(async ({ page, extensionId }) => {
   await openWhatsApp(page)
 })
 
-test("flags a harsh message and Tab replaces it with the suggestion", async ({ page }) => {
-  const box = page.locator("footer [contenteditable]")
-  await box.pressSequentially(HARSH)
+test.describe("with the real model", () => {
+  test.use({ realModel: true })
 
-  // Step 1: flagged quickly, with a "thinking" placeholder
-  const popup = page.locator("#sg-popup-host .popup")
-  await expect(popup).toBeVisible()
-  await expect(popup.locator("#explanation.pending")).toBeVisible()
-  await expect(page.locator(".sg-highlight").first()).toBeVisible()
+  test("flags a harsh message and Tab replaces it with the suggestion", async ({ page }) => {
+    const box = page.locator("footer [contenteditable]")
+    await box.pressSequentially(HARSH)
 
-  // Step 2: the explanation and rewrite fill in
-  await expect(popup.locator("#explanation")).not.toHaveClass(/pending/)
-  await expect(popup.locator("#accept")).toBeVisible()
-  const suggestion = (await popup.locator("#suggestion").textContent())!.trim()
-  expect(suggestion.length).toBeGreaterThan(0)
+    // Step 1: flagged quickly, with a "thinking" placeholder
+    const popup = page.locator("#sg-popup-host .popup")
+    await expect(popup).toBeVisible()
+    await expect(popup.locator("#explanation.pending")).toBeVisible()
+    await expect(page.locator(".sg-highlight").first()).toBeVisible()
 
-  await box.press("Tab")
-  await expect(box).toHaveText(suggestion)
+    // Step 2: the explanation and rewrite fill in
+    await expect(popup.locator("#explanation")).not.toHaveClass(/pending/)
+    await expect(popup.locator("#accept")).toBeVisible()
+    const suggestion = (await popup.locator("#suggestion").textContent())!.trim()
+    expect(suggestion.length).toBeGreaterThan(0)
+
+    await box.press("Tab")
+    await expect(box).toHaveText(suggestion)
+  })
 })
 
 test("sending with the send button clears the popup", async ({ page }) => {
@@ -37,6 +41,6 @@ test("sending with the send button clears the popup", async ({ page }) => {
 
 test("never attaches to the search box", async ({ page }) => {
   await page.locator("#side [contenteditable]").pressSequentially(" " + HARSH)
-  await page.waitForTimeout(8_000)
+  await page.waitForTimeout(3_000)
   await expect(page.locator("#sg-popup-host .popup")).toBeHidden()
 })

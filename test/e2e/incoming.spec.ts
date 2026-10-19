@@ -59,31 +59,35 @@ test("only the last 3 are read when on; a tricky one gets a badge with a hedged 
   await expect.poll(async () => (await sent()).filter(isIncoming).length, { timeout: 60_000 }).toBe(4)
 })
 
-test("incoming readings don't hold up an outgoing check", async ({ page, context, worker, extensionId }) => {
-  const sent  = await recordModelRequests(worker)
-  const popup = page.locator("#sg-popup-host .popup")
-  /** Time from the last keystroke to the flag. */
-  const timeToFlag = async (text: string) => {
-    await box(page).pressSequentially(text, { delay: 0 })
-    const start = Date.now()
-    await expect(popup).toBeVisible({ timeout: 30_000 })
-    const ms = Date.now() - start
-    await popup.locator("#dismiss").click()
-    await box(page).press("Control+a")
-    await box(page).press("Delete")
-    return ms
-  }
+test.describe("with the real model", () => {
+  test.use({ realModel: true })
 
-  await openWhatsApp(page)
-  await timeToFlag("you're useless, nobody asked")   // loads the model
-  const alone = await timeToFlag(HARSH)
+  test("incoming readings don't hold up an outgoing check", async ({ page, context, worker, extensionId }) => {
+    const sent  = await recordModelRequests(worker)
+    const popup = page.locator("#sg-popup-host .popup")
+    /** Time from the last keystroke to the flag. */
+    const timeToFlag = async (text: string, timeout = 30_000) => {
+      await box(page).pressSequentially(text, { delay: 0 })
+      const start = Date.now()
+      await expect(popup).toBeVisible({ timeout })
+      const ms = Date.now() - start
+      await popup.locator("#dismiss").click()
+      await box(page).press("Control+a")
+      await box(page).press("Delete")
+      return ms
+    }
 
-  await turnOnIncoming(context, extensionId)
-  await addIncoming(page, SARCASTIC, "you never listen to me", "lol ok")
-  await expect.poll(async () => (await sent()).filter(isIncoming).length).toBeGreaterThan(0)
-  const busy = await timeToFlag("ugh you're so annoying, just stop talking")
+    await openWhatsApp(page)
+    await timeToFlag("you're useless, nobody asked", 150_000)   // loads the model, which can take a while
+    const alone = await timeToFlag(HARSH)
 
-  console.log(`outgoing flag: ${alone} ms alone, ${busy} ms with incoming readings queued`)
-  // At most one interrupted model call's worth of slack
-  expect(busy).toBeLessThan(alone + 4_000)
+    await turnOnIncoming(context, extensionId)
+    await addIncoming(page, SARCASTIC, "you never listen to me", "lol ok")
+    await expect.poll(async () => (await sent()).filter(isIncoming).length).toBeGreaterThan(0)
+    const busy = await timeToFlag("ugh you're so annoying, just stop talking")
+
+    console.log(`outgoing flag: ${alone} ms alone, ${busy} ms with incoming readings queued`)
+    // At most one interrupted model call's worth of slack
+    expect(busy).toBeLessThan(alone + 4_000)
+  })
 })

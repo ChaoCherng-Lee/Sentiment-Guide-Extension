@@ -24,7 +24,7 @@ test("switching off in the toolbar popup stops checks without a reload, and on a
   await page.bringToFront()
   const box = page.locator("footer [contenteditable]")
   await box.pressSequentially(HARSH)
-  await page.waitForTimeout(5_000)
+  await page.waitForTimeout(3_000)
   await expect(popup(page)).toBeHidden()
   expect(await calls()).toBe(0)
 
@@ -51,7 +51,7 @@ test("pausing sends no requests to the model and shows when it will resume", asy
   await page.bringToFront()
   await expect(chip(page)).toContainText("paused until")
   await page.locator("footer [contenteditable]").pressSequentially(HARSH)
-  await page.waitForTimeout(5_000)
+  await page.waitForTimeout(3_000)
   await expect(popup(page)).toBeHidden()
   expect(await calls()).toBe(0)
 
