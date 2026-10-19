@@ -37,6 +37,35 @@ describe("RequestQueue", () => {
     expect(order).toEqual(["high", "low"])
   })
 
+  it("a high-priority job interrupts a running low one, which then runs again", async () => {
+    const q = new RequestQueue(1)
+    const runs: string[] = []
+    const low = q.add(async (signal) => {
+      runs.push("low")
+      if (runs.length === 1) await untilAborted(signal)
+      return "low done"
+    }, { priority: "low" })
+    await Promise.resolve()
+    const high = q.add(async () => { runs.push("high"); return "high done" }, { priority: "high" })
+    await expect(high).resolves.toBe("high done")
+    await expect(low).resolves.toBe("low done")
+    expect(runs).toEqual(["low", "high", "low"])
+  })
+
+  it("an interrupted low job goes back before other low jobs", async () => {
+    const q = new RequestQueue(1)
+    const runs: string[] = []
+    const first = q.add(async (signal) => {
+      runs.push("first")
+      if (runs.length === 1) await untilAborted(signal)
+    }, { priority: "low" })
+    const second = q.add(async () => { runs.push("second") }, { priority: "low" })
+    await Promise.resolve()
+    const high = q.add(async () => { runs.push("high") }, { priority: "high" })
+    await Promise.all([first, second, high])
+    expect(runs).toEqual(["first", "high", "first", "second"])
+  })
+
   it("a newer job with the same key cancels a pending one", async () => {
     const q = new RequestQueue(1)
     const gate = deferred()

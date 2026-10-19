@@ -58,6 +58,14 @@
         text-align: left;
       }
 
+      .option {
+        display: flex; gap: 12px; align-items: flex-start; text-align: left;
+        border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px 14px;
+        margin-bottom: 24px; cursor: pointer; font-size: 13px; color: #374151; line-height: 1.5;
+      }
+      .option input { margin-top: 3px; width: 16px; height: 16px; accent-color: #4f46e5; flex-shrink: 0; }
+      .option strong { display: block; color: #111827; }
+
       .btn {
         padding: 13px 40px;
         border-radius: 999px;
@@ -81,6 +89,11 @@
       <div class="privacy-note">
         🔒 <strong>Fully private.</strong> The AI runs locally on your computer via Ollama using the gemma3:4b model. No messages are sent to any external server. No account or API key required.
       </div>
+      <label class="option">
+        <input type="checkbox" id="incomingAnalysis" />
+        <span><strong>Also explain messages I receive (optional)</strong>
+        A small dot on a received message says how it probably reads — like "probably teasing" — when that isn't obvious. It's a guess, not a fact, and the messages stay on your computer. You can change this any time in the toolbar menu.</span>
+      </label>
       <button class="btn" id="btnStart">Get started</button>
     </div>
     <script type="module" src="./main.ts"></script>

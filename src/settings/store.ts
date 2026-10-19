@@ -8,7 +8,7 @@
 // =============================================================================
 
 import { browser } from "#imports"
-import type { ChatContext, SuggestionStyle } from "../analysis/types"
+import type { ChatContext, IncomingReading, SuggestionStyle } from "../analysis/types"
 
 export interface Settings {
   /** Main on/off switch. */
@@ -25,6 +25,8 @@ export interface Settings {
   chatContext: boolean
   /** The one-time "use the chat as context?" offer has been shown. */
   chatContextOffered: boolean
+  /** Explain how received messages probably read. Off until the user opts in. */
+  incomingAnalysis: boolean
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   model: null,
   chatContext: false,
   chatContextOffered: false,
+  incomingAnalysis: false,
 }
 
 /** chrome.storage.sync caps an item at 8 KB — keep the newest chats only. */
@@ -100,6 +103,29 @@ export function subscribeSettings(cb: (settings: Settings) => void): () => void 
   }
   browser.storage.onChanged.addListener(listener)
   return () => browser.storage.onChanged.removeListener(listener)
+}
+
+// -----------------------------------------------------------------------------
+// "Was this helpful?" on incoming readings — counts per reading, kept on this
+// computer only. No message text, no chat.
+// -----------------------------------------------------------------------------
+
+export type IncomingFeedback = Partial<Record<IncomingReading, { helpful: number; notHelpful: number }>>
+
+const FEEDBACK_KEY = "incomingFeedback"
+
+export async function getIncomingFeedback(): Promise<IncomingFeedback> {
+  const data = await browser.storage.local.get(FEEDBACK_KEY)
+  return (data[FEEDBACK_KEY] as IncomingFeedback | undefined) ?? {}
+}
+
+export async function recordIncomingFeedback(reading: IncomingReading, helpful: boolean) {
+  const all = await getIncomingFeedback()
+  const counts = all[reading] ?? { helpful: 0, notHelpful: 0 }
+  all[reading] = helpful
+    ? { ...counts, helpful: counts.helpful + 1 }
+    : { ...counts, notHelpful: counts.notHelpful + 1 }
+  await browser.storage.local.set({ [FEEDBACK_KEY]: all })
 }
 
 // -----------------------------------------------------------------------------

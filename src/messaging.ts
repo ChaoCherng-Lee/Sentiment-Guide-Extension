@@ -1,6 +1,8 @@
 // Typed messages between content scripts / pages and the background worker.
 import { browser } from "#imports"
-import type { ChatContext, ChatMessage, SuggestionStyle, ToneAdvice, ToneVerdict } from "./analysis/types"
+import type {
+  ChatContext, ChatMessage, IncomingAnalysis, SuggestionStyle, ToneAdvice, ToneVerdict,
+} from "./analysis/types"
 
 export type Message =
   /** Step 1: fast verdict for every message. */
@@ -25,6 +27,8 @@ export type Message =
       contactHash: string | null
       sessionId: string
     }
+  /** Opt-in: how a received message probably reads. Low priority; never logged. */
+  | { type: "READ_INCOMING"; text: string; key: string }
   | { type: "SAVE_CONTEXT"; context: ChatContext; contactHash: string }
   | { type: "UPDATE_ACCEPTANCE"; eventId: string; accepted: boolean }
   /** Ask whether the local model is reachable and loaded. */
@@ -51,6 +55,7 @@ export interface AIStatus {
 export interface Responses {
   CHECK_TONE: ModelResponse<{ verdict: ToneVerdict }>
   GET_ADVICE: ModelResponse<{ advice: ToneAdvice }>
+  READ_INCOMING: ModelResponse<{ analysis: IncomingAnalysis }>
   SAVE_CONTEXT: void
   UPDATE_ACCEPTANCE: void
   AI_STATUS: AIStatus

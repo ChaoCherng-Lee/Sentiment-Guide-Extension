@@ -7,7 +7,7 @@ A Chrome extension that analyses tone as you type on WhatsApp Web — like Gramm
 - **Outgoing analysis** — as you type, a popup appears if your message sounds harsh, with an explanation and a kinder alternative you can accept in one click
 - **Emoji-aware** — emoji count as tone: "sure 🙂" can read as cold, "💀" usually means laughing
 - **Chat context** *(opt-in, off by default)* — checks can read the last 6 messages in the chat, so a joke reads differently from an argument. Names, emails and phone numbers are taken out first, and the messages only go to your local model
-- **Incoming analysis** *(planned, Phase 3)* — opt-in tone notes on received messages; not built yet
+- **Incoming analysis** *(opt-in, off by default)* — a small dot on a received message says how it probably reads ("probably teasing", "might be sarcastic") when that isn't obvious; hover or focus it for a short, hedged explanation. It explains — it never judges the sender
 - **Runs entirely locally** — tone analysis is done by a local Ollama model (`gemma3:4b`) on your own machine; nothing is sent to any external AI service, and no API key is required
 - **Personalised suggestions** — an onboarding flow collects your role, age range, texting style, and goals so the model tailors its language to you
 - **Private by default** — messages never leave your device; your profile stays on-device only. Optional Supabase logging (for a parent dashboard) is off unless you configure it yourself
@@ -78,7 +78,7 @@ You can skip onboarding and adjust settings later via the popup.
 4. Pick how rewrites should sound — **Casual**, **Formal** or **Direct** — in the toolbar popup (your default) or with the style buttons in the suggestion popup (remembered for that chat). Chats you marked as formal in the context form start in Formal
 5. After your first flagged message, the popup offers **chat context**: with it on, checks read the last 6 messages in the chat so they know what you're replying to. The popup says *Checked with the last few messages in this chat* when it was used. Switch it on or off any time under **Chat context** in the toolbar popup
 6. To take a break, use the toolbar popup: switch it off, **Pause 1 hour** or **Pause until tomorrow**. `Alt+Shift+G` turns it on or off, and **Don't check this chat** in the suggestion popup turns it off for one chat. The toolbar icon shows `OFF` or `II` while it isn't checking
-7. *(Planned, Phase 3)* Opt-in tone notes on incoming messages — not built yet
+7. To get help reading messages you receive, switch on **Messages you receive** in the toolbar popup (or tick it during onboarding). Only the last 3 received messages are read when a chat opens, then new ones as they arrive. Your own checks always go first. **Was this helpful?** 👍/👎 is counted on your computer only
 
 See [CHANGES.md](CHANGES.md) for what is new compared with the original extension.
 
@@ -113,6 +113,7 @@ summary line in the commit message.
 ## Privacy
 
 - Your messages are never stored or logged by this extension
+- Incoming analysis is off unless you turn it on. Received messages are read from the page, sent only to your local Ollama, and never stored, logged or sent to Supabase; readings are kept in memory for the open tab only
 - Chat context is off unless you turn it on. When on, the last 6 messages (each cut to 200 characters, with the contact's name, emails and phone numbers removed) are read from the page at check time, sent only to your local Ollama, and never stored, logged or sent to Supabase
 - Text is only sent to your local Ollama server (`http://localhost:11434`) — never to an external server
 - Your profile is stored locally using `chrome.storage.local`

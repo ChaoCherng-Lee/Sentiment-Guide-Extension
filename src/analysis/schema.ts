@@ -3,7 +3,10 @@
 // never trust the model anyway.
 
 import { findEmoji, hasWords } from "./emoji"
-import { type EmojiNote, GREEN_VERDICT, type Tone, type ToneAdvice, type ToneEdit, type ToneVerdict } from "./types"
+import {
+  type EmojiNote, GREEN_VERDICT, type IncomingAnalysis, type IncomingReading, INCOMING_READINGS, type Tone, type ToneAdvice,
+  type ToneEdit, type ToneVerdict,
+} from "./types"
 
 export const MAX_EDITS = 3
 export const MAX_EMOJI_NOTES = 3
@@ -52,6 +55,16 @@ export const ADVICE_SCHEMA = {
     },
   },
   required: ["label", "explanation", "suggestion", "edits", "emoji_notes"],
+} as const
+
+export const INCOMING_SCHEMA = {
+  type: "object",
+  properties: {
+    reading:     { type: "string", enum: INCOMING_READINGS },
+    confidence:  { type: "number", minimum: 0, maximum: 1 },
+    explanation: { type: "string" },
+  },
+  required: ["reading", "confidence", "explanation"],
 } as const
 
 const TONES: Tone[] = ["green", "yellow", "red"]
@@ -145,4 +158,24 @@ export function validateEdits(raw: unknown, message: string): ToneEdit[] {
   }
 
   return kept.sort((a, b) => a.at - b.at).map(({ at: _, ...edit }) => edit)
+}
+
+// Words that make a reading a guess rather than a statement about the sender
+const HEDGE = /\b(probably|might|may|maybe|could|perhaps|likely|seems?|sounds?|possibly)\b/i
+
+/**
+ * Safe reading of a received message. Unknown readings become "unclear",
+ * and an explanation that states the sender's feelings as fact is hedged.
+ */
+export function validateIncoming(raw: unknown): IncomingAnalysis {
+  const r = asRecord(raw) ?? {}
+  const reading = INCOMING_READINGS.includes(r.reading as IncomingReading) ? (r.reading as IncomingReading) : "unclear"
+  const confidence = typeof r.confidence === "number" && Number.isFinite(r.confidence)
+    ? Math.max(0, Math.min(1, r.confidence))
+    : 0.5
+  let explanation = str(r.explanation, 240)
+  if (explanation && !HEDGE.test(explanation)) {
+    explanation = "Hard to say for sure, but " + explanation[0].toLowerCase() + explanation.slice(1)
+  }
+  return { reading, confidence, explanation }
 }

@@ -16,6 +16,7 @@ import { showContextForm } from "../ui/context-form"
 import { StatusChip } from "../ui/status-chip"
 import { SuggestionPopup } from "../ui/suggestion-popup"
 import { ComposeSession } from "./compose-session"
+import { IncomingWatcher } from "./incoming-watcher"
 
 const CONTEXT_TTL_MS   = 7 * 24 * 60 * 60 * 1000   // ask again after 7 days
 const SCAN_THROTTLE_MS = 500
@@ -27,6 +28,7 @@ export function startEngine(adapter: PlatformAdapter) {
   const popup    = new SuggestionPopup()
   const chip     = new StatusChip()
   const sessions = new Map<HTMLElement, ComposeSession>()
+  const incoming = new IncomingWatcher(adapter)
   const askedThisSession = new Set<string>()   // chats whose form we already offered
 
   const conversation: {
@@ -46,6 +48,8 @@ export function startEngine(adapter: PlatformAdapter) {
   /** Bring the page in line with the settings and the current chat. */
   function applyActiveState() {
     const now = active()
+    // Incoming readings follow the same switches, plus their own opt-in
+    incoming.setEnabled(now && settings.incomingAnalysis)
     if (!now) {
       sessions.forEach(s => s.reset())   // hides popup and highlights
       if (!settings.enabled)                                     chip.hide()

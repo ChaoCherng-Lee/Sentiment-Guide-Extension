@@ -25,6 +25,26 @@ const SEND_BUTTON = '[data-testid="send"], [data-icon="send"], button[aria-label
 // (not the time, ticks or a quoted message)
 const BUBBLES = "#main .message-in, #main .message-out"
 const BUBBLE_TEXT = ["[data-pre-plain-text] span.selectable-text", "span.selectable-text"]
+const INCOMING_BUBBLES = "#main .message-in"
+/** Incoming messages read when a chat opens (Plan 3.1: the backlog is never analysed) */
+const INCOMING_LATEST = 3
+const INCOMING_SCAN_MS = 300
+
+function bubbleText(bubble: HTMLElement): string {
+  const el = BUBBLE_TEXT.map(sel => bubble.querySelector<HTMLElement>(sel)).find(Boolean)
+  return el ? readText(el).trim() : ""
+}
+
+/**
+ * An incoming bubble with text, keyed by its time + sender line and text, so
+ * the same message keeps its key when WhatsApp redraws the bubble.
+ */
+function readIncomingBubble(bubble: HTMLElement): IncomingMessage | null {
+  const text = bubbleText(bubble)
+  if (!text) return null
+  const stamp = bubble.querySelector("[data-pre-plain-text]")?.getAttribute("data-pre-plain-text") ?? ""
+  return { key: hashString(stamp + "\n" + text), text, element: bubble }
+}
 
 const CHAT_SWITCH_POLL_MS = 1200
 
@@ -88,16 +108,39 @@ export const whatsapp: PlatformAdapter = {
     // Newest first, so only the last few bubbles are read
     for (let i = bubbles.length - 1; i >= 0 && out.length < limit; i--) {
       const bubble = bubbles[i]
-      const el = BUBBLE_TEXT.map(sel => bubble.querySelector<HTMLElement>(sel)).find(Boolean)
-      const text = el ? readText(el).trim() : ""
+      const text = bubbleText(bubble)
       // Photos, stickers and deleted messages have no text — skip them
       if (text) out.push({ from: bubble.classList.contains("message-out") ? "me" : "them", text })
     }
     return out.reverse()
   },
 
-  observeIncoming(_cb: (msg: IncomingMessage) => void) {
-    return () => {}
+  observeIncoming(cb) {
+    // Only the last few incoming bubbles are ever reported: on opening a chat
+    // that's its latest messages (not the backlog), after that it's new ones
+    // as they arrive, and older messages loaded by scrolling up never are.
+    const seen = new WeakSet<HTMLElement>()
+    const scan = () => {
+      const incoming = [...document.querySelectorAll<HTMLElement>(INCOMING_BUBBLES)]
+      // New = after the newest bubble already seen, and among the last few
+      let newestSeen = -1
+      incoming.forEach((b, i) => { if (seen.has(b)) newestSeen = i })
+      const from = Math.max(newestSeen + 1, incoming.length - INCOMING_LATEST)
+      incoming.forEach(b => seen.add(b))
+      for (const bubble of incoming.slice(from)) {
+        const msg = readIncomingBubble(bubble)
+        if (msg) cb(msg)
+      }
+    }
+    let queued = false
+    const observer = new MutationObserver(() => {
+      if (queued) return
+      queued = true
+      setTimeout(() => { queued = false; scan() }, INCOMING_SCAN_MS)
+    })
+    observer.observe(document.body, { childList: true, subtree: true })
+    scan()
+    return () => observer.disconnect()
   },
 
   replaceText(box, range, text) {

@@ -43,6 +43,19 @@ export interface ToneEdit {
   reason: string
 }
 
+/** How a received message probably reads (incoming analysis, opt-in). */
+export type IncomingReading = "friendly" | "teasing" | "neutral" | "sarcastic" | "upset" | "angry" | "unclear"
+
+export const INCOMING_READINGS: IncomingReading[] = ["friendly", "teasing", "neutral", "sarcastic", "upset", "angry", "unclear"]
+
+/** Explains a received message — never judges it. Never stored or logged. */
+export interface IncomingAnalysis {
+  reading: IncomingReading
+  confidence: number
+  /** 1–2 hedged sentences ("probably", "might") */
+  explanation: string
+}
+
 export const GREEN_VERDICT: ToneVerdict = {
   tone: "green",
   confidence: 1,

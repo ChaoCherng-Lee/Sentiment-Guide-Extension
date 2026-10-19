@@ -6,7 +6,8 @@
 
 import { browser, defineBackground } from "#imports"
 import { listModels, MODEL_IS_LOCAL, OLLAMA_HOSTS, OllamaError, isLoaded, pickModel, warmUp } from "../src/analysis/ollama"
-import { CancelledError, RequestQueue } from "../src/analysis/queue"
+import { readIncoming } from "../src/analysis/incoming"
+import { CancelledError, type Priority, RequestQueue } from "../src/analysis/queue"
 import { adviseTone, judgeTone } from "../src/analysis/tone"
 import { logAcceptance, logContext, logEvent, getChildId } from "../src/backend/supabase"
 import type { AIStatus, CheckFailure, Message, MessageOf, Responses } from "../src/messaging"
@@ -44,6 +45,9 @@ export default defineBackground(() => {
         return true
       case "GET_ADVICE":
         getAdvice(msg).then(sendResponse)
+        return true
+      case "READ_INCOMING":
+        explainIncoming(msg).then(sendResponse)
         return true
       case "AI_STATUS":
         getStatus().then(sendResponse)
@@ -132,11 +136,13 @@ export default defineBackground(() => {
   /**
    * Run one model call through the queue. Outgoing work from a compose box
    * shares one key, so a newer check from that box replaces an older one.
+   * Incoming readings are low priority: outgoing checks always go first.
    */
   async function runModelCall<T>(
-    sessionId: string,
+    key: string,
     call: (model: string, signal: AbortSignal, timeoutMs: number) => Promise<T>,
     timeoutMs = CHECK_TIMEOUT_MS,
+    priority: Priority = "high",
   ): Promise<{ ok: true; value: T } | { ok: false; reason: CheckFailure }> {
     // Off or paused: never send anything to the model
     if (!isActive(await getSettings())) return { ok: false, reason: "paused" }
@@ -145,7 +151,7 @@ export default defineBackground(() => {
         const model = await resolveModel()
         const cold  = !(await isLoaded(model))
         return call(model, signal, cold ? COLD_CHECK_TIMEOUT_MS : timeoutMs)
-      }, { priority: "high", key: "outgoing:" + sessionId })
+      }, { priority, key })
       return { ok: true, value }
     } catch (err) {
       const reason = failureReason(err)
@@ -166,14 +172,14 @@ export default defineBackground(() => {
 
   async function checkTone(msg: MessageOf<"CHECK_TONE">): Promise<Responses["CHECK_TONE"]> {
     const recent = await allowedRecent(msg.recent)
-    const res = await runModelCall(msg.sessionId, (model, signal, timeoutMs) =>
+    const res = await runModelCall("outgoing:" + msg.sessionId, (model, signal, timeoutMs) =>
       judgeTone(msg.text, msg.context, { model, signal, timeoutMs }, recent))
     return res.ok ? { ok: true, verdict: res.value } : res
   }
 
   async function getAdvice(msg: MessageOf<"GET_ADVICE">): Promise<Responses["GET_ADVICE"]> {
     const recent = await allowedRecent(msg.recent)
-    const res = await runModelCall(msg.sessionId, (model, signal, timeoutMs) =>
+    const res = await runModelCall("outgoing:" + msg.sessionId, (model, signal, timeoutMs) =>
       adviseTone(msg.text, msg.verdict, msg.context, msg.style, { model, signal, timeoutMs }, recent), ADVICE_TIMEOUT_MS)
     if (!res.ok) return res
 
@@ -191,6 +197,14 @@ export default defineBackground(() => {
       })
     }
     return { ok: true, advice: res.value }
+  }
+
+  /** Opt-in reading of a received message. Never logged or uploaded. */
+  async function explainIncoming(msg: MessageOf<"READ_INCOMING">): Promise<Responses["READ_INCOMING"]> {
+    if (!(await getSettings()).incomingAnalysis) return { ok: false, reason: "paused" }
+    const res = await runModelCall("incoming:" + msg.key, (model, signal, timeoutMs) =>
+      readIncoming(msg.text, { model, signal, timeoutMs }), CHECK_TIMEOUT_MS, "low")
+    return res.ok ? { ok: true, analysis: res.value } : res
   }
 })
 

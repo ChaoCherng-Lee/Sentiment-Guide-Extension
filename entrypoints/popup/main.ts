@@ -67,10 +67,23 @@ $<HTMLInputElement>("chatContext").addEventListener("change", e => updateSetting
   chatContextOffered: true,
 }))
 
+// ── Incoming messages ───────────────────────────────────────────────────────
+
+function renderIncoming(s: Settings) {
+  $<HTMLInputElement>("incomingAnalysis").checked = s.incomingAnalysis
+  $("incomingSub").textContent = s.incomingAnalysis
+    ? "On — a dot shows how a new message probably reads, when it isn't obvious"
+    : "Off — received messages aren't read"
+}
+
+$<HTMLInputElement>("incomingAnalysis").addEventListener("change", e =>
+  updateSettings({ incomingAnalysis: (e.target as HTMLInputElement).checked }))
+
 function render(s: Settings) {
   renderPower(s)
   renderStyle(s)
   renderChatContext(s)
+  renderIncoming(s)
 }
 
 getSettings().then(render)

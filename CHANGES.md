@@ -28,8 +28,7 @@ Tracks the work in `Plan.md` against the original extension (commit
 
 Not there, although the original README said it was: **incoming-message
 analysis.** The original code ignored incoming messages ("outgoing messages
-only — no incoming message analysis"). The README now marks it as planned for
-Phase 3.
+only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 
 ## New
 
@@ -60,7 +59,19 @@ Phase 3.
 | 2.3 | **Chat context (opt-in, off by default).** After the first flag, the popup offers once to let checks read the last 6 messages in the chat, so a joke reads differently from an argument. Turning it on re-checks the message straight away. The toolbar popup has a **Chat context** switch, and the suggestion popup says when the chat was used. Messages are cut to 200 characters, with the contact's name replaced by "Them" and emails and phone numbers removed, before they leave the page. They only go to the local model and are never stored or logged |
 | tune | **Less nagging about jokes.** Messages tagged /j, /lh or /s are treated as jokes unless they're cruel even as a joke; /srs means it's meant. In chats marked "we joke and tease", teasing that comes with laughter (lol, haha, 😂, 💀) is let through. Harsh-but-mild messages are now yellow instead of red, so red means real cruelty |
 
+### Phase 3: Incoming messages
+
+| Step | New for users |
+|---|---|
+| 3.1 | **Help reading messages you receive (opt-in, off by default).** Switch on **Messages you receive** in the toolbar popup or during onboarding. A dot appears on a received message when it probably isn't plain friendly or neutral: teasing, sarcastic, upset, angry or hard to tell. Hover or focus the dot for a short explanation that always hedges ("probably", "might"), plus **Was this helpful?** 👍/👎, counted on this computer only with no message text. When a chat opens only its last 3 received messages are read, then new ones as they arrive; older messages are never analysed |
+
 ## Changed behaviour worth knowing
+
+- **3.1:** incoming readings never hold up your own checks. They wait behind
+  outgoing checks, and an outgoing check interrupts a reading that is already
+  running (it runs again afterwards). Measured end to end on the test laptop:
+  a flag took 7.1 s with nothing else going on and 7.0 s with three incoming
+  readings queued. Readings are kept in memory for the open tab only.
 
 - **2.3:** 20 new eval cases: 10 messages, each after a joking thread and
   after an arguing one. Without the chat, 1 of 10 pairs came out
@@ -91,6 +102,11 @@ Phase 3.
   30 s when the laptop was busy.
 
 ## Known problems
+
+- **Incoming badges are untested on the real WhatsApp page.** They are added
+  inside the message bubble; if WhatsApp redraws an older bubble the badge can
+  disappear until the chat is reopened. There is no eval set for incoming
+  readings yet, so their quality is unmeasured.
 
 - **Chat context helps less than hoped.** gemma3:4b still flags friendly
   teasing in a joking thread ("you're so dumb 😂" after a funny story) and
