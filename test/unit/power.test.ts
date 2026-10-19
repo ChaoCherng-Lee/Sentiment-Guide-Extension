@@ -60,6 +60,11 @@ describe("resolveStyle", () => {
   it("prefers the style picked for the chat over everything else", () => {
     expect(resolveStyle(DEFAULT_SETTINGS, { context: formalCtx, style: "casual" })).toBe("casual")
   })
+
+  it("uses the site's default (Gmail: formal) before the user's default", () => {
+    expect(resolveStyle({ ...DEFAULT_SETTINGS, suggestionStyle: "direct" }, {}, "formal")).toBe("formal")
+    expect(resolveStyle(DEFAULT_SETTINGS, { style: "casual" }, "formal")).toBe("casual")
+  })
 })
 
 describe("per-chat switch", () => {

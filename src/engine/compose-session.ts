@@ -17,6 +17,8 @@ import type { SuggestionPopup } from "../ui/suggestion-popup"
 
 const PUNCT_DEBOUNCE_MS = 80
 const PAUSE_DEBOUNCE_MS = 1200
+/** How long Send waits for the whole-email check before letting it go anyway */
+const SEND_CHECK_TIMEOUT_MS = 20_000
 export const MIN_TEXT_LEN = 3
 
 /**
@@ -62,6 +64,8 @@ interface Flag {
   applied: Set<number>
   /** Chat messages the verdict was given with — the advice uses the same */
   recent: ChatMessage[]
+  /** Flagged when Send was pressed, and the send is being held */
+  heldSend?: boolean
 }
 
 export class ComposeSession {
@@ -76,6 +80,7 @@ export class ComposeSession {
   private flag: Flag | null = null          // the flagged message on show
   private eventId: string | null = null    // Supabase event for the popup shown
   private textAfterEdit: string | null = null  // box text right after the last applied edit
+  private checkingSend = false             // Send pressed; the whole text is being checked
 
   constructor(readonly box: HTMLElement, private readonly deps: SessionDeps) {
     this.highlighter = new Highlighter(box)
@@ -94,10 +99,19 @@ export class ComposeSession {
       () => box.removeEventListener("keydown", onKeydown),
       deps.adapter.onSend(box, () => this.reset()),
     )
+    if (deps.adapter.guardSend) this.cleanups.push(deps.adapter.guardSend(box, () => this.checkBeforeSend()))
+    // Text typed before this box was picked up (or a saved draft) is checked too
+    if (this.text) this.onInput()
   }
 
+  /** Everything the user wrote in the box. */
   private get text() {
     return this.deps.adapter.getText(this.box)
+  }
+
+  /** What a pause checks: the whole message, or for email the paragraph being edited. */
+  private get checkText() {
+    return this.deps.adapter.getEditingText?.(this.box) ?? this.text
   }
 
   private get popupOpen() {
@@ -109,11 +123,11 @@ export class ComposeSession {
   private onInput() {
     clearTimeout(this.timer)
     if (!this.deps.isActive()) return
-    const text = this.text
     this.highlighter.refresh()
+    if (!this.text) { this.clearUI(); return }
 
-    if (!text) { this.clearUI(); return }
-    if (!worthChecking(text)) return
+    const text = this.checkText
+    if (!text || !worthChecking(text)) return
     if (this.ignored.has(text)) return
 
     const delay = /[.!?]$/.test(text) ? PUNCT_DEBOUNCE_MS : PAUSE_DEBOUNCE_MS
@@ -125,6 +139,8 @@ export class ComposeSession {
   private async analyse(text: string) {
     // A verdict is on its way — when it lands it re-checks the latest text
     if (this.inFlight) return
+    // Send is checking the whole text; a pause check would replace that request
+    if (this.checkingSend) return
     if (text === this.lastText || this.ignored.has(text)) return
 
     this.inFlight = true
@@ -146,7 +162,7 @@ export class ComposeSession {
 
     // Drop stale results: the box changed while the model was thinking.
     // Re-check whatever is there now instead.
-    const current = this.text
+    const current = this.checkText
     if (current !== text) {
       if (worthChecking(current)) this.analyse(current)
       return
@@ -200,9 +216,45 @@ export class ComposeSession {
     if (this.popupOpen) this.deps.popup.setAdvice(flag.advice)
   }
 
+  /**
+   * Send was pressed (email): check the whole text first. Resolves true to
+   * let it go. A failed or slow check never stops anyone sending.
+   */
+  private async checkBeforeSend(): Promise<boolean> {
+    if (!this.deps.isActive()) return true
+    const text = this.text
+    if (!worthChecking(text) || this.ignored.has(text)) return true
+
+    const conv   = this.deps.conversation()
+    const recent = this.deps.chatContext.recent()
+    clearTimeout(this.timer)
+    this.checkingSend = true
+    const res = await Promise.race([
+      sendMessage({ type: "CHECK_TONE", text, context: conv.context, recent, sessionId: this.id }),
+      new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), SEND_CHECK_TIMEOUT_MS)),
+    ]).finally(() => { this.checkingSend = false })
+    if (!res?.ok || res.verdict.tone === "green" || !this.deps.isActive() || this.text !== text) return true
+
+    this.lastText = text
+    this.flag     = { text, verdict: res.verdict, style: this.deps.style(), advice: null, applied: new Set(), recent, heldSend: true }
+    this.eventId  = crypto.randomUUID()
+    this.highlighter.show(res.verdict.flagged_phrase, res.verdict.tone)
+    this.showPopup()
+    this.fetchAdvice(this.flag, conv)
+    return false
+  }
+
+  /** "Send anyway" on a held send. */
+  private sendAnyway() {
+    this.reportAcceptance(false)
+    this.ignored.add(this.text)
+    this.clearUI()
+    this.deps.adapter.sendNow?.(this.box)
+  }
+
   private showPopup() {
     if (!this.flag) return
-    const { verdict, advice, style, recent } = this.flag
+    const { verdict, advice, style, recent, heldSend } = this.flag
     const range  = getPhraseRange(this.box, verdict.flagged_phrase)
     const anchor = range?.getClientRects()[0] ?? this.box.getBoundingClientRect()
     this.deps.popup.show(this, verdict, advice, style, anchor, {
@@ -213,6 +265,7 @@ export class ComposeSession {
       onDisableChat: () => this.deps.onDisableChat(),
       onStyleChange: (s) => this.changeStyle(s),
       onChatContextChoice: (on) => this.chooseChatContext(on),
+      onSendAnyway: heldSend ? () => this.sendAnyway() : undefined,
     }, { used: recent.length > 0, offer: this.deps.chatContext.takeOffer() })
   }
 
@@ -304,11 +357,18 @@ export class ComposeSession {
   }
 
   async accept() {
-    const suggestion = this.flag?.advice?.suggestion
-    if (!suggestion) return
+    const flag       = this.flag
+    const suggestion = flag?.advice?.suggestion
+    if (!flag || !suggestion) return
     const popup = this.deps.popup
 
-    const replaced = await this.deps.adapter.replaceText(this.box, "all", suggestion)
+    // Email: replace just the paragraph (or text) that was checked, not quotes or other paragraphs
+    let target: Range | "all" | null = "all"
+    if (this.deps.adapter.getEditingText) {
+      const at = findPhrase(this.box, flag.text)
+      target = at && rangeFromOffsets(this.box, at.start, at.end)
+    }
+    const replaced = target !== null && await this.deps.adapter.replaceText(this.box, target, suggestion)
     if (replaced) {
       this.reportAcceptance(true)
       popup.setAcceptLabel("✓ Replaced!")

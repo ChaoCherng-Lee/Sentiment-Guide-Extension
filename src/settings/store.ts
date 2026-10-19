@@ -140,12 +140,13 @@ export interface ChatData {
 
 /**
  * Style for a chat: the one picked for it, else Formal if the context form
- * says the chat is formal, else the user's default.
+ * says the chat is formal, else the site's default (Gmail: formal), else
+ * the user's default.
  */
-export function resolveStyle(settings: Settings, chat: ChatData): SuggestionStyle {
+export function resolveStyle(settings: Settings, chat: ChatData, siteDefault?: SuggestionStyle): SuggestionStyle {
   if (chat.style) return chat.style
   if (chat.context?.q2 === "formal") return "formal"
-  return settings.suggestionStyle
+  return siteDefault ?? settings.suggestionStyle
 }
 
 const chatKey = (hash: string) => "chat_" + hash

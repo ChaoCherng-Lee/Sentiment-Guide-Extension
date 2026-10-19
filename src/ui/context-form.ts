@@ -7,10 +7,11 @@
 import { QUESTIONS, type Question } from "../analysis/context-questions"
 import type { ChatContext, Platform } from "../analysis/types"
 
+// Outlook isn't supported yet, so it isn't offered
 const PLATFORM_LABELS: Partial<Record<Platform, string>> = {
   whatsapp: "WhatsApp",
+  instagram: "Instagram",
   gmail: "Gmail",
-  outlook: "Outlook",
 }
 const PLATFORM_ORDER = Object.keys(PLATFORM_LABELS) as Platform[]
 

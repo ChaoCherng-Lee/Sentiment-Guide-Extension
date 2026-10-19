@@ -169,7 +169,7 @@ function recentBlock(recent: ChatMessage[]): string | null {
 export function buildVerdictMessages(text: string, context: ChatContext | null, recent: ChatMessage[] = []): ChatTurn[] {
   const parts: string[] = []
   if (context?.q1) parts.push(contextBlock(context))
-  const notes = messageNotes(text, context?.q1 ? context : null)
+  const notes = messageNotes(text, context)
   if (notes.length) parts.push(`Notes for this message:\n${notes.map(n => `- ${n}`).join("\n")}`)
   const emoji = emojiBlock(text)
   if (emoji) parts.push(emoji)

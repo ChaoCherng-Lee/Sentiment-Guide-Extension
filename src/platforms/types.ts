@@ -1,4 +1,4 @@
-import type { ChatMessage, Platform } from "../analysis/types"
+import type { ChatMessage, Platform, SuggestionStyle } from "../analysis/types"
 
 export type { ChatMessage }
 
@@ -34,4 +34,20 @@ export interface PlatformAdapter {
   /** Fires when the user sends the message in `box` (Enter or the send button). */
   onSend(box: HTMLElement, cb: () => void): () => void
   onConversationChange(cb: () => void): () => void
+
+  // ── Optional, for long-form sites like email ──────────────────────────────
+
+  /** The text checked after a pause, if not the whole message (Gmail: the paragraph being edited). */
+  getEditingText?(box: HTMLElement): string
+  /** Rewrite style when none was picked for the conversation (Gmail: formal). */
+  defaultStyle?: SuggestionStyle
+  /** Offer the context form when a conversation opens. Default true. */
+  askContextOnOpen?: boolean
+  /**
+   * Hold sending until `check` resolves: true lets the message go, false
+   * keeps it (Gmail checks the whole email when Send is pressed).
+   */
+  guardSend?(box: HTMLElement, check: () => Promise<boolean>): () => void
+  /** Send now, past the guard ("Send anyway"). */
+  sendNow?(box: HTMLElement): void
 }

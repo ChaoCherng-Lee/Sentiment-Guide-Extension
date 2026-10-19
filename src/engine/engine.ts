@@ -38,6 +38,12 @@ export function startEngine(adapter: PlatformAdapter) {
     style: SuggestionStyle | undefined
   } = { id: null, context: null, style: undefined }
   let settings: Settings = DEFAULT_SETTINGS
+
+  // Before the context form is filled in, the model still learns which site
+  // this is (e.g. email is judged as semi-formal). WhatsApp needs no note.
+  const siteOnlyContext: ChatContext | null = adapter.id === "whatsapp"
+    ? null
+    : { platform: adapter.id, q1: "", q2: "", q3: "", q4: "", q5: "", savedAt: 0 }
   let wasActive = false
 
   /** Checking runs only when on, not paused, and not turned off for this chat. */
@@ -120,10 +126,10 @@ export function startEngine(adapter: PlatformAdapter) {
         adapter,
         popup,
         isActive: active,
-        conversation: () => conversation,
+        conversation: () => ({ id: conversation.id, context: conversation.context ?? siteOnlyContext }),
         onEditContext: openContextForm,
         onDisableChat: turnChatOff,
-        style: () => resolveStyle(settings, { context: conversation.context ?? undefined, style: conversation.style }),
+        style: () => resolveStyle(settings, { context: conversation.context ?? undefined, style: conversation.style }, adapter.defaultStyle),
         onStyleChange: (style) => {
           conversation.style = style
           if (conversation.id) updateChatData(conversation.id, { style })
@@ -188,8 +194,8 @@ export function startEngine(adapter: PlatformAdapter) {
       conversation.context = context
       return
     }
-    // Don't ask about chats the user isn't checking
-    if (askedThisSession.has(id) || !active()) return
+    // Don't ask about chats the user isn't checking, or where it would nag (email)
+    if (askedThisSession.has(id) || !active() || adapter.askContextOnOpen === false) return
     askedThisSession.add(id)
     // Let the chat UI settle before sliding the form up
     setTimeout(() => { if (conversation.id === id && active()) openContextForm() }, FORM_SETTLE_MS)

@@ -5,12 +5,15 @@
 // Readings are cached per message for this page session only — never stored.
 // =============================================================================
 
+import { truncate } from "../analysis/chat-context"
 import { worthABadge } from "../analysis/incoming"
 import type { IncomingAnalysis } from "../analysis/types"
 import { sendMessage } from "../messaging"
 import type { IncomingMessage, PlatformAdapter } from "../platforms/types"
 import { recordIncomingFeedback } from "../settings/store"
 import { IncomingBadge } from "../ui/incoming-badge"
+
+const INCOMING_MAX_CHARS = 1000
 
 export class IncomingWatcher {
   private stopObserving: (() => void) | null = null
@@ -40,7 +43,8 @@ export class IncomingWatcher {
     if (cached) { this.render(msg, cached); return }
 
     this.cache.set(msg.key, "pending")
-    const res = await sendMessage({ type: "READ_INCOMING", text: msg.text, key: msg.key })
+    // Emails can be long; the start is enough to read the tone
+    const res = await sendMessage({ type: "READ_INCOMING", text: truncate(msg.text, INCOMING_MAX_CHARS), key: msg.key })
     if (!res?.ok) {
       // Not read (off, paused, model offline) — try again next time it's seen
       this.cache.delete(msg.key)

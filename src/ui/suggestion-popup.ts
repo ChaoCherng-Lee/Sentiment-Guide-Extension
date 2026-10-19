@@ -28,6 +28,8 @@ export interface PopupHandlers {
   onStyleChange(style: SuggestionStyle): void
   /** Answer to the one-time "use the chat as context?" offer. */
   onChatContextChoice(on: boolean): void
+  /** Only while Send is being held (email): send it as it is. */
+  onSendAnyway?(): void
 }
 
 /** Chat context for this check: whether it was used, and whether to offer it. */
@@ -230,6 +232,7 @@ const TEMPLATE = `
     <div class="actions">
       <button class="btn-accept" id="accept">${ACCEPT_LABEL}</button>
       <button class="btn-dismiss" id="dismiss">Dismiss</button>
+      <button class="btn-dismiss" id="send-anyway">Send anyway</button>
       <button class="edit-context-btn" id="edit-context">Edit context</button>
     </div>
     <div class="offer" id="offer" role="group" aria-label="Use the chat as context">
@@ -270,6 +273,7 @@ export class SuggestionPopup {
     on("accept",       () => this.handlers?.onAccept())
     on("edit-context", () => this.handlers?.onEditContext())
     on("disable-chat", () => this.handlers?.onDisableChat())
+    on("send-anyway",  () => this.handlers?.onSendAnyway?.())
     on("offer-yes",    () => this.answerOffer(true))
     on("offer-no",     () => this.answerOffer(false))
     this.$("edits").addEventListener("click", (e) => {
@@ -330,6 +334,7 @@ export class SuggestionPopup {
       conf.style.display = "none"
     }
 
+    this.$("send-anyway").style.display  = handlers.onSendAnyway ? "inline-block" : "none"
     this.$("context-note").style.display = chat.used ? "block" : "none"
     this.$("offer").style.display        = chat.offer ? "block" : "none"
     this.$("offer-ask").hidden  = false

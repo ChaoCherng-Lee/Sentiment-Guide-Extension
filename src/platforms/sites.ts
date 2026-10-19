@@ -22,6 +22,13 @@ export const OPTIONAL_SITES: OptionalSite[] = [
     origins: ["https://www.instagram.com/*"],
     script: "content-scripts/instagram.js",
   },
+  {
+    id: "gmail",
+    name: "Gmail",
+    description: "Checks emails you write in Gmail: the paragraph you're writing as you go, and the whole email when you press Send.",
+    origins: ["https://mail.google.com/*"],
+    script: "content-scripts/gmail.js",
+  },
 ]
 
 export const OPTIONAL_ORIGINS = OPTIONAL_SITES.flatMap(s => s.origins)
