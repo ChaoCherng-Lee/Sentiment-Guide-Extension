@@ -8,6 +8,7 @@
 
 import { answerLabel } from "./context-questions"
 import { emojiNotesFor } from "./emoji"
+import { findToneTags } from "./tone-tags"
 import type { ChatContext, SuggestionStyle, ToneVerdict } from "./types"
 
 export interface ChatTurn {
@@ -15,15 +16,34 @@ export interface ChatTurn {
   content: string
 }
 
+// Kept identical for every message (everything message-specific goes in the
+// user turn), so Ollama can reuse its cache for this part of the prompt.
 const VERDICT_INSTRUCTIONS = `You are a tone checker helping a young person communicate more kindly.
 Judge the message you are given and reply with JSON only, with these fields:
-- tone: "green" (fine), "yellow" (might come across badly) or "red" (unkind or hurtful)
+- tone: "green", "yellow" or "red" (see below)
 - confidence: 0.0 to 1.0 (1.0 = very sure, 0.7 = somewhat sure, below 0.7 = genuinely borderline)
 - flagged_phrase: the exact verbatim substring of the message that caused concern, or "" if green
 - tone_tags_detected: true if the message contains /j, /s, /srs, /lh, /nm, /neg or similar tone tags
 
+What the tones mean:
+- green: fine to send. Friendly, neutral, venting about a situation, or playful teasing that is clearly a joke.
+- yellow: could hurt or annoy — rude, dismissive, cold, sarcastic or a mild insult ("you're so lazy", "fine, do it yourself then").
+- red: cruel — threats, slurs, telling someone to hurt themselves, or attacking who someone is ("no one wants you here").
+Most harsh messages are yellow. Name-calling ("moron", "you're useless") is yellow, not red. Use red only for cruelty.
+
+Examples:
+- "can you bring my charger tomorrow" → green
+- "ugh this bus is late AGAIN, I'm going to scream" → green (venting about a situation)
+- "lol you're such a nerd 😂" to a close friend → green (banter)
+- "I'm gonna fight you /j" → green (marked as a joke)
+- "you're so lazy" → yellow
+- "oh great, thanks a lot 🙃" → yellow (sarcastic)
+- "no one wants you here" → red
+- "go jump off a bridge /j" → red (cruel even as a joke)
+
 Rules:
 - Default to GREEN. Only flag yellow or red if there is a clear reason.
+- Follow the notes about the chat and the message that come with it.
 - flagged_phrase must be copied verbatim from the message — never paraphrase.
 - Emoji are part of the tone, but most emoji are friendly. Laughing emoji (💀 ☠️ 😭 😂 🤣) mean the writer is laughing: GREEN unless they mock someone right after an insult.
 - An emoji only makes a message yellow or red when it adds coldness, sarcasm, mockery or an insult (e.g. "sure 🙂", "you're a 🤡"). flagged_phrase may be just an emoji.
@@ -62,13 +82,47 @@ function contextBlock(ctx: ChatContext): string {
 - Platform: ${ctx.platform}`
 }
 
-const CALIBRATION_RULES = `Calibration rules:
-- If child uses tone tags = yes AND the message ends in /j: return green unless the content is genuinely harmful beyond the joke framing.
-- If relationship = close friend AND style = very casual: only flag genuine unkindness, not banter or teasing.
-- If relationship = teacher/coach AND style = formal: flag anything inappropriate in a school context, including mild informality.
-- If mood = tense (we've been arguing): distinguish frustration expressed TO the person vs ABOUT a situation — venting about a situation should return green.
-- If mood = frustrated: give extra leniency.
-- If platform = gmail or outlook: apply stricter thresholds — treat all conversations as semi-formal unless relationship is family.`
+/**
+ * The calibration rules that apply to this chat and message, worded as plain
+ * instructions. Chosen in code: a small model follows "between these two,
+ * teasing is banter" far better than a list of if-this-then-that rules.
+ */
+function messageNotes(text: string, ctx: ChatContext | null): string[] {
+  const notes: string[] = []
+  const teasing = ctx?.q2 === "very_casual"   // "we joke and tease"
+  const friends = ctx?.q1 === "close_friend"
+
+  if (teasing) {
+    notes.push("These two joke and tease each other. Teasing insults like \"weirdo\", \"you're useless\" or \"I'm blocking you\" are banter between them, especially with laughter (lol, lmao, haha, 😂, 💀) or affection: return green. If it could be read as a joke between friends, it is green; flag only genuine cruelty.")
+  } else if (friends) {
+    notes.push("These two are friends. Light teasing with laughter or affection is fine; flag real unkindness.")
+  }
+
+  const formal = ctx?.q1 === "teacher" || ctx?.q2 === "formal"
+  if (formal) {
+    notes.push("This is a formal chat (e.g. a teacher). Rudeness, complaints aimed at the person, and very casual wording (\"u\", \"lol\", no greeting when asking for something) are yellow.")
+  } else if (ctx?.platform === "gmail" || ctx?.platform === "outlook") {
+    notes.push("This is an email: judge it as semi-formal unless it's to family.")
+  }
+
+  if (ctx?.q5 === "tense") {
+    notes.push("The chat has been tense. Frustration about a situation is green; blaming or attacking the other person is yellow.")
+  } else if (ctx?.q5 === "frustrated") {
+    notes.push("The writer is frustrated right now: be a little more lenient.")
+  }
+
+  const tags = findToneTags(text)
+  if (tags.length) {
+    const list = tags.map(t => `${t.tag} = ${t.meaning}`).join(", ")
+    if (tags.some(t => t.notLiteral) && !tags.some(t => t.tag === "/srs")) {
+      notes.push(`The writer marked this message with tone tags (${list}), so the words aren't meant literally. Return green unless it is cruel even as a joke (e.g. telling someone to hurt themselves, mocking their looks or saying they have no friends).`)
+    } else {
+      notes.push(`The writer marked this message with tone tags (${list}): they mean it. Judge the words as written.`)
+    }
+  }
+
+  return notes
+}
 
 /** Typical readings of the emoji in this message — only those, to keep the prompt short. */
 function emojiBlock(text: string): string | null {
@@ -82,14 +136,16 @@ function emojiBlock(text: string): string | null {
 const fence = (text: string) => `"""\n${text}\n"""`
 
 export function buildVerdictMessages(text: string, context: ChatContext | null): ChatTurn[] {
-  const parts = [VERDICT_INSTRUCTIONS]
+  const parts: string[] = []
+  if (context?.q1) parts.push(contextBlock(context))
+  const notes = messageNotes(text, context?.q1 ? context : null)
+  if (notes.length) parts.push(`Notes for this message:\n${notes.map(n => `- ${n}`).join("\n")}`)
   const emoji = emojiBlock(text)
   if (emoji) parts.push(emoji)
-  if (context?.q1) parts.push(contextBlock(context), CALIBRATION_RULES)
-  const system = parts.join("\n\n")
+  parts.push(`Message to check:\n${fence(text)}`)
   return [
-    { role: "system", content: system },
-    { role: "user", content: `Message to check:\n${fence(text)}` },
+    { role: "system", content: VERDICT_INSTRUCTIONS },
+    { role: "user", content: parts.join("\n\n") },
   ]
 }
 

@@ -23,17 +23,40 @@ describe("buildVerdictMessages", () => {
     expect(system.content).not.toContain("suggestion")
   })
 
-  it("leaves the context block out when there is no context", () => {
-    const [system] = buildVerdictMessages("hi", null)
-    expect(system.content).not.toContain("User profile context")
+  it("leaves the context block and notes out when there is no context", () => {
+    const [, user] = buildVerdictMessages("hi", null)
+    expect(user.content).not.toContain("User profile context")
+    expect(user.content).not.toContain("Notes for this message")
   })
 
-  it("adds readable context labels and calibration rules", () => {
-    const [system] = buildVerdictMessages("hi", CTX)
-    expect(system.content).toContain("Relationship: Close friend")
-    expect(system.content).toContain("Communication style: Very casual — we joke and tease")
-    expect(system.content).toContain("Current conversation mood: We've been arguing or it's tense")
-    expect(system.content).toContain("Calibration rules")
+  it("uses the same system message for every message, so Ollama can cache it", () => {
+    const a = buildVerdictMessages("hi", null)[0].content
+    const b = buildVerdictMessages("you're trash lol /j 💀", CTX)[0].content
+    expect(a).toBe(b)
+  })
+
+  it("adds readable context labels next to the message", () => {
+    const [, user] = buildVerdictMessages("hi", CTX)
+    expect(user.content).toContain("Relationship: Close friend")
+    expect(user.content).toContain("Communication style: Very casual — we joke and tease")
+    expect(user.content).toContain("Current conversation mood: We've been arguing or it's tense")
+  })
+
+  it("adds only the notes that apply to this chat", () => {
+    const user = buildVerdictMessages("hi", CTX)[1].content
+    expect(user).toContain("joke and tease each other")
+    expect(user).toContain("The chat has been tense")
+    expect(user).not.toContain("formal chat")
+
+    const teacher = buildVerdictMessages("hi", { ...CTX, q1: "teacher", q2: "formal", q5: "normal" })[1].content
+    expect(teacher).toContain("formal chat")
+    expect(teacher).not.toContain("joke and tease")
+  })
+
+  it("explains tone tags found in the message, even without context", () => {
+    expect(buildVerdictMessages("I hate you /j", null)[1].content).toContain("/j = joking), so the words aren't meant literally")
+    expect(buildVerdictMessages("stop it /srs", null)[1].content).toContain("they mean it")
+    expect(buildVerdictMessages("I hate mondays", null)[1].content).not.toContain("tone tags")
   })
 
   it("keeps instruction-like user text out of the system message", () => {
@@ -87,15 +110,15 @@ describe("style never reaches the verdict", () => {
 
 describe("emoji in prompts", () => {
   it("adds readings only for the emoji in the message", () => {
-    const [system] = buildVerdictMessages("ok 🙂", null)
-    expect(system.content).toContain("How the emoji in this message are often read")
-    expect(system.content).toContain("- 🙂 (can sound negative)")
-    expect(system.content).not.toContain("- 💀 (")
+    const [, user] = buildVerdictMessages("ok 🙂", null)
+    expect(user.content).toContain("How the emoji in this message are often read")
+    expect(user.content).toContain("- 🙂 (can sound negative)")
+    expect(user.content).not.toContain("- 💀 (")
   })
 
   it("leaves the emoji block out when there are no known emoji", () => {
-    const [system] = buildVerdictMessages("see you at 5", null)
-    expect(system.content).not.toContain("How the emoji in this message are often read")
+    const [, user] = buildVerdictMessages("see you at 5", null)
+    expect(user.content).not.toContain("How the emoji in this message are often read")
   })
 
   it("passes the readings to the advice step too, and asks for emoji notes", () => {

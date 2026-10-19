@@ -14,7 +14,20 @@ export interface ModelCallOptions {
 
 export async function judgeTone(text: string, context: ChatContext | null, opts: ModelCallOptions): Promise<ToneVerdict> {
   const raw = await chatJSON({ ...opts, messages: buildVerdictMessages(text, context), format: VERDICT_SCHEMA })
-  return validateVerdict(raw, text)
+  return applyBanterRule(validateVerdict(raw, text), text, context)
+}
+
+// lol, lmao, lmfao, haha(ha), hehe, rofl, plus laughing emoji
+const LAUGHTER = /\b(lo+l|lmf?a+o+|(?:ha){2,}h?|(?:he){2,}|rofl)\b|💀|☠|😂|🤣|😭/i
+
+/**
+ * In a chat the user says is "very casual — we joke and tease", a tease that
+ * comes with laughter is banter: the model tends to rate it yellow anyway, so
+ * it is let through. Red is never softened.
+ */
+export function applyBanterRule(verdict: ToneVerdict, text: string, context: ChatContext | null): ToneVerdict {
+  if (verdict.tone !== "yellow" || context?.q2 !== "very_casual" || !LAUGHTER.test(text)) return verdict
+  return { ...verdict, tone: "green", flagged_phrase: "" }
 }
 
 export async function adviseTone(
