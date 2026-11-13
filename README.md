@@ -76,7 +76,7 @@ You can skip onboarding and adjust settings later via the popup.
 ## Usage
 
 1. Open [web.whatsapp.com](https://web.whatsapp.com) and start a chat. To use it on Instagram or Gmail too, open **Sites…** in the toolbar popup and switch the site on
-2. Type a message — if it contains harsh language, a popup appears above the compose box
+2. Type a message. The round badge in the corner of the message box shows what's happening: a spinner while checking, a green ✓ when it sounds fine, yellow or red ! when it might hurt. Red opens the suggestion card straight away; for yellow, rest the pointer on the underlined words or click the badge
 3. Read the explanation, then **Apply** a single phrase swap (only those words change), **Replace all (Tab)** with the full rewrite, or **Dismiss** to send as-is
 4. Pick how rewrites should sound — **Casual**, **Formal** or **Direct** — in the toolbar popup (your default) or with the style buttons in the suggestion popup (remembered for that chat). Chats you marked as formal in the context form start in Formal
 5. After your first flagged message, the popup offers **chat context**: with it on, checks read the last 6 messages in the chat so they know what you're replying to. The popup says *Checked with the last few messages in this chat* when it was used. Switch it on or off any time under **Chat context** in the toolbar popup
@@ -97,7 +97,7 @@ See [CHANGES.md](CHANGES.md) for what is new compared with the original extensio
 | `src/platforms/` | One adapter per site (WhatsApp, Instagram, Gmail); all page selectors live here. `sites.ts` lists the optional sites |
 | `entrypoints/options/` | Options page: switch optional sites on and off |
 | `src/engine/` | `ComposeSession` (one per compose box) and the engine that wires everything |
-| `src/ui/` | Suggestion popup, highlight, context form, status chip (Shadow DOM) |
+| `src/ui/` | Suggestion card, highlight, context form, status badge (Shadow DOM) |
 | `src/settings/store.ts` | Typed settings and per-chat data |
 | `eval/` | Labelled messages and the tone evaluation runner |
 | `dashboard/` | Parent dashboard: a separate React web app reading the shared counts (see `dashboard/README.md`) |

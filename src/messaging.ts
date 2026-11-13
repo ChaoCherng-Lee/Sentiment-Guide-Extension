@@ -43,6 +43,8 @@ export type Message =
   | { type: "AI_STATUS" }
   /** A supported site opened — load the model so the first check is fast. */
   | { type: "WARM_UP" }
+  /** Open an extension page from a content script (they can't open tabs themselves). */
+  | { type: "OPEN_PAGE"; page: "setup" | "settings" }
 
 /**
  * Why a check produced no result. "cancelled" means a newer check replaced
@@ -70,6 +72,7 @@ export interface Responses {
   UNLINK_AND_DELETE: boolean
   AI_STATUS: AIStatus
   WARM_UP: void
+  OPEN_PAGE: void
 }
 
 export type MessageOf<T extends Message["type"]> = Extract<Message, { type: T }>

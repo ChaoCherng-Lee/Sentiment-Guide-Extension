@@ -1,13 +1,12 @@
 import { mkdtempSync, rmSync } from "node:fs"
 import { tmpdir } from "node:os"
 import path from "node:path"
-import { HARSH, backgroundWorker, countModelCalls, expect, launch, openWhatsApp, test } from "./fixtures"
+import { HARSH, backgroundWorker, badge as boxBadge, countModelCalls, expect, launch, openWhatsApp, test } from "./fixtures"
 
 // Code passed to worker.evaluate runs inside the extension, where `chrome` exists
 declare const chrome: any
 
 const popup  = (page: import("@playwright/test").Page) => page.locator("#sg-popup-host .popup")
-const chip   = (page: import("@playwright/test").Page) => page.locator("#sg-status-host .chip")
 const badge  = (worker: import("@playwright/test").Worker) =>
   worker.evaluate(() => chrome.action.getBadgeText({}))
 
@@ -49,7 +48,8 @@ test("pausing sends no requests to the model and shows when it will resume", asy
   expect(await worker.evaluate(() => chrome.alarms.get("resume").then((a: unknown) => !!a))).toBe(true)
 
   await page.bringToFront()
-  await expect(chip(page)).toContainText("paused until")
+  await expect(boxBadge(page)).toHaveAttribute("data-state", "paused")
+  await expect(boxBadge(page)).toHaveAttribute("title", /Paused until/)
   await page.locator("footer [contenteditable]").pressSequentially(HARSH)
   await page.waitForTimeout(3_000)
   await expect(popup(page)).toBeHidden()
@@ -57,7 +57,7 @@ test("pausing sends no requests to the model and shows when it will resume", asy
 
   await toolbar.locator("#resume").click()
   await expect.poll(() => badge(worker)).toBe("")
-  await expect(chip(page)).toBeHidden()
+  await expect(boxBadge(page)).not.toHaveAttribute("data-state", "paused")
 })
 
 test("an elapsed pause is cleared by the resume alarm", async ({ worker, page }) => {
@@ -66,9 +66,9 @@ test("an elapsed pause is cleared by the resume alarm", async ({ worker, page })
     const { settings } = await chrome.storage.sync.get("settings")
     await chrome.storage.sync.set({ settings: { ...settings, enabled: true, pausedUntil: Date.now() + 1500 } })
   })
-  await expect(chip(page)).toContainText("paused until")
+  await expect(boxBadge(page)).toHaveAttribute("data-state", "paused")
   // Alarms fire no sooner than ~30 s in unpacked extensions; allow for that
-  await expect(chip(page)).toBeHidden({ timeout: 90_000 })
+  await expect(boxBadge(page)).not.toHaveAttribute("data-state", "paused", { timeout: 90_000 })
   await expect.poll(() => badge(worker)).toBe("")
 })
 
@@ -78,20 +78,23 @@ test("'Don't check this chat' turns checking off for that chat only", async ({ p
   await box.pressSequentially(HARSH)
   await expect(popup(page)).toBeVisible()
 
+  await popup(page).locator("#more").click()
   await popup(page).locator("#disable-chat").click()
   await expect(popup(page)).toBeHidden()
-  await expect(chip(page)).toContainText("Not checking this chat")
+  await expect(boxBadge(page)).toHaveAttribute("data-state", "chat-off")
+  await expect(boxBadge(page)).toHaveAttribute("title", "Not checking this chat")
 
   // Another chat is still checked (its context form appears first)
   await page.locator("#chat-sam").click()
   await page.locator("#sg-context-host #skip").click()
-  await expect(chip(page)).toBeHidden()
+  await expect(boxBadge(page)).not.toHaveAttribute("data-state", "chat-off")
 
-  // Back to the first chat: still off; "Turn on" switches it back
+  // Back to the first chat: still off; the badge's menu switches it back on
   await page.locator("#chat-alex").click()
-  await expect(chip(page)).toContainText("Not checking this chat")
-  await chip(page).locator(".action").click()
-  await expect(chip(page)).toBeHidden()
+  await expect(boxBadge(page)).toHaveAttribute("data-state", "chat-off")
+  await boxBadge(page).click()
+  await page.locator(".sg-badge-host .menu button[data-action='chat-on']").first().click()
+  await expect(boxBadge(page)).not.toHaveAttribute("data-state", "chat-off")
   await box.pressSequentially(" again")
   await expect(popup(page)).toBeVisible()
 })

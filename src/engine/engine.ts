@@ -1,7 +1,7 @@
 // =============================================================================
-// Engine — wires a platform adapter to compose sessions, the shared popup,
-// the status chip and the per-chat context form, and follows the on / off /
-// pause settings. Each content script just calls startEngine().
+// Engine — wires a platform adapter to compose sessions (each with its status
+// badge), the shared popup and the per-chat context form, and follows the
+// on / off / pause settings. Each content script just calls startEngine().
 // =============================================================================
 
 import { prepareRecent, RECENT_LIMIT } from "../analysis/chat-context"
@@ -9,11 +9,11 @@ import type { ChatContext, SuggestionStyle } from "../analysis/types"
 import { sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
 import {
-  DEFAULT_SETTINGS, getChatData, getSettings, isActive, isConversationDisabled, resolveStyle,
+  DEFAULT_SETTINGS, getChatData, getSettings, isActive, isConversationDisabled, pauseUntil, resolveStyle, resume,
   setConversationDisabled, type Settings, subscribeSettings, updateChatData, updateSettings,
 } from "../settings/store"
 import { showContextForm } from "../ui/context-form"
-import { StatusChip } from "../ui/status-chip"
+import type { PageState } from "../ui/status-badge"
 import { SuggestionPopup } from "../ui/suggestion-popup"
 import { ComposeSession } from "./compose-session"
 import { IncomingWatcher } from "./incoming-watcher"
@@ -21,12 +21,12 @@ import { IncomingWatcher } from "./incoming-watcher"
 const CONTEXT_TTL_MS   = 7 * 24 * 60 * 60 * 1000   // ask again after 7 days
 const SCAN_THROTTLE_MS = 500
 const FORM_SETTLE_MS   = 800
+const HOUR_MS          = 60 * 60 * 1000
 
 export function startEngine(adapter: PlatformAdapter) {
   console.log("Sentiment Guide: loaded on", location.hostname)
 
   const popup    = new SuggestionPopup()
-  const chip     = new StatusChip()
   const sessions = new Map<HTMLElement, ComposeSession>()
   const incoming = new IncomingWatcher(adapter)
   const askedThisSession = new Set<string>()   // chats whose form we already offered
@@ -49,6 +49,24 @@ export function startEngine(adapter: PlatformAdapter) {
   /** Checking runs only when on, not paused, and not turned off for this chat. */
   const active = () => isActive(settings) && !isConversationDisabled(settings, conversation.id)
 
+  // ── Badges ────────────────────────────────────────────────────────────────
+
+  /** AI status, pause and chat-off, shown on every box's badge. */
+  let page: PageState = { kind: "ok" }
+  function setPage(state: PageState) {
+    page = state
+    sessions.forEach(s => s.setPageState(state))
+  }
+
+  const badgeActions = {
+    openSetup:    () => { sendMessage({ type: "OPEN_PAGE", page: "setup" }) },
+    openSettings: () => { sendMessage({ type: "OPEN_PAGE", page: "settings" }) },
+    pauseHour:    () => { pauseUntil(Date.now() + HOUR_MS) },
+    resume:       () => { resume() },
+    setChatChecking: (on: boolean) => on ? turnChatOn() : turnChatOff(),
+    scope: "chat" as const,
+  }
+
   // ── On / off / pause ──────────────────────────────────────────────────────
 
   /** Bring the page in line with the settings and the current chat. */
@@ -56,13 +74,14 @@ export function startEngine(adapter: PlatformAdapter) {
     const now = active()
     // Incoming readings follow the same switches, plus their own opt-in
     incoming.setEnabled(now && settings.incomingAnalysis)
+    sessions.forEach(s => s.setHidden(!settings.enabled))
     if (!now) {
       sessions.forEach(s => s.reset())   // hides popup and highlights
-      if (!settings.enabled)                                     chip.hide()
-      else if (!isActive(settings))                              chip.set({ kind: "paused", until: settings.pausedUntil! })
-      else                                                       chip.set({ kind: "chat-off", onTurnOn: turnChatOn })
+      if (!settings.enabled)       setPage({ kind: "ok" })
+      else if (!isActive(settings)) setPage({ kind: "paused", until: settings.pausedUntil! })
+      else                          setPage({ kind: "chat-off" })
     } else if (!wasActive) {
-      chip.hide()
+      setPage({ kind: "ok" })
       prepareModel()
     }
     wasActive = now
@@ -122,7 +141,7 @@ export function startEngine(adapter: PlatformAdapter) {
     }
     for (const box of boxes) {
       if (sessions.has(box)) continue
-      sessions.set(box, new ComposeSession(box, {
+      const session = new ComposeSession(box, {
         adapter,
         popup,
         isActive: active,
@@ -136,14 +155,17 @@ export function startEngine(adapter: PlatformAdapter) {
         },
         onCheckDone: (outcome) => {
           if (!active()) return
-          if (outcome.ok) chip.hide()
-          else if (outcome.reason === "timeout") chip.set({ kind: "slow" })
-          else if (outcome.reason === "offline" || outcome.reason === "no-model") chip.set({ kind: outcome.reason })
+          if (outcome.ok) { if (page.kind !== "ok") setPage({ kind: "ok" }) }
+          else if (outcome.reason === "timeout") setPage({ kind: "slow" })
+          else if (outcome.reason === "offline" || outcome.reason === "no-model") setPage({ kind: outcome.reason })
         },
+        badge: badgeActions,
         chatContext,
-      }))
+      })
+      session.setPageState(page)
+      session.setHidden(!settings.enabled)
+      sessions.set(box, session)
     }
-    chip.setAnchor([...sessions.keys()][0] ?? null)
   }
 
   // The page mutates constantly, so rescan at most every SCAN_THROTTLE_MS
@@ -160,16 +182,16 @@ export function startEngine(adapter: PlatformAdapter) {
     const status = await sendMessage({ type: "AI_STATUS" })
     if (!status || !active()) return
     if (status.state === "offline" || status.state === "no-model") {
-      chip.set({ kind: status.state })
+      setPage({ kind: status.state })
       return
     }
     if (status.state === "idle") {
       // Load the model now so the first check isn't a minute-long wait
-      chip.set({ kind: "loading" })
+      setPage({ kind: "loading" })
       await sendMessage({ type: "WARM_UP" })
       const after = await sendMessage({ type: "AI_STATUS" })
-      if (chip.kind !== "loading") return   // something newer was reported meanwhile
-      chip.set(after?.state === "offline" || after?.state === "no-model" ? { kind: after.state } : { kind: "hidden" })
+      if (page.kind !== "loading") return   // something newer was reported meanwhile
+      setPage(after?.state === "offline" || after?.state === "no-model" ? { kind: after.state } : { kind: "ok" })
     }
   }
 

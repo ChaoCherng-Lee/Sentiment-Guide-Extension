@@ -15,6 +15,9 @@ const SITES: Record<string, string> = {
 
 export const HARSH = "you are so stupid, just shut up already"
 
+/** The status badge of the (first) compose box. */
+export const badge = (page: Page) => page.locator(".sg-badge-host .badge").first()
+
 /** Launch Chromium with the built extension. `userDataDir` "" = throwaway profile. */
 export async function launch(userDataDir = ""): Promise<BrowserContext> {
   const context = await chromium.launchPersistentContext(userDataDir, {
@@ -97,10 +100,13 @@ export async function fakeModel(worker: Worker) {
   await worker.evaluate(() => {
     const g = globalThis as unknown as { fetch: typeof fetch }
     const original = g.fetch
-    const FLAGS = ["stupid", "idiot", "useless", "annoying", "clown", "shut up"]
+    const FLAGS = ["stupid", "idiot", "useless", "annoying", "clown", "shut up", "lazy"]
+    /** Flagged yellow (might come across badly); the rest are red */
+    const YELLOW = ["lazy"]
     const SOFTER: Record<string, string> = {
       "stupid": "frustrating", "idiot": "wrong about this", "useless": "not helping right now",
       "annoying": "a lot right now", "clown": "being silly", "shut up": "give me a minute",
+      "lazy": "tired",
     }
     const REWRITES: Record<string, string> = {
       casual: "hey I'm really annoyed rn, can we talk later?",
@@ -117,9 +123,13 @@ export async function fakeModel(worker: Worker) {
     g.fetch = async (input, init) => {
       const url = String(input)
       if (!url.startsWith("http://127.0.0.1:11434")) return original(input, init)
+      // A test can pretend Ollama isn't running: setOllamaDown(worker, true)
+      if ((globalThis as unknown as { __ollamaDown?: boolean }).__ollamaDown) throw new TypeError("Failed to fetch")
       const path = new URL(url).pathname
-      if (path === "/api/tags") return json({ models: [{ name: "gemma3:4b" }] })
-      if (path === "/api/ps")   return json({ models: [{ name: "gemma3:4b" }] })
+      // A test can pretend the model isn't downloaded yet: setNoModel(worker, true)
+      const installed = (globalThis as unknown as { __noModel?: boolean }).__noModel ? [] : [{ name: "gemma3:4b" }]
+      if (path === "/api/tags") return json({ models: installed })
+      if (path === "/api/ps")   return json({ models: installed })
 
       const body = JSON.parse(String(init?.body ?? "{}")) as { messages: { role: string; content: string }[]; format?: { properties?: Record<string, unknown> } }
       if (!body.messages?.length) return json({})   // warm-up
@@ -137,8 +147,8 @@ export async function fakeModel(worker: Worker) {
       if ("tone" in props) {
         const at = found.length ? lower.indexOf(found[0]) : -1
         reply = found.length
-          ? { tone: "red", confidence: 0.9, flagged_phrase: text.slice(at, at + found[0].length), tone_tags_detected: false }
-          : { tone: "green", confidence: 0.9, flagged_phrase: "", tone_tags_detected: false }
+          ? { tone: YELLOW.includes(found[0]) ? "yellow" : "red", confidence: 0.9, flagged_phrase: text.slice(at, at + found[0].length) }
+          : { tone: "green", confidence: 0.9, flagged_phrase: "" }
       } else if ("label" in props) {
         const system = body.messages.find(m => m.role === "system")?.content ?? ""
         const style  = /Suggestion style: (\w+)/.exec(system)?.[1].toLowerCase() ?? "casual"
@@ -159,6 +169,16 @@ export async function fakeModel(worker: Worker) {
       return json({ message: { role: "assistant", content: JSON.stringify(reply) } })
     }
   })
+}
+
+/** With the stand-in model: pretend the model hasn't been downloaded. */
+export async function setNoModel(worker: Worker, missing: boolean) {
+  await worker.evaluate(m => { (globalThis as unknown as { __noModel?: boolean }).__noModel = m }, missing)
+}
+
+/** With the stand-in model: make every request to Ollama fail, as if it weren't running. */
+export async function setOllamaDown(worker: Worker, down: boolean) {
+  await worker.evaluate(d => { (globalThis as unknown as { __ollamaDown?: boolean }).__ollamaDown = d }, down)
 }
 
 export const test = base.extend<{ context: BrowserContext; worker: Worker; extensionId: string; realModel: boolean }>({

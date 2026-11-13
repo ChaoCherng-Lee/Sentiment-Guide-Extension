@@ -1,5 +1,5 @@
 import type { BrowserContext, Page } from "@playwright/test"
-import { expect, HARSH, openWhatsApp, recordModelRequests, test } from "./fixtures"
+import { badge, expect, HARSH, openWhatsApp, recordModelRequests, test } from "./fixtures"
 
 const SARCASTIC = "wow thanks a lot for ditching me again 🙄"
 const NEUTRAL   = "can you send me the homework from today"
@@ -64,16 +64,15 @@ test.describe("with the real model", () => {
 
   test("incoming readings don't hold up an outgoing check", async ({ page, context, worker, extensionId }) => {
     const sent  = await recordModelRequests(worker)
-    const popup = page.locator("#sg-popup-host .popup")
-    /** Time from the last keystroke to the flag. */
+    /** Time from the last keystroke to the flag (yellow or red) on the badge. */
     const timeToFlag = async (text: string, timeout = 30_000) => {
       await box(page).pressSequentially(text, { delay: 0 })
       const start = Date.now()
-      await expect(popup).toBeVisible({ timeout })
+      await expect(badge(page)).toHaveAttribute("data-state", "flagged", { timeout })
       const ms = Date.now() - start
-      await popup.locator("#dismiss").click()
       await box(page).press("Control+a")
       await box(page).press("Delete")
+      await expect(badge(page)).not.toHaveAttribute("data-state", "flagged")
       return ms
     }
 

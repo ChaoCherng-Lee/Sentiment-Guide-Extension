@@ -1,7 +1,9 @@
 // =============================================================================
 // ComposeSession — all tone-check state for one compose box.
 // Watches typing, runs analysis on sentence completion or after a pause, and
-// drives the shared suggestion popup and this box's highlight.
+// drives the shared suggestion popup, this box's highlight and its badge.
+// Red flags open the card straight away; yellow ones only underline the
+// phrase and colour the badge — hover the phrase or click the badge to open it.
 // Gmail can have several compose windows open, so there is one per box.
 // =============================================================================
 
@@ -13,12 +15,15 @@ import {
   caretAfterEdit, findPhrase, getCaretOffset, getPhraseRange, rangeFromOffsets, readText, setCaretOffset,
 } from "../ui/dom-range"
 import { Highlighter } from "../ui/highlight"
+import { type BadgeActions, type PageState, StatusBadge } from "../ui/status-badge"
 import type { SuggestionPopup } from "../ui/suggestion-popup"
 
 const PUNCT_DEBOUNCE_MS = 80
-const PAUSE_DEBOUNCE_MS = 1200
+const PAUSE_DEBOUNCE_MS = 700
 /** How long Send waits for the whole-email check before letting it go anyway */
 const SEND_CHECK_TIMEOUT_MS = 20_000
+/** How long the pointer rests on a flagged phrase before its card opens */
+const HOVER_OPEN_MS = 300
 export const MIN_TEXT_LEN = 3
 
 /**
@@ -44,6 +49,8 @@ export interface SessionDeps {
   onStyleChange(style: SuggestionStyle): void
   /** Every finished check reports here, so the engine can show AI status. */
   onCheckDone(outcome: { ok: true } | { ok: false; reason: CheckFailure }): void
+  /** Page-level actions for this box's badge (pause, settings, …). */
+  badge: Omit<BadgeActions, "openCard">
   /** Chat context (opt-in): recent messages as context for the model. */
   chatContext: {
     /** The last few messages, scrubbed; [] while chat context is off. */
@@ -71,6 +78,7 @@ interface Flag {
 export class ComposeSession {
   readonly id = crypto.randomUUID()
   private readonly highlighter: Highlighter
+  private readonly badge: StatusBadge
   private readonly cleanups: (() => void)[] = []
 
   private lastText = ""                    // last text that was analysed
@@ -81,9 +89,11 @@ export class ComposeSession {
   private eventId: string | null = null    // Supabase event for the popup shown
   private textAfterEdit: string | null = null  // box text right after the last applied edit
   private checkingSend = false             // Send pressed; the whole text is being checked
+  private hoverTimer: ReturnType<typeof setTimeout> | undefined
 
   constructor(readonly box: HTMLElement, private readonly deps: SessionDeps) {
     this.highlighter = new Highlighter(box)
+    this.badge       = new StatusBadge(box, { ...deps.badge, openCard: () => this.openCard() })
 
     const onInput = () => this.onInput()
     const onKeydown = (e: KeyboardEvent) => {
@@ -92,11 +102,22 @@ export class ComposeSession {
         this.accept()
       }
     }
+    // Resting the pointer on, or clicking, a flagged phrase opens its card
+    const onPointer = (e: MouseEvent) => {
+      clearTimeout(this.hoverTimer)
+      if (!this.flag || this.popupOpen || !this.highlighter.hitTest(e.clientX, e.clientY)) return
+      if (e.type === "click") this.openCard()
+      else this.hoverTimer = setTimeout(() => this.openCard(), HOVER_OPEN_MS)
+    }
     box.addEventListener("input", onInput)
     box.addEventListener("keydown", onKeydown)
+    document.addEventListener("mousemove", onPointer, { passive: true })
+    box.addEventListener("click", onPointer)
     this.cleanups.push(
       () => box.removeEventListener("input", onInput),
       () => box.removeEventListener("keydown", onKeydown),
+      () => document.removeEventListener("mousemove", onPointer),
+      () => box.removeEventListener("click", onPointer),
       deps.adapter.onSend(box, () => this.reset()),
     )
     if (deps.adapter.guardSend) this.cleanups.push(deps.adapter.guardSend(box, () => this.checkBeforeSend()))
@@ -118,13 +139,30 @@ export class ComposeSession {
     return this.deps.popup.isOpenFor(this)
   }
 
+  // ── Badge ─────────────────────────────────────────────────────────────────
+
+  /** AI status, pause or chat-off — the same for every box on the page. */
+  setPageState(state: PageState) {
+    this.badge.setPage(state)
+  }
+
+  /** Hidden while the extension is switched off. */
+  setHidden(hidden: boolean) {
+    this.badge.setHidden(hidden)
+  }
+
+  /** Open the card for the flagged message (badge click, or hovering the phrase). */
+  private openCard() {
+    if (this.flag && !this.popupOpen) this.showPopup()
+  }
+
   // ── Typing ────────────────────────────────────────────────────────────────
 
   private onInput() {
     clearTimeout(this.timer)
     if (!this.deps.isActive()) return
     this.highlighter.refresh()
-    if (!this.text) { this.clearUI(); return }
+    if (!this.text) { this.clearUI(); this.badge.setBox({ kind: "idle" }); return }
 
     const text = this.checkText
     if (!text || !worthChecking(text)) return
@@ -147,15 +185,17 @@ export class ComposeSession {
     this.lastText = text
     const conv    = this.deps.conversation()
     const recent  = this.deps.chatContext.recent()
+    // A flag stays on show until its re-check says otherwise
+    if (this.badge.boxKind !== "flagged") this.badge.setBox({ kind: "checking" })
 
     // Step 1: fast verdict
     const res = await sendMessage({ type: "CHECK_TONE", text, context: conv.context, recent, sessionId: this.id })
     this.inFlight = false
-    if (!res) return
-    if (!res.ok) {
-      if (res.reason !== "cancelled") this.deps.onCheckDone(res)
+    if (!res || !res.ok) {
+      if (res && res.reason !== "cancelled") this.deps.onCheckDone(res)
       // Not checked — let the next keystroke try again
       this.lastText = ""
+      if (this.badge.boxKind === "checking") this.badge.setBox({ kind: "idle" })
       return
     }
     this.deps.onCheckDone({ ok: true })
@@ -165,6 +205,7 @@ export class ComposeSession {
     const current = this.checkText
     if (current !== text) {
       if (worthChecking(current)) this.analyse(current)
+      else if (this.badge.boxKind === "checking") this.badge.setBox({ kind: "idle" })
       return
     }
 
@@ -172,7 +213,12 @@ export class ComposeSession {
     if (!this.deps.isActive()) return
 
     const { verdict } = res
-    if (verdict.tone === "green") { this.clearUI(); return }
+    if (verdict.tone === "green") {
+      this.clearUI()
+      this.badge.setBox({ kind: "fine" })
+      return
+    }
+    this.badge.setBox({ kind: "flagged", tone: verdict.tone })
 
     // Still flagged after applying an edit: if other edits from the same
     // advice are still waiting, keep them on screen instead of starting over
@@ -183,11 +229,13 @@ export class ComposeSession {
       return
     }
 
-    // Flag it straight away, then fill in the explanation and rewrite
+    // Flag it straight away, then fill in the explanation and rewrite.
+    // Red opens the card now; yellow waits until the user looks (badge or hover).
     this.flag    = { text, verdict, style: this.deps.style(), advice: null, applied: new Set(), recent }
     this.eventId = crypto.randomUUID()
     this.highlighter.show(verdict.flagged_phrase, verdict.tone)
-    this.showPopup()
+    if (verdict.tone === "red") this.showPopup()
+    else if (this.popupOpen) this.deps.popup.hide()
     this.fetchAdvice(this.flag, conv)
   }
 
@@ -229,11 +277,16 @@ export class ComposeSession {
     const recent = this.deps.chatContext.recent()
     clearTimeout(this.timer)
     this.checkingSend = true
+    this.badge.setBox({ kind: "checking" })
     const res = await Promise.race([
       sendMessage({ type: "CHECK_TONE", text, context: conv.context, recent, sessionId: this.id }),
       new Promise<undefined>(resolve => setTimeout(() => resolve(undefined), SEND_CHECK_TIMEOUT_MS)),
     ]).finally(() => { this.checkingSend = false })
-    if (!res?.ok || res.verdict.tone === "green" || !this.deps.isActive() || this.text !== text) return true
+    if (!res?.ok || res.verdict.tone === "green" || !this.deps.isActive() || this.text !== text) {
+      this.badge.setBox({ kind: res?.ok && res.verdict.tone === "green" ? "fine" : "idle" })
+      return true
+    }
+    this.badge.setBox({ kind: "flagged", tone: res.verdict.tone })
 
     this.lastText = text
     this.flag     = { text, verdict: res.verdict, style: this.deps.style(), advice: null, applied: new Set(), recent, heldSend: true }
@@ -257,16 +310,23 @@ export class ComposeSession {
     const { verdict, advice, style, recent, heldSend } = this.flag
     const range  = getPhraseRange(this.box, verdict.flagged_phrase)
     const anchor = range?.getClientRects()[0] ?? this.box.getBoundingClientRect()
+    const scope  = this.deps.badge.scope
     this.deps.popup.show(this, verdict, advice, style, anchor, {
-      onAccept:      () => this.accept(),
-      onApplyEdit:   (i) => this.applyEdit(i),
-      onDismiss:     () => this.dismiss(),
-      onEditContext: () => { this.deps.popup.hide(); this.deps.onEditContext() },
-      onDisableChat: () => this.deps.onDisableChat(),
-      onStyleChange: (s) => this.changeStyle(s),
+      onAccept:       () => this.accept(),
+      onApplyEdit:    (i) => this.applyEdit(i),
+      onDismiss:      () => this.dismiss(),
+      onClose:        () => this.deps.popup.hide(),
+      onEditContext:  () => { this.deps.popup.hide(); this.deps.onEditContext() },
+      onDisableChat:  () => this.deps.onDisableChat(),
+      onOpenSettings: () => this.deps.badge.openSettings(),
+      onStyleChange:  (s) => this.changeStyle(s),
       onChatContextChoice: (on) => this.chooseChatContext(on),
       onSendAnyway: heldSend ? () => this.sendAnyway() : undefined,
-    }, { used: recent.length > 0, offer: this.deps.chatContext.takeOffer() })
+    }, {
+      chat: { used: recent.length > 0, offer: this.deps.chatContext.takeOffer() },
+      scope,
+      canEditContext: scope === "chat",
+    })
   }
 
   // ── User actions ──────────────────────────────────────────────────────────
@@ -390,8 +450,10 @@ export class ComposeSession {
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   private clearUI() {
+    clearTimeout(this.hoverTimer)
     this.highlighter.clear()
     if (this.popupOpen) this.deps.popup.hide()
+    if (this.badge.boxKind === "flagged") this.badge.setBox({ kind: "idle" })
     this.flag          = null
     this.textAfterEdit = null
   }
@@ -400,6 +462,7 @@ export class ComposeSession {
   reset() {
     clearTimeout(this.timer)
     this.clearUI()
+    this.badge.setBox({ kind: "idle" })
     this.ignored.clear()
     this.lastText = ""
     this.eventId  = null
@@ -408,5 +471,6 @@ export class ComposeSession {
   dispose() {
     this.reset()
     this.cleanups.forEach(fn => fn())
+    this.badge.dispose()
   }
 }

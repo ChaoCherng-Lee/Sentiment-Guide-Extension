@@ -2,6 +2,8 @@
 // Suggestion popup — Grammarly-style card shown above the flagged phrase.
 // One instance per page, shared by every compose box; `owner` records which
 // compose session it is currently showing for.
+// Kept short: the reason, the phrase fixes, the full rewrite. Less-used
+// actions (edit context, stop checking this chat, settings) sit behind "⋯".
 // Lives in a Shadow DOM host so styles never leak into the page.
 // =============================================================================
 
@@ -21,9 +23,13 @@ export interface PopupHandlers {
   onAccept(): void
   /** Apply advice.edits[index] only. */
   onApplyEdit(index: number): void
+  /** "Dismiss": leave this message alone. */
   onDismiss(): void
+  /** ×: close the card; the message stays flagged and can be reopened. */
+  onClose(): void
   onEditContext(): void
   onDisableChat(): void
+  onOpenSettings(): void
   /** The user picked another style — the owner should fetch a new rewrite. */
   onStyleChange(style: SuggestionStyle): void
   /** Answer to the one-time "use the chat as context?" offer. */
@@ -38,6 +44,15 @@ export interface ChatContextState {
   offer: boolean
 }
 
+/** What the card offers on this site. */
+export interface PopupOptions {
+  chat?: ChatContextState
+  /** "chat" on messaging sites; "site" on other websites */
+  scope?: "chat" | "site"
+  /** Whether "Edit context" makes sense here (not on general websites) */
+  canEditContext?: boolean
+}
+
 const STYLE_LABELS: Record<SuggestionStyle, string> = { casual: "Casual", formal: "Formal", direct: "Direct" }
 
 const ACCEPT_LABEL = "Replace all (Tab)"
@@ -48,9 +63,9 @@ const STYLES = `
   .popup {
     background: white;
     border-radius: 12px;
-    padding: 14px 16px;
+    padding: 12px 14px;
     min-width: 280px;
-    max-width: 340px;
+    max-width: 330px;
     box-shadow: 0 4px 24px rgba(0,0,0,0.15);
     border: 1px solid #eee;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -100,17 +115,28 @@ const STYLES = `
   .yellow .tone-label { color: #92400E; }
   .red    .tone-label { color: #7F1D1D; }
 
-  .close-btn {
-    background: none; border: none; cursor: pointer;
-    color: #aaa; font-size: 18px; padding: 0;
-    line-height: 1; flex-shrink: 0; font-family: inherit;
+  .header-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+  .icon-btn {
+    background: none; border: none; cursor: pointer; border-radius: 6px;
+    color: #9ca3af; font-size: 16px; padding: 0 6px; line-height: 22px;
+    flex-shrink: 0; font-family: inherit;
   }
-  .close-btn:hover { color: #555; }
+  .icon-btn:hover, .icon-btn[aria-expanded="true"] { color: #374151; background: #f3f4f6; }
+  .icon-btn.close { font-size: 18px; }
 
-  .confidence-text {
-    font-size: 11px; color: #9ca3af; font-style: italic;
-    margin-bottom: 8px; display: none;
+  .more-menu {
+    display: none; position: absolute; right: 10px; top: 36px; z-index: 1;
+    background: white; border: 1px solid #e5e7eb; border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(15,23,42,0.14); padding: 4px; min-width: 190px;
   }
+  .more-menu.open { display: block; }
+  .more-menu button {
+    display: block; width: 100%; text-align: left; padding: 6px 8px; border-radius: 6px;
+    border: none; background: none; font: inherit; font-size: 12px; color: #111827; cursor: pointer;
+  }
+  .more-menu button:hover, .more-menu button:focus-visible { background: #f3f4f6; outline: none; }
+
+  .confidence-text { font-size: 11px; color: #9ca3af; font-style: italic; display: none; }
 
   .explanation { font-size: 12px; color: #555; margin-bottom: 10px; line-height: 1.6; }
   .explanation.pending { color: #9ca3af; font-style: italic; animation: pulse 1.4s ease-in-out infinite; }
@@ -141,9 +167,9 @@ const STYLES = `
   .edit-row.done .edit-body { opacity: 0.6; }
 
   .suggestion-box { background: #f7f7f7; border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; }
+  .suggestion-head { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 4px; flex-wrap: wrap; }
 
-  .style-row { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
-  .style-row .style-label { font-size: 11px; color: #9ca3af; margin-right: 2px; }
+  .style-row { display: flex; align-items: center; gap: 3px; }
   .style-chip {
     padding: 1px 9px; border-radius: 99px; border: 1px solid #e5e7eb;
     background: white; color: #4b5563; font-size: 11px; font-weight: 500; line-height: 1.6;
@@ -151,7 +177,7 @@ const STYLES = `
   }
   .style-chip:hover { background: #f3f4f6; }
   .style-chip[aria-pressed="true"] { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
-  .suggestion-label { font-size: 11px; font-weight: 500; color: #888; margin-bottom: 4px; }
+  .suggestion-label { font-size: 11px; font-weight: 500; color: #888; }
   .suggestion-text { font-size: 12px; font-style: italic; color: #333; line-height: 1.5; }
 
   .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
@@ -172,15 +198,6 @@ const STYLES = `
   }
   .btn-dismiss:hover { background: #f3f4f6; color: #555; }
 
-  .edit-context-btn {
-    background: none; border: none;
-    font-size: 11px; color: #a78bfa;
-    cursor: pointer; margin-left: auto;
-    font-family: inherit; padding: 0;
-    text-decoration: underline;
-  }
-  .edit-context-btn:hover { color: #7c3aed; }
-
   .context-note { font-size: 11px; color: #6b7280; margin: -4px 0 8px; display: none; }
 
   .offer {
@@ -197,13 +214,6 @@ const STYLES = `
   .offer-actions .offer-yes { background: #7c3aed; border-color: #7c3aed; color: white; }
   .offer-actions .offer-yes:hover { background: #6d28d9; }
   .offer-done { font-size: 11px; color: #5b21b6; }
-
-  .footer { margin-top: 8px; padding-top: 6px; border-top: 1px solid #f3f4f6; }
-  .link-btn {
-    background: none; border: none; padding: 0;
-    font-size: 11px; color: #9ca3af; cursor: pointer; font-family: inherit;
-  }
-  .link-btn:hover { color: #4b5563; text-decoration: underline; }
 `
 
 const TEMPLATE = `
@@ -213,41 +223,46 @@ const TEMPLATE = `
       <div class="tone-badge">
         <span class="tone-dot yellow" id="dot"></span>
         <span class="tone-label" id="label"></span>
+        <span class="confidence-text" id="confidence"></span>
       </div>
-      <button class="close-btn" id="close" aria-label="Close">×</button>
+      <div class="header-actions">
+        <button class="icon-btn" id="more" aria-label="More options" aria-haspopup="menu" aria-expanded="false">⋯</button>
+        <button class="icon-btn close" id="close" aria-label="Close">×</button>
+      </div>
     </div>
-    <div class="confidence-text" id="confidence"></div>
+    <div class="more-menu" id="more-menu" role="menu">
+      <button role="menuitem" id="edit-context">Edit context about this chat</button>
+      <button role="menuitem" id="disable-chat">Don't check this chat</button>
+      <button role="menuitem" id="open-settings">Settings</button>
+    </div>
     <div class="context-note" id="context-note">💬 Checked with the last few messages in this chat</div>
     <div class="explanation" id="explanation"></div>
     <div class="emoji-notes" id="emoji-notes" aria-label="How the emoji may come across"></div>
-    <div class="style-row" id="style-row" role="group" aria-label="Suggestion style">
-      <span class="style-label">Style</span>
-      ${SUGGESTION_STYLES.map(s => `<button class="style-chip" data-style="${s}" aria-pressed="false">${STYLE_LABELS[s]}</button>`).join("")}
-    </div>
     <div class="edits" id="edits" role="list" aria-label="Change just these words"></div>
     <div class="suggestion-box" id="suggestion-box">
-      <div class="suggestion-label">Or rewrite it all:</div>
+      <div class="suggestion-head">
+        <div class="suggestion-label">Or rewrite it all:</div>
+        <div class="style-row" id="style-row" role="group" aria-label="Suggestion style">
+          ${SUGGESTION_STYLES.map(s => `<button class="style-chip" data-style="${s}" aria-pressed="false">${STYLE_LABELS[s]}</button>`).join("")}
+        </div>
+      </div>
       <div class="suggestion-text" id="suggestion"></div>
     </div>
     <div class="actions">
       <button class="btn-accept" id="accept">${ACCEPT_LABEL}</button>
       <button class="btn-dismiss" id="dismiss">Dismiss</button>
       <button class="btn-dismiss" id="send-anyway">Send anyway</button>
-      <button class="edit-context-btn" id="edit-context">Edit context</button>
     </div>
     <div class="offer" id="offer" role="group" aria-label="Use the chat as context">
       <div id="offer-ask">
         <div class="offer-title">Check with the chat in mind?</div>
-        <div class="offer-text">Sentiment Guide can read the last 6 messages in this chat, so it knows what you're replying to — a joke reads differently from an argument. They stay on this computer and are never saved. You can turn this off any time in the extension menu.</div>
+        <div class="offer-text">Sentiment Guide can read the last 6 messages in this chat, so it knows what you're replying to — a joke reads differently from an argument. They stay on this computer and are never saved. You can turn this off any time in Settings.</div>
         <div class="offer-actions">
           <button class="offer-yes" id="offer-yes">Turn on</button>
           <button id="offer-no">No thanks</button>
         </div>
       </div>
       <div class="offer-done" id="offer-done" hidden></div>
-    </div>
-    <div class="footer">
-      <button class="link-btn" id="disable-chat">Don't check this chat</button>
     </div>
   </div>
 `
@@ -268,11 +283,13 @@ export class SuggestionPopup {
 
     const on = (id: string, fn: () => void) =>
       this.$(id).addEventListener("click", (e) => { e.stopPropagation(); fn() })
-    on("close",        () => this.handlers?.onDismiss())
-    on("dismiss",      () => this.handlers?.onDismiss())
-    on("accept",       () => this.handlers?.onAccept())
-    on("edit-context", () => this.handlers?.onEditContext())
-    on("disable-chat", () => this.handlers?.onDisableChat())
+    on("close",         () => this.handlers?.onClose())
+    on("dismiss",       () => this.handlers?.onDismiss())
+    on("accept",        () => this.handlers?.onAccept())
+    on("more",          () => this.toggleMore())
+    on("edit-context",  () => { this.toggleMore(false); this.handlers?.onEditContext() })
+    on("disable-chat",  () => { this.toggleMore(false); this.handlers?.onDisableChat() })
+    on("open-settings", () => { this.toggleMore(false); this.handlers?.onOpenSettings() })
     on("send-anyway",  () => this.handlers?.onSendAnyway?.())
     on("offer-yes",    () => this.answerOffer(true))
     on("offer-no",     () => this.answerOffer(false))
@@ -314,11 +331,15 @@ export class SuggestionPopup {
     style: SuggestionStyle,
     anchor: DOMRect,
     handlers: PopupHandlers,
-    chat: ChatContextState = { used: false, offer: false },
+    options: PopupOptions = {},
   ) {
+    const chat  = options.chat ?? { used: false, offer: false }
     this.owner    = owner
     this.handlers = handlers
     this.setStyle(style)
+    this.toggleMore(false)
+    this.$("disable-chat").textContent   = `Don't check this ${options.scope ?? "chat"}`
+    this.$("edit-context").style.display = options.canEditContext === false ? "none" : "block"
 
     const tone = verdict.tone === "red" ? "red" : "yellow"
     this.$("popup").className = "popup " + tone
@@ -328,8 +349,8 @@ export class SuggestionPopup {
     // Confidence indicator — shown only below 0.9
     const conf = this.$("confidence")
     if (verdict.confidence < 0.9) {
-      conf.textContent   = verdict.confidence < 0.7 ? "borderline — your call" : "fairly confident"
-      conf.style.display = "block"
+      conf.textContent   = verdict.confidence < 0.7 ? "· borderline, your call" : "· fairly confident"
+      conf.style.display = "inline"
     } else {
       conf.style.display = "none"
     }
@@ -343,6 +364,11 @@ export class SuggestionPopup {
     this.setAdvice(advice)
     this.$("popup").style.display = "block"
     this.position(anchor)
+  }
+
+  private toggleMore(open = !this.$("more-menu").classList.contains("open")) {
+    this.$("more-menu").classList.toggle("open", open)
+    this.$("more").setAttribute("aria-expanded", String(open))
   }
 
   private setStyle(style: SuggestionStyle) {
@@ -427,7 +453,7 @@ export class SuggestionPopup {
     done.hidden = false
     done.textContent = on
       ? "✓ Turned on — checking this message again with the chat in mind."
-      : "OK — only your own message is checked. You can turn it on in the extension menu."
+      : "OK — only your own message is checked. You can turn it on in Settings."
     this.handlers?.onChatContextChoice(on)
   }
 

@@ -80,7 +80,27 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | 5.2 | **Consent and sharing only counts.** Before pairing, the child sees in plain language what a parent will and won't see, and must tick "I understand" before the code box unlocks. "Shared with parent: on" shows in the toolbar popup whenever it is on. Each flagged message now shares only: yellow/red, a category from a fixed list (insult, joke that could hurt, sarcasm, dismissive, harsh tone, threat, leaving someone out, other), confidence, whether the suggestion was taken, the app and the time. **Unlink and delete my data** deletes everything shared; the server deletes events older than 90 days every night. Uploads that fail (offline) wait and are retried every 15 minutes, and nothing is uploaded while the extension is paused |
 | 5.3 | **Parent dashboard.** A separate web app (`dashboard/`) where a parent signs in, gets a pairing code, and sees a weekly summary for each linked child. Good news comes first ("Took 3 of 4 suggestions this week"), then: flagged messages per week (yellow and red) for 12 weeks, the share of suggestions taken per week, and flagged messages by app and by kind for the last 4 weeks. Every chart has hover details and a "Show as a table" view, and it works in light and dark mode and on a phone. A parent can stop seeing a child's summary. `?demo` shows it with made-up data. The original had no dashboard |
 
+### Phase 6: Easier to use (after Plan.md: "make it feel like Grammarly")
+
+| Step | New for users |
+|---|---|
+| 6.1 | **Faster flags.** The quick check no longer asks the model for an unused field, so a flag appears about 0.4 s sooner (2.7 s instead of 3.1 s on the test laptop), and a check starts 0.7 s after you stop typing instead of 1.2 s |
+| 6.2 | **A status badge in every message box**, like Grammarly's. A small round button in the box's bottom-right corner always says what's happening: ◆ on, a spinner while checking, a green ✓ when the message sounds fine, yellow or red ! when it's flagged, and grey when paused or off for this chat. When the AI isn't running or the model is missing it turns amber, and clicking it opens setup. Clicking it otherwise opens a small menu: pause for an hour, don't check this chat, settings. It replaces the old status chip, which only appeared when something was wrong |
+| 6.2 | **A quieter card.** Red flags still open the card straight away. Yellow ones only underline the words and colour the badge; the card opens when you rest the pointer on the underlined words or click the badge. The card is shorter: the reason, the phrase fixes, then the full rewrite with the style buttons next to it. "Edit context", "Don't check this chat" and Settings moved behind "⋯". × now just closes the card (the message stays flagged and can be opened again); **Dismiss** still means "leave this message alone" |
+
 ## Changed behaviour worth knowing
+
+- **6.1:** measured with the eval on the same day and model, before and
+  after: on the original 190 messages, exactly right stayed at 86.8% and
+  false flags went from 13.0% to 12.0%; the quick check went from 3.14 s to
+  2.70 s on average. Both runs score below October's 87.9%, which was
+  measured with an older Ollama; the difference isn't from this change.
+  A smaller context window was tried too, but the largest prompts (a long
+  message with chat context, or a whole email on Send) wouldn't fit.
+
+- **6.2:** a yellow flag no longer pops up a card on its own. If a test or a
+  habit relied on the card appearing for every flag, look at the badge
+  instead (it turns yellow or red for every flag).
 
 - **5.2:** no longer shared with a parent, compared with the original
   extension: the suggested rewrite, the flagged words, the free-text label,

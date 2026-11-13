@@ -38,6 +38,14 @@ export class Highlighter {
     this.removeDivs()
   }
 
+  /** Whether a point (client coordinates) is on the highlighted phrase. */
+  hitTest(x: number, y: number): boolean {
+    return this.divs.some(d => {
+      const r = d.getBoundingClientRect()
+      return x >= r.left && x <= r.right && y >= r.top - 2 && y <= r.bottom + 2
+    })
+  }
+
   /** Redraw at the phrase's current position on the next frame. */
   refresh() {
     if (!this.current) return

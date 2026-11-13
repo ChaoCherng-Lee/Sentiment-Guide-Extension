@@ -75,6 +75,10 @@ export default defineBackground(() => {
       case "SHARING_STATUS":
         isPaired().then(paired => sendResponse({ configured: supabaseConfigured(), paired }))
         return true
+      case "OPEN_PAGE":
+        if (msg.page === "settings") browser.runtime.openOptionsPage()
+        else browser.tabs.create({ url: browser.runtime.getURL("/onboarding.html") })
+        return false
     }
   })
 
