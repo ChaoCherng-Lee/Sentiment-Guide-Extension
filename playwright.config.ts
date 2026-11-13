@@ -1,6 +1,6 @@
 import { defineConfig } from "@playwright/test"
 
-// End-to-end tests load the built extension (.output/chrome-mv3) into
+// End-to-end tests load the e2e build (.output/chrome-mv3-e2e) into
 // Chromium against fixture pages. `npm run test:e2e` builds it first.
 //
 // Most tests use a stand-in model (see fakeModel in test/e2e/fixtures.ts),

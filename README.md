@@ -111,7 +111,7 @@ npm run dev        # Chrome with the extension loaded, reloads on change
 npm test           # unit tests
 npm run test:e2e   # builds, then runs the extension against fixture pages (~5 min): most tests use a
                    # stand-in model, two use your local Ollama
-                   # (an e2e build, with every optional site pre-allowed — run `npm run build` before loading .output by hand)
+                   # (its own build in .output/chrome-mv3-e2e, with every optional site pre-allowed)
 npm run eval       # tone evaluation on eval/messages.jsonl (needs Ollama running)
 ```
 

@@ -38,8 +38,6 @@ export default defineConfig({
       default_icon: { 16: "icon/16.png", 32: "icon/32.png" },
     },
   }),
-  // Same folder for every mode, so the e2e build replaces the normal one
-  outDirTemplate: "{{browser}}-mv{{manifestVersion}}",
   hooks: {
     // WXT makes the matches of runtime-registered content scripts required
     // host permissions. They must stay optional, so take them back out.

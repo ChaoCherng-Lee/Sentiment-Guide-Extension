@@ -2,7 +2,8 @@ import { type BrowserContext, type Page, type Worker, test as base, chromium } f
 import path from "node:path"
 import { OPTIONAL_SITES } from "../../src/platforms/sites"
 
-const EXTENSION = path.resolve(".output/chrome-mv3")
+// The e2e build has its own folder, so it never replaces the one loaded in Chrome
+const EXTENSION = path.resolve(".output/chrome-mv3-e2e")
 const FIXTURES  = path.resolve("test/fixtures")
 
 /** Sites the extension runs on, served from local fixture pages. */
