@@ -5,7 +5,7 @@ import type { ChatContext, ToneVerdict } from "../../src/analysis/types"
 const CTX: ChatContext = {
   platform: "whatsapp", q1: "close_friend", q2: "very_casual", q3: "yes", q4: "sometimes", q5: "tense", savedAt: 0,
 }
-const VERDICT: ToneVerdict = { tone: "red", confidence: 0.9, flagged_phrase: "the worst", tone_tags_detected: false }
+const VERDICT: ToneVerdict = { tone: "red", confidence: 0.9, flagged_phrase: "the worst" }
 
 describe("buildVerdictMessages", () => {
   it("puts instructions in the system message and only the text in the user message", () => {

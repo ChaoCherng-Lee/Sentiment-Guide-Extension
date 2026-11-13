@@ -7,7 +7,7 @@ const MSG = "ugh you are SO annoying, just leave me alone"
 
 describe("validateVerdict", () => {
   it("keeps a well-formed verdict", () => {
-    const verdict = { tone: "yellow", confidence: 0.8, flagged_phrase: "SO annoying", tone_tags_detected: false }
+    const verdict = { tone: "yellow", confidence: 0.8, flagged_phrase: "SO annoying" }
     expect(validateVerdict(verdict, MSG)).toEqual(verdict)
   })
 

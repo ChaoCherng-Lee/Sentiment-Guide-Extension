@@ -24,7 +24,6 @@ Judge the message you are given and reply with JSON only, with these fields:
 - tone: "green", "yellow" or "red" (see below)
 - confidence: 0.0 to 1.0 (1.0 = very sure, 0.7 = somewhat sure, below 0.7 = genuinely borderline)
 - flagged_phrase: the exact verbatim substring of the message that caused concern, or "" if green
-- tone_tags_detected: true if the message contains /j, /s, /srs, /lh, /nm, /neg or similar tone tags
 
 What the tones mean:
 - green: fine to send. Friendly, neutral, venting about a situation, or playful teasing that is clearly a joke.

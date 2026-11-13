@@ -4,7 +4,8 @@
 export type Tone = "green" | "yellow" | "red"
 
 /**
- * Step 1 of a check: is the message OK? Short, so the model answers in ~2 s.
+ * Step 1 of a check: is the message OK? Kept short — every field the model
+ * writes adds time — so the model answers in ~2-3 s.
  * Every message gets one.
  */
 export interface ToneVerdict {
@@ -12,7 +13,6 @@ export interface ToneVerdict {
   confidence: number
   /** Exact substring of the message that caused concern; "" if green */
   flagged_phrase: string
-  tone_tags_detected: boolean
 }
 
 /**
@@ -67,7 +67,6 @@ export const GREEN_VERDICT: ToneVerdict = {
   tone: "green",
   confidence: 1,
   flagged_phrase: "",
-  tone_tags_detected: false,
 }
 
 /** What the rewrites should sound like. Affects advice only, never the verdict. */

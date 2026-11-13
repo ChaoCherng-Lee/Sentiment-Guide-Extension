@@ -7,7 +7,7 @@ const TEASING: ChatContext = {
   platform: "whatsapp", q1: "close_friend", q2: "very_casual", q3: "yes", q4: "yes", q5: "normal", savedAt: 0,
 }
 const verdict = (tone: ToneVerdict["tone"]): ToneVerdict =>
-  ({ tone, confidence: 0.8, flagged_phrase: "trash", tone_tags_detected: false })
+  ({ tone, confidence: 0.8, flagged_phrase: "trash" })
 
 describe("applyBanterRule", () => {
   it("lets a laughing tease through in a chat marked 'we joke and tease'", () => {

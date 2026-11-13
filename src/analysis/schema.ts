@@ -17,9 +17,8 @@ export const VERDICT_SCHEMA = {
     tone:               { type: "string", enum: ["green", "yellow", "red"] },
     confidence:         { type: "number", minimum: 0, maximum: 1 },
     flagged_phrase:     { type: "string" },
-    tone_tags_detected: { type: "boolean" },
   },
-  required: ["tone", "confidence", "flagged_phrase", "tone_tags_detected"],
+  required: ["tone", "confidence", "flagged_phrase"],
 } as const
 
 export const ADVICE_SCHEMA = {
@@ -93,7 +92,7 @@ export function validateVerdict(raw: unknown, message: string): ToneVerdict {
   let flagged_phrase = tone === "green" ? "" : str(r.flagged_phrase, 100)
   if (flagged_phrase && !message.toLowerCase().includes(flagged_phrase.toLowerCase())) flagged_phrase = ""
 
-  return { tone, confidence, flagged_phrase, tone_tags_detected: r.tone_tags_detected === true }
+  return { tone, confidence, flagged_phrase }
 }
 
 /** Safe advice for `message`; a "rewrite" identical to the message is no suggestion. */
