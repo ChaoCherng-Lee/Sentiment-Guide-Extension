@@ -1,5 +1,7 @@
 // Helpers shared by the site adapters. Nothing here knows a site's selectors.
 
+import { isTextarea, type Span } from "../ui/box-text"
+import { rangeFromOffsets } from "../ui/dom-range"
 import type { IncomingMessage } from "./types"
 
 /**
@@ -22,8 +24,15 @@ export function insertOverSelection(box: HTMLElement, select: () => void, text: 
   })
 }
 
-/** replaceText() for editors that take execCommand: the whole box, or one range. */
-export function replaceInBox(box: HTMLElement, range: Range | "all", text: string): Promise<boolean> {
+/**
+ * replaceText() for every kind of box: the whole text, or characters
+ * [start, end). Rich editors take execCommand; so do textareas, which keeps
+ * the edit on the page's undo stack and tells frameworks like React.
+ */
+export function replaceInBox(box: HTMLElement, target: Span | "all", text: string): Promise<boolean> {
+  if (isTextarea(box)) return Promise.resolve(replaceInTextarea(box, target, text))
+  const range = target === "all" ? "all" : rangeFromOffsets(box, target.start, target.end)
+  if (!range) return Promise.resolve(false)
   return insertOverSelection(box, () => {
     if (range === "all") {
       document.execCommand("selectAll", false)
@@ -33,6 +42,21 @@ export function replaceInBox(box: HTMLElement, range: Range | "all", text: strin
       sel?.addRange(range)
     }
   }, text)
+}
+
+function replaceInTextarea(box: HTMLTextAreaElement, target: Span | "all", text: string): boolean {
+  const before = box.value
+  const { start, end } = target === "all" ? { start: 0, end: before.length } : target
+  box.focus()
+  box.setSelectionRange(start, end)
+  if (text) document.execCommand("insertText", false, text)
+  else document.execCommand("delete", false)
+  if (box.value === before) {
+    // execCommand refused (some pages block it): set the text directly and say so
+    box.setRangeText(text, start, end, "end")
+    box.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: text }))
+  }
+  return box.value !== before
 }
 
 /** Messages read when a chat opens (Plan 3.1: the backlog is never analysed). */

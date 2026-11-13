@@ -1,12 +1,13 @@
 // =============================================================================
 // Word-level highlight
-// Draws overlay divs using exact pixel coords from Range.getClientRects().
+// Draws overlay divs at the phrase's exact screen position (box-text.ts
+// measures it, for rich editors and plain textareas alike).
 // pointer-events:none so clicks pass through to the page. Redraws on scroll,
 // resize and typing; drops itself when the phrase leaves the box.
 // =============================================================================
 
 import type { Tone } from "../analysis/types"
-import { getPhraseRange } from "./dom-range"
+import { phraseRects } from "./box-text"
 
 const COLORS: Record<Exclude<Tone, "green">, { line: string; fill: string }> = {
   yellow: { line: "#F59E0B", fill: "rgba(245,158,11,0.12)" },
@@ -65,11 +66,11 @@ export class Highlighter {
   private draw(): boolean {
     this.removeDivs()
     if (!this.current) return false
-    const range = getPhraseRange(this.box, this.current.phrase)
-    if (!range) return false
+    const rects = phraseRects(this.box, this.current.phrase)
+    if (!rects) return false
 
     const { line, fill } = COLORS[this.current.tone]
-    for (const rect of Array.from(range.getClientRects())) {
+    for (const rect of rects) {
       if (rect.width < 2) continue
       const div = document.createElement("div")
       div.className = "sg-highlight"

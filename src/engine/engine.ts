@@ -9,8 +9,9 @@ import type { ChatContext, SuggestionStyle } from "../analysis/types"
 import { sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
 import {
-  DEFAULT_SETTINGS, getChatData, getSettings, isActive, isConversationDisabled, pauseUntil, resolveStyle, resume,
-  setConversationDisabled, type Settings, subscribeSettings, updateChatData, updateSettings,
+  DEFAULT_SETTINGS, getChatData, getSettings, isActive, isConversationDisabled, isSiteDisabled, pauseUntil,
+  resolveStyle, resume, setConversationDisabled, setSiteDisabled, type Settings, subscribeSettings, updateChatData,
+  updateSettings,
 } from "../settings/store"
 import { showContextForm } from "../ui/context-form"
 import type { PageState } from "../ui/status-badge"
@@ -24,6 +25,10 @@ const FORM_SETTLE_MS   = 800
 const HOUR_MS          = 60 * 60 * 1000
 
 export function startEngine(adapter: PlatformAdapter) {
+  // A script added to a tab that already had it (e.g. a site allowed again) does nothing
+  const g = globalThis as { sentimentGuideStarted?: boolean }
+  if (g.sentimentGuideStarted) return
+  g.sentimentGuideStarted = true
   console.log("Sentiment Guide: loaded on", location.hostname)
 
   const popup    = new SuggestionPopup()
@@ -39,15 +44,23 @@ export function startEngine(adapter: PlatformAdapter) {
   } = { id: null, context: null, style: undefined }
   let settings: Settings = DEFAULT_SETTINGS
 
+  /** "chat" on messaging sites; "site" on other websites, which have no chats */
+  const scope = adapter.scope ?? "chat"
+  const host  = location.hostname
+
   // Before the context form is filled in, the model still learns which site
-  // this is (e.g. email is judged as semi-formal). WhatsApp needs no note.
-  const siteOnlyContext: ChatContext | null = adapter.id === "whatsapp"
+  // this is (e.g. email is judged as semi-formal). WhatsApp and other
+  // websites need no note.
+  const siteOnlyContext: ChatContext | null = adapter.id === "whatsapp" || adapter.id === "web"
     ? null
     : { platform: adapter.id, q1: "", q2: "", q3: "", q4: "", q5: "", savedAt: 0 }
   let wasActive = false
+  /** False on other websites until a text box is first used (see applyActiveState) */
+  let modelWanted = true
 
-  /** Checking runs only when on, not paused, and not turned off for this chat. */
-  const active = () => isActive(settings) && !isConversationDisabled(settings, conversation.id)
+  /** Checking runs only when on, not paused, and not turned off for this site or chat. */
+  const active = () => isActive(settings) && !isSiteDisabled(settings, host)
+    && !isConversationDisabled(settings, conversation.id)
 
   // ── Badges ────────────────────────────────────────────────────────────────
 
@@ -64,7 +77,9 @@ export function startEngine(adapter: PlatformAdapter) {
     pauseHour:    () => { pauseUntil(Date.now() + HOUR_MS) },
     resume:       () => { resume() },
     setChatChecking: (on: boolean) => on ? turnChatOn() : turnChatOff(),
-    scope: "chat" as const,
+    scope,
+    // Pages full of text boxes: a badge only on the box in use
+    quietWhenIdle: scope === "site",
   }
 
   // ── On / off / pause ──────────────────────────────────────────────────────
@@ -82,17 +97,23 @@ export function startEngine(adapter: PlatformAdapter) {
       else                          setPage({ kind: "chat-off" })
     } else if (!wasActive) {
       setPage({ kind: "ok" })
-      prepareModel()
+      // On other websites, wait until a text box is used: most pages are
+      // only read, and loading the model takes memory and a few seconds
+      if (scope === "site") modelWanted = false
+      else prepareModel()
     }
     wasActive = now
   }
 
+  /** Checking back on for this chat (or this site, on other websites). */
   function turnChatOn() {
-    if (conversation.id) setConversationDisabled(conversation.id, false)
+    if (scope === "site") setSiteDisabled(host, false)
+    else if (conversation.id) setConversationDisabled(conversation.id, false)
   }
 
   function turnChatOff() {
-    if (conversation.id) setConversationDisabled(conversation.id, true)
+    if (scope === "site") setSiteDisabled(host, true)
+    else if (conversation.id) setConversationDisabled(conversation.id, true)
   }
 
   // ── Context form ──────────────────────────────────────────────────────────
@@ -122,7 +143,7 @@ export function startEngine(adapter: PlatformAdapter) {
       ? prepareRecent(adapter.getRecentMessages(RECENT_LIMIT), [adapter.getConversationTitle()])
       : [],
     takeOffer: () => {
-      if (settings.chatContext || settings.chatContextOffered) return false
+      if (scope === "site" || settings.chatContext || settings.chatContextOffered) return false
       patchSettings({ chatContextOffered: true })
       return true
     },
@@ -170,11 +191,20 @@ export function startEngine(adapter: PlatformAdapter) {
 
   // The page mutates constantly, so rescan at most every SCAN_THROTTLE_MS
   let scanQueued = false
-  new MutationObserver(() => {
+  function queueScan() {
     if (scanQueued) return
     scanQueued = true
     setTimeout(() => { scanQueued = false; scan() }, SCAN_THROTTLE_MS)
-  }).observe(document.documentElement, { childList: true, subtree: true })
+  }
+  new MutationObserver(queueScan).observe(document.documentElement, { childList: true, subtree: true })
+
+  document.addEventListener("focusin", e => {
+    const el = e.target as HTMLElement
+    if (!(el instanceof HTMLTextAreaElement || el.isContentEditable)) return
+    // A box that was hidden until now (a reply box opening) is picked up straight away
+    if (![...sessions.keys()].some(box => box.contains(el))) queueScan()
+    if (!modelWanted && active()) { modelWanted = true; prepareModel() }
+  }, true)
 
   // ── AI status ─────────────────────────────────────────────────────────────
 

@@ -27,7 +27,7 @@ export type Message =
       style: SuggestionStyle
       eventId: string
       /** Site the message was written on — the only thing about it a parent may see */
-      platform: "whatsapp" | "instagram" | "gmail"
+      platform: "whatsapp" | "instagram" | "gmail" | "web"
       sessionId: string
     }
   /** Opt-in: how a received message probably reads. Low priority; never logged. */

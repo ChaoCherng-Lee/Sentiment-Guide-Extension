@@ -173,6 +173,12 @@ describe("data minimisation (5.2)", () => {
       .rejects.toThrow(/check constraint/)
   })
 
+  it("flags from other websites are shared as 'web', without saying which site", async () => {
+    await as(CHILD, `insert into events (id, tone, platform) values ($1, 'red', 'web')`, [event(3).id])
+    await expect(as(CHILD, `insert into events (id, tone, platform) values ($1, 'red', 'reddit.com')`, [event(4).id]))
+      .rejects.toThrow(/check constraint/)
+  })
+
   it("per-contact context answers aren't kept at all", async () => {
     const t = await db.query("select 1 from information_schema.tables where table_schema = 'public' and table_name = 'context_forms'")
     expect(t.rows).toEqual([])

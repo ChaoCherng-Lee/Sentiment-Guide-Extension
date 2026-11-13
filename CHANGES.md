@@ -88,6 +88,7 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | 6.2 | **A status badge in every message box**, like Grammarly's. A small round button in the box's bottom-right corner always says what's happening: ◆ on, a spinner while checking, a green ✓ when the message sounds fine, yellow or red ! when it's flagged, and grey when paused or off for this chat. When the AI isn't running or the model is missing it turns amber, and clicking it opens setup. Clicking it otherwise opens a small menu: pause for an hour, don't check this chat, settings. It replaces the old status chip, which only appeared when something was wrong |
 | 6.2 | **A quieter card.** Red flags still open the card straight away. Yellow ones only underline the words and colour the badge; the card opens when you rest the pointer on the underlined words or click the badge. The card is shorter: the reason, the phrase fixes, then the full rewrite with the style buttons next to it. "Edit context", "Don't check this chat" and Settings moved behind "⋯". × now just closes the card (the message stays flagged and can be opened again); **Dismiss** still means "leave this message alone" |
 | 6.3 | **Setup without a terminal.** The welcome page is now a setup page. It finds Ollama, or links to its download and notices by itself once it's running; downloads the AI model with one button and a progress bar (a download that stops can be carried on); then asks your choices. It opens on install, and again from the amber badge or **Set up the AI** in the toolbar popup whenever the AI isn't ready. Before, the popup told you to run `ollama serve` or `ollama pull gemma3:4b` in a terminal |
+| 6.4 | **Every website, not just three.** Text boxes on any website are checked too: comments, posts, forms, other chat apps. Plain text boxes (`<textarea>`, which most websites use) work as well as rich editors: the underline sits on the words and phrase fixes swap just those words. On ordinary websites the badge only shows on the box you're using, and "Don't check this …" switches off the whole site rather than a chat. The setup page asks to allow all websites (on by default; Chrome asks once). WhatsApp, Instagram and Gmail keep their own, site-aware checks. A parent's dashboard counts these as "Other websites", never which website. The card now opens below the words when they're near the top of the window |
 
 ## Changed behaviour worth knowing
 
@@ -102,6 +103,17 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 - **6.2:** a yellow flag no longer pops up a card on its own. If a test or a
   habit relied on the card appearing for every flag, look at the badge
   instead (it turns yellow or red for every flag).
+
+- **6.4:** "all websites" is one Chrome permission covering every site,
+  so allowing it also switches on Instagram and Gmail. Each can still be
+  switched off by name in Settings, and any website from its text box.
+  Before the model is loaded on an ordinary website, Sentiment Guide waits
+  for a text box to be used, so just reading pages costs nothing.
+  **Needs a database change for parent sharing:** run
+  `supabase/migrations/20261113000000_web_platform.sql` (SQL Editor, or
+  `supabase db push`). Until then the server refuses flags from other
+  websites; those are skipped and everything else still uploads (before,
+  one refused upload held up all the ones after it).
 
 - **5.2:** no longer shared with a parent, compared with the original
   extension: the suggested rewrite, the flagged words, the free-text label,

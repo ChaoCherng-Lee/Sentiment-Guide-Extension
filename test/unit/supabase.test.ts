@@ -86,6 +86,23 @@ describe("supabase client", () => {
     expect(calls).toHaveLength(1)                   // nothing left to send
   })
 
+  it("skips an upload the server refuses for good, and sends the rest", async () => {
+    const sb = await load(true)
+    await sb.pairWithCode("123456")
+    calls = []
+    await sb.logEvent({ ...EVENT, id: "old-db" }, false)
+    await sb.logEvent({ ...EVENT, id: "e2" }, false)
+    vi.stubGlobal("fetch", vi.fn(async (url: string, init: RequestInit) => {
+      calls.push({ url, init })
+      const refused = JSON.parse(init.body as string).id === "old-db"
+      return new Response(null, { status: refused ? 400 : 201 })
+    }))
+    await sb.flushUploads(true)
+    expect(calls.map(c => JSON.parse(c.init.body as string).id)).toEqual(["old-db", "e2"])
+    await sb.flushUploads(true)
+    expect(calls).toHaveLength(2)                   // not tried again
+  })
+
   it("'Unlink and delete my data' deletes on the server, then forgets the account", async () => {
     const sb = await load(true)
     await sb.pairWithCode("123456")

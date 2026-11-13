@@ -122,7 +122,7 @@ export default defineBackground(() => {
     }
   }
 
-  // ── Optional sites (Instagram, Gmail) ─────────────────────────────────────
+  // ── Optional sites (all websites, Instagram, Gmail) ─────────────────────────────────────
 
   /**
    * A site's content script is registered only while its host permission is
@@ -142,12 +142,14 @@ export default defineBackground(() => {
         const registered = (await browser.scripting.getRegisteredContentScripts({ ids: [site.id] })).length > 0
         if (granted && !registered) {
           await browser.scripting.registerContentScripts([{
-            id: site.id, matches: site.origins, js: [site.script], runAt: "document_idle", persistAcrossSessions: true,
+            id: site.id, matches: site.origins, excludeMatches: site.excludeMatches,
+            js: [site.script], runAt: "document_idle", persistAcrossSessions: true,
           }])
           // Tabs already open on the site start working without a reload
           if (injectIntoOpenTabs) {
             for (const tab of await browser.tabs.query({ url: site.origins })) {
-              if (tab.id !== undefined) browser.scripting.executeScript({ target: { tabId: tab.id }, files: [("/" + site.script) as ScriptPublicPath] }).catch(() => {})
+              if (tab.id === undefined || site.excludeMatches?.some(p => matchesPattern(tab.url, p))) continue
+              browser.scripting.executeScript({ target: { tabId: tab.id }, files: [("/" + site.script) as ScriptPublicPath] }).catch(() => {})
             }
           }
         } else if (!granted && registered) {
@@ -260,6 +262,11 @@ export default defineBackground(() => {
     return res.ok ? { ok: true, analysis: res.value } : res
   }
 })
+
+/** Whether a URL matches a "scheme://host/*" pattern (the only kind excludeMatches uses here). */
+function matchesPattern(url: string | undefined, pattern: string): boolean {
+  return !!url && url.startsWith(pattern.replace(/\*$/, ""))
+}
 
 function failureReason(err: unknown): CheckFailure {
   if (err instanceof CancelledError) return err.message === "paused" ? "paused" : "cancelled"

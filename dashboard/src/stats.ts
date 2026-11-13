@@ -5,7 +5,7 @@
 // whether the suggestion was taken, the app and the time (Plan 5.2).
 
 export type Tone = "yellow" | "red"
-export type Platform = "whatsapp" | "instagram" | "gmail"
+export type Platform = "whatsapp" | "instagram" | "gmail" | "web"
 export type Category = "insult" | "mean_joke" | "sarcasm" | "dismissive" | "harsh_tone" | "threat" | "exclusion" | "other"
 
 export interface SharedEvent {
@@ -22,6 +22,7 @@ export const PLATFORM_LABELS: Record<Platform, string> = {
   whatsapp: "WhatsApp",
   instagram: "Instagram",
   gmail: "Gmail",
+  web: "Other websites",
 }
 
 export const CATEGORY_LABELS: Record<Category, string> = {

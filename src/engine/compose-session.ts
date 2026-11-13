@@ -11,9 +11,8 @@ import { findEmoji, graphemeLength } from "../analysis/emoji"
 import type { ChatContext, ChatMessage, SuggestionStyle, ToneAdvice, ToneVerdict } from "../analysis/types"
 import { type CheckFailure, sendMessage } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
-import {
-  caretAfterEdit, findPhrase, getCaretOffset, getPhraseRange, rangeFromOffsets, readText, setCaretOffset,
-} from "../ui/dom-range"
+import { boxText, caretIn, findInBox, phraseRects, placeCaret, type Span } from "../ui/box-text"
+import { caretAfterEdit } from "../ui/dom-range"
 import { Highlighter } from "../ui/highlight"
 import { type BadgeActions, type PageState, StatusBadge } from "../ui/status-badge"
 import type { SuggestionPopup } from "../ui/suggestion-popup"
@@ -308,8 +307,7 @@ export class ComposeSession {
   private showPopup() {
     if (!this.flag) return
     const { verdict, advice, style, recent, heldSend } = this.flag
-    const range  = getPhraseRange(this.box, verdict.flagged_phrase)
-    const anchor = range?.getClientRects()[0] ?? this.box.getBoundingClientRect()
+    const anchor = phraseRects(this.box, verdict.flagged_phrase)?.[0] ?? this.box.getBoundingClientRect()
     const scope  = this.deps.badge.scope
     this.deps.popup.show(this, verdict, advice, style, anchor, {
       onAccept:       () => this.accept(),
@@ -382,18 +380,17 @@ export class ComposeSession {
     if (!flag || !edit || flag.applied.has(index)) return
     const popup = this.deps.popup
 
-    const at    = findPhrase(this.box, edit.original)
+    const at = findInBox(this.box, edit.original)
+    if (!at) { popup.setEditState(index, "missing"); return }
     // Removing an emoji: take one neighbouring space with it so no double space is left
-    if (at && !edit.replacement) {
-      const full = readText(this.box)
+    if (!edit.replacement) {
+      const full = boxText(this.box)
       if (full[at.start - 1] === " ") at.start--
       else if (full[at.end] === " ") at.end++
     }
-    const range = at && rangeFromOffsets(this.box, at.start, at.end)
-    if (!at || !range) { popup.setEditState(index, "missing"); return }
 
-    const caret    = getCaretOffset(this.box)
-    const replaced = await this.deps.adapter.replaceText(this.box, range, edit.replacement)
+    const caret    = caretIn(this.box)
+    const replaced = await this.deps.adapter.replaceText(this.box, at, edit.replacement)
     if (this.flag !== flag) return
     flag.applied.add(index)
 
@@ -401,7 +398,7 @@ export class ComposeSession {
       this.textAfterEdit = this.text
       this.reportAcceptance(true)
       popup.setEditState(index, "applied")
-      if (caret !== null) setCaretOffset(this.box, caretAfterEdit(caret, at.start, at.end, edit.replacement.length))
+      if (caret !== null) placeCaret(this.box, caretAfterEdit(caret, at.start, at.end, edit.replacement.length))
       // Nothing left to apply here — let the re-check decide what comes next
       if (!this.hasPendingEdits(flag)) popup.hide()
       return
@@ -423,11 +420,7 @@ export class ComposeSession {
     const popup = this.deps.popup
 
     // Email: replace just the paragraph (or text) that was checked, not quotes or other paragraphs
-    let target: Range | "all" | null = "all"
-    if (this.deps.adapter.getEditingText) {
-      const at = findPhrase(this.box, flag.text)
-      target = at && rangeFromOffsets(this.box, at.start, at.end)
-    }
+    const target: Span | "all" | null = this.deps.adapter.getEditingText ? findInBox(this.box, flag.text) : "all"
     const replaced = target !== null && await this.deps.adapter.replaceText(this.box, target, suggestion)
     if (replaced) {
       this.reportAcceptance(true)

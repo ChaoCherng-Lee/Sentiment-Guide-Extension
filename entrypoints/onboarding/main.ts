@@ -4,6 +4,7 @@
 import { browser } from "#imports"
 import { OllamaError, type PullUpdate, pullModel, pullProgress, SETUP_MODEL } from "../../src/analysis/ollama"
 import { sendMessage } from "../../src/messaging"
+import { ALL_WEBSITES } from "../../src/platforms/sites"
 import { getSettings, updateSettings } from "../../src/settings/store"
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
@@ -89,6 +90,10 @@ $("pullBtn").addEventListener("click", download)
 getSettings().then(s => { $<HTMLInputElement>("incomingAnalysis").checked = s.incomingAnalysis })
 
 $("btnStart").addEventListener("click", async () => {
+  // First, while the click still counts as the user's: Chrome only asks then
+  if ($<HTMLInputElement>("allWebsites").checked) {
+    await browser.permissions.request({ origins: ALL_WEBSITES.origins }).catch(() => false)
+  }
   await updateSettings({ incomingAnalysis: $<HTMLInputElement>("incomingAnalysis").checked })
   await browser.storage.local.set({ onboardingDone: true })
   window.close()

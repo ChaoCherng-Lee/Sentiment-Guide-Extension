@@ -77,6 +77,11 @@ async function session(): Promise<Session> {
   return refreshing
 }
 
+/** The server answered, but with an error. */
+class HttpError extends Error {
+  constructor(message: string, readonly status: number) { super(message) }
+}
+
 async function request(method: "POST" | "PATCH" | "DELETE", path: string, body?: unknown, headers: Record<string, string> = {}) {
   const s = await session()
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
@@ -89,7 +94,7 @@ async function request(method: "POST" | "PATCH" | "DELETE", path: string, body?:
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   })
-  if (!res.ok) throw new Error(`Supabase ${method} ${path} failed (${res.status})`)
+  if (!res.ok) throw new HttpError(`Supabase ${method} ${path} failed (${res.status})`, res.status)
   return res.status === 204 ? null : res.json().catch(() => null)
 }
 
@@ -128,7 +133,7 @@ export interface SharedEvent {
   tone: "yellow" | "red"
   category: FlagCategory
   confidence: number
-  platform: "whatsapp" | "instagram" | "gmail"
+  platform: "whatsapp" | "instagram" | "gmail" | "web"
 }
 
 type QueuedUpload =
@@ -172,8 +177,13 @@ export function flushUploads(allowed: boolean): Promise<void> {
           await request("PATCH", `events?id=eq.${encodeURIComponent(item.id)}`, { suggestion_accepted: item.accepted })
         }
       } catch (err) {
-        console.log("Sentiment Guide bg: upload will be retried —", (err as Error).message)
-        return
+        // 400: the server will never take this row (e.g. its database doesn't
+        // know a newer platform yet). Skip it rather than hold up the rest.
+        if (!(err instanceof HttpError && err.status === 400)) {
+          console.log("Sentiment Guide bg: upload will be retried —", (err as Error).message)
+          return
+        }
+        console.log("Sentiment Guide bg: upload refused, skipped —", err.message)
       }
       queue = (await readQueue()).slice(1)
       await browser.storage.local.set({ [QUEUE_KEY]: queue })

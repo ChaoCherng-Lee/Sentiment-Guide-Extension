@@ -11,6 +11,8 @@ const SITES: Record<string, string> = {
   "https://web.whatsapp.com/**": "whatsapp.html",
   "https://www.instagram.com/**": "instagram.html",
   "https://mail.google.com/**": "gmail.html",
+  // Any other website, with ordinary text boxes
+  "https://example.org/**": "website.html",
 }
 
 export const HARSH = "you are so stupid, just shut up already"

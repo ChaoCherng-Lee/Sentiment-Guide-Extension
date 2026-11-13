@@ -116,6 +116,11 @@
           <h2 id="choicesTitle">Your choices</h2>
           <p class="status">You can change these any time in Settings.</p>
           <label class="option">
+            <input type="checkbox" id="allWebsites" checked />
+            <span><strong>Check what I write on all websites</strong>
+            Comments, posts, forms and other chat apps — not just WhatsApp. Chrome will ask you to allow this. A website can be switched off from its text box any time.</span>
+          </label>
+          <label class="option">
             <input type="checkbox" id="incomingAnalysis" />
             <span><strong>Also explain messages I receive</strong>
             A small dot on a received message says how it probably reads — like "probably teasing" — when that isn't obvious. It's a guess, not a fact, and the messages stay on your computer.</span>
@@ -127,7 +132,7 @@
 
       <div class="finish">
         <button class="btn" id="btnStart">Done</button>
-        <p class="ready" id="readyLine" hidden>✓ All set — open WhatsApp Web and start typing.</p>
+        <p class="ready" id="readyLine" hidden>✓ All set — open WhatsApp Web, or any website, and start typing.</p>
       </div>
     </main>
     <script type="module" src="./main.ts"></script>

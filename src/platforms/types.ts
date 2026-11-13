@@ -1,4 +1,5 @@
 import type { ChatMessage, Platform, SuggestionStyle } from "../analysis/types"
+import type { Span } from "../ui/box-text"
 
 export type { ChatMessage }
 
@@ -29,8 +30,8 @@ export interface PlatformAdapter {
   /** Last `limit` text messages in the open chat, oldest first. Raw — scrub with prepareRecent(). */
   getRecentMessages(limit: number): ChatMessage[]
   observeIncoming(cb: (msg: IncomingMessage) => void): () => void
-  /** Replace the whole text ("all") or one range. Resolves true if the text changed. */
-  replaceText(box: HTMLElement, range: Range | "all", text: string): Promise<boolean>
+  /** Replace the whole text ("all") or characters [start, end). Resolves true if the text changed. */
+  replaceText(box: HTMLElement, target: Span | "all", text: string): Promise<boolean>
   /** Fires when the user sends the message in `box` (Enter or the send button). */
   onSend(box: HTMLElement, cb: () => void): () => void
   onConversationChange(cb: () => void): () => void
@@ -43,6 +44,11 @@ export interface PlatformAdapter {
   defaultStyle?: SuggestionStyle
   /** Offer the context form when a conversation opens. Default true. */
   askContextOnOpen?: boolean
+  /**
+   * What "don't check this …" switches off: one chat (default), or the whole
+   * site (other websites, which have no chats).
+   */
+  scope?: "chat" | "site"
   /**
    * Hold sending until `check` resolves: true lets the message go, false
    * keeps it (Gmail checks the whole email when Send is pressed).

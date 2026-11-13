@@ -17,6 +17,8 @@ export interface Settings {
   pausedUntil: number | null
   /** Hashed conversation IDs the user switched checking off for. */
   disabledConversations: string[]
+  /** Sites (hostnames, e.g. "mail.google.com") the user switched checking off on. */
+  disabledSites: string[]
   /** Default style for rewrites; chats can override it. */
   suggestionStyle: SuggestionStyle
   /** Ollama model to use; null picks the best installed Gemma model. */
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enabled: true,
   pausedUntil: null,
   disabledConversations: [],
+  disabledSites: [],
   suggestionStyle: "casual",
   model: null,
   chatContext: false,
@@ -59,6 +62,17 @@ export async function setConversationDisabled(conversationId: string, disabled: 
   await updateSettings({
     disabledConversations: disabled ? [...rest, conversationId].slice(-MAX_DISABLED_CONVERSATIONS) : rest,
   })
+}
+
+/** Whether checking is off on one site (hostname). */
+export function isSiteDisabled(s: Settings, host: string): boolean {
+  return s.disabledSites.includes(host)
+}
+
+export async function setSiteDisabled(host: string, disabled: boolean) {
+  const { disabledSites } = await getSettings()
+  const rest = disabledSites.filter(h => h !== host)
+  await updateSettings({ disabledSites: disabled ? [...rest, host].slice(-MAX_DISABLED_CONVERSATIONS) : rest })
 }
 
 /** Pause until `until` (ms since epoch). Turns the extension on if it was off. */

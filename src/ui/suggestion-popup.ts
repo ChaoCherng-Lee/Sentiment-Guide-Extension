@@ -56,6 +56,8 @@ export interface PopupOptions {
 const STYLE_LABELS: Record<SuggestionStyle, string> = { casual: "Casual", formal: "Formal", direct: "Direct" }
 
 const ACCEPT_LABEL = "Replace all (Tab)"
+/** About how tall the card is with its advice, for choosing above or below */
+const CARD_HEIGHT = 340
 
 const STYLES = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -97,6 +99,10 @@ const STYLES = `
     border: 7px solid transparent;
     border-top-color: white;
   }
+
+  /* Below the words (no room above): the caret points up */
+  .popup.below::before { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: #eee; }
+  .popup.below::after  { top: auto; bottom: calc(100% - 1px); border-top-color: transparent; border-bottom-color: white; }
 
   .popup-header {
     display: flex;
@@ -478,19 +484,24 @@ export class SuggestionPopup {
     this.$("accept").textContent = text
   }
 
-  /** Place the popup above `anchor`, with the caret pointing at its centre. */
+  /**
+   * Place the popup above `anchor`, with the caret pointing at its centre —
+   * or below it, when the words are near the top of the window (a comment
+   * box at the top of a page) and there's more room underneath.
+   */
   position(anchor: DOMRect) {
-    const popup        = this.$("popup")
-    const anchorBottom = window.innerHeight - anchor.top + 12
-    const anchorX      = anchor.left + anchor.width / 2
-    const width        = popup.getBoundingClientRect().width || 300
-    const left         = Math.max(8, Math.min(anchorX - width / 2, window.innerWidth - width - 8))
-    const caretLeft    = Math.max(20, Math.min(anchorX - left, width - 20))
+    const popup     = this.$("popup")
+    const anchorX   = anchor.left + anchor.width / 2
+    const width     = popup.getBoundingClientRect().width || 300
+    const left      = Math.max(8, Math.min(anchorX - width / 2, window.innerWidth - width - 8))
+    const caretLeft = Math.max(20, Math.min(anchorX - left, width - 20))
+    const below     = anchor.top < CARD_HEIGHT && window.innerHeight - anchor.bottom > anchor.top
 
     popup.style.setProperty("--caret-left", caretLeft + "px")
+    popup.classList.toggle("below", below)
     popup.style.left   = left + "px"
-    popup.style.bottom = anchorBottom + "px"
-    popup.style.top    = "auto"
+    popup.style.bottom = below ? "auto" : window.innerHeight - anchor.top + 12 + "px"
+    popup.style.top    = below ? anchor.bottom + 12 + "px" : "auto"
   }
 
   destroy() {

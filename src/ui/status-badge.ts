@@ -42,8 +42,8 @@ export interface BadgeActions {
   /** "chat" on messaging sites, "site" where the whole site is the unit (other websites). */
   scope: "chat" | "site"
   /**
-   * Show only while the box is in use (focused, or has something to say).
-   * For pages full of text boxes, where a badge on every one would be noise.
+   * Show only while the box is in use (focused) or flagged. For pages full
+   * of text boxes, where a badge on every one would be noise.
    */
   quietWhenIdle?: boolean
 }
@@ -165,8 +165,9 @@ export class StatusBadge {
     this.live  = root.querySelector(".live")!
     document.body.appendChild(this.host)
 
-    // Keep focus in the compose box: a mouse click on the badge shouldn't take the caret away
+    // Keep focus in the compose box: a mouse click on the badge or its menu shouldn't take the caret away
     this.badge.addEventListener("mousedown", e => e.preventDefault())
+    this.menu.addEventListener("mousedown", e => e.preventDefault())
     this.badge.addEventListener("click", e => { e.stopPropagation(); this.onClick() })
     this.menu.addEventListener("click", e => {
       const btn = (e.target as Element).closest<HTMLButtonElement>("button[data-action]")
@@ -306,13 +307,13 @@ export class StatusBadge {
   /**
    * Sit in the bottom-right corner, inside the box (centred vertically in a
    * one-line box). Only while the box is on screen; on pages where text boxes
-   * are everywhere, only while it's in use or has something to say.
+   * are everywhere, only while it's in use or flagged.
    */
   private place() {
     const r = this.target.getBoundingClientRect()
     const onScreen = document.contains(this.target) && r.width > 40 && r.height > 12
       && r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth
-    const inUse = !this.actions.quietWhenIdle || this.box.kind !== "idle"
+    const inUse = !this.actions.quietWhenIdle || this.box.kind === "flagged"
       || this.target === document.activeElement || this.target.contains(document.activeElement)
       || this.menu.classList.contains("open")
     const visible = !this.hidden && onScreen && inUse

@@ -74,7 +74,8 @@ export type SuggestionStyle = "casual" | "formal" | "direct"
 
 export const SUGGESTION_STYLES: SuggestionStyle[] = ["casual", "formal", "direct"]
 
-export type Platform = "whatsapp" | "instagram" | "gmail" | "outlook"
+/** Where a message was written. "web" is any other website (a plain text box). */
+export type Platform = "whatsapp" | "instagram" | "gmail" | "outlook" | "web"
 
 /** One message from the open chat, for context. Never stored or logged. */
 export interface ChatMessage {
