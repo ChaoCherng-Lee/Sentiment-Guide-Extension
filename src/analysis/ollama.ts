@@ -99,6 +99,64 @@ export async function chatJSON({ model, messages, format, signal, timeoutMs = 60
   }
 }
 
+/** The model the setup page downloads. */
+export const SETUP_MODEL = PREFERRED_MODELS[0]
+
+/** One line of Ollama's download progress. Large layers report total/completed bytes. */
+export interface PullUpdate {
+  status: string
+  digest?: string
+  total?: number
+  completed?: number
+}
+
+/**
+ * Overall progress of a download made of several layers: bytes done and
+ * bytes in total so far, across every layer seen. Layers are announced as
+ * they start, so the total can grow a little as the download goes on.
+ */
+export function pullProgress(updates: Iterable<PullUpdate>): { completed: number; total: number } {
+  const layers = new Map<string, { total: number; completed: number }>()
+  for (const u of updates) {
+    if (!u.digest || !u.total) continue
+    layers.set(u.digest, { total: u.total, completed: Math.min(u.completed ?? 0, u.total) })
+  }
+  let completed = 0, total = 0
+  for (const l of layers.values()) { completed += l.completed; total += l.total }
+  return { completed, total }
+}
+
+/**
+ * Download a model, reporting each progress line. Ollama keeps partly
+ * downloaded layers, so a download that stops can be started again and
+ * picks up where it left off.
+ */
+export async function pullModel(model: string, onUpdate: (u: PullUpdate) => void, signal?: AbortSignal): Promise<void> {
+  const res = await request("/api/pull", {
+    method:  "POST",
+    headers: { "Content-Type": "application/json" },
+    body:    JSON.stringify({ model, stream: true }),
+    signal,
+  })
+  if (!res.body) throw new OllamaError("bad-response", "no download progress")
+  const reader  = res.body.pipeThrough(new TextDecoderStream()).getReader()
+  let buffered = ""
+  let done = false
+  while (!done) {
+    const chunk = await reader.read()
+    done = chunk.done
+    buffered += chunk.value ?? ""
+    const lines = buffered.split("\n")
+    buffered = done ? "" : lines.pop()!
+    for (const line of lines) {
+      if (!line.trim()) continue
+      const u = JSON.parse(line) as PullUpdate & { error?: string }
+      if (u.error) throw new OllamaError("bad-response", u.error)
+      onUpdate(u)
+    }
+  }
+}
+
 /** Load the model into memory ahead of the first check. */
 export async function warmUp(model: string): Promise<void> {
   await request("/api/chat", {

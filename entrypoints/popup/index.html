@@ -67,16 +67,6 @@
         color: #111827;
       }
 
-      .status-cmd {
-        margin-top: 8px;
-        font-size: 11px;
-        color: #6b7280;
-        background: #f3f4f6;
-        border-radius: 6px;
-        padding: 5px 8px;
-        font-family: monospace;
-        display: none;
-      }
 
       .power-row {
         display: flex;
@@ -211,7 +201,7 @@
         <span class="status-dot" id="statusDot"></span>
         <span class="status-text" id="statusText">Checking…</span>
       </div>
-      <div class="status-cmd" id="statusCmd">ollama serve</div>
+      <button class="btn primary" id="setupBtn" style="width:100%;margin-top:10px" hidden>Set up the AI</button>
     </div>
 
     <button class="btn" id="openSites" style="width:100%">Sites: WhatsApp, Instagram, Gmail…</button>

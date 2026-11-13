@@ -17,31 +17,16 @@ A Chrome extension that analyses tone as you type on WhatsApp Web, and optionall
 
 ## How It Works
 
-Every outgoing message is sent to a local Ollama server (`http://localhost:11434`) running the `gemma3:4b` model, along with your onboarding profile as context. It returns:
-- `tone` — `green`, `yellow`, or `red`
-- `label` — a short description (e.g. "A little sharp")
-- `explanation` — 1–2 warm sentences about how the message might land
-- `flagged_phrase` — the exact word or phrase that triggered it
-- `suggestion` — a kinder rewrite of the full message (outgoing only)
+Each message you write is checked by a local Ollama server (`http://localhost:11434`) running the `gemma3:4b` model, in two steps:
+
+1. **A quick check** (about 2–3 s): `tone` (`green`, `yellow` or `red`), `confidence`, and the `flagged_phrase` that caused it
+2. **Advice**, only for yellow and red: a short `label`, an `explanation`, up to 3 phrase swaps (`edits`), a kinder rewrite of the whole message (`suggestion`), notes on emoji, and a `category` from a fixed list
 
 Because the model runs on your own computer, there's no per-message API cost, no rate limit, and no key to manage.
 
 ## Setup
 
-### 1. Install and start Ollama
-
-1. Download Ollama for your OS from [ollama.com/download](https://ollama.com/download) and install it
-2. Start the Ollama server (the installer usually starts it automatically as a background app; if not, run in a terminal):
-   ```
-   ollama serve
-   ```
-3. Pull the model this extension uses:
-   ```
-   ollama pull gemma3:4b
-   ```
-4. Leave Ollama running in the background — the extension talks to it over `http://localhost:11434` any time you're using WhatsApp Web
-
-### 2. Build and load the extension
+### 1. Build and load the extension
 
 The extension is built with [WXT](https://wxt.dev) and needs Node.js 20+.
 
@@ -55,23 +40,18 @@ npm run build      # production build → .output/chrome-mv3
 3. Click **Load unpacked** and select the `.output/chrome-mv3` folder
 
 For development, `npm run dev` opens a Chrome window with the extension
-loaded and reloads it on every change. `npm run zip` makes a store-ready zip.
+loaded and reloads it on every change (from its own folder,
+`.output/chrome-mv3-dev`). `npm run zip` makes a store-ready zip.
 
-### 3. Check the connection
+### 2. Follow the setup page
 
-1. Click the Sentiment Guide icon in the Chrome toolbar
-2. The popup shows a green dot with "Ollama running · gemma3:4b" once it can reach the local model. If it shows red, it'll tell you which command to run (`ollama serve` or `ollama pull gemma3:4b`)
+A setup page opens when the extension is installed. No terminal is needed:
 
-### 4. Complete onboarding (optional)
+1. **Install Ollama** — if it isn't running, the page links to [ollama.com/download](https://ollama.com/download) and notices by itself once Ollama is open
+2. **Get the AI model** — one button downloads `gemma3:4b` (3.3 GB) with a progress bar. A download that stops can be carried on where it left off
+3. **Your choices** — e.g. whether to explain messages you receive
 
-On first install, an onboarding page opens automatically. It asks:
-- **Who is setting this up** — child/teenager or parent/carer
-- **Age range** — 8–10, 11–13, 14–16, or 17+
-- **Texting style** — e.g. "I say it straight", "I use lots of slang"
-- **Goals** — e.g. sounding kinder, avoiding arguments, understanding replies
-- **Suggestion voice** — casual, gentle, or direct
-
-You can skip onboarding and adjust settings later via the popup.
+The setup page opens again whenever the AI isn't ready: from the amber badge in a message box, or **Set up the AI** in the toolbar popup. Prefer a terminal? `ollama pull gemma3:4b` does the same as step 2.
 
 ## Usage
 

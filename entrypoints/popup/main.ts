@@ -99,12 +99,11 @@ subscribeSettings(render)
 
 const dot  = $("statusDot")
 const text = $("statusText")
-const cmd  = $("statusCmd")
 
-function showCommand(command: string) {
-  cmd.style.display = "block"
-  cmd.textContent   = command
-}
+$("setupBtn").addEventListener("click", () => {
+  browser.tabs.create({ url: browser.runtime.getURL("/onboarding.html") })
+  window.close()
+})
 
 async function showStatus() {
   const status = await sendMessage({ type: "AI_STATUS" })
@@ -119,13 +118,13 @@ async function showStatus() {
       break
     case "no-model":
       dot.classList.add("red")
-      text.textContent = "No Gemma model found — run:"
-      showCommand("ollama pull gemma3:4b")
+      text.textContent = "The AI model isn't installed yet"
+      $("setupBtn").hidden = false
       break
     default:
       dot.classList.add("red")
-      text.textContent = "Ollama not detected — run:"
-      showCommand("ollama serve")
+      text.textContent = "The AI isn't running"
+      $("setupBtn").hidden = false
   }
 }
 
