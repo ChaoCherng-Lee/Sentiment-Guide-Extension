@@ -40,7 +40,7 @@ async function fakeSupabase(worker: Worker): Promise<() => Promise<Seen>> {
 test("sharing needs consent first, shows when it's on, uploads no text, and can be undone", async ({ context, worker, extensionId }) => {
   const seen = await fakeSupabase(worker)
   const options = await context.newPage()
-  await options.goto(`chrome-extension://${extensionId}/options.html`)
+  await options.goto(`chrome-extension://${extensionId}/options.html#sharing`)
 
   // Consent comes before the code can be entered
   await expect(options.locator("#sharing")).toBeVisible()

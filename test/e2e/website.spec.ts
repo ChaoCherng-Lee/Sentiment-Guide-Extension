@@ -11,7 +11,7 @@ async function openWebsite(page: Page, worker: Parameters<typeof sitesReady>[0])
   await page.goto("https://example.org/")
 }
 
-test("a plain textarea on any website is checked, and an edit swaps just the words", async ({ page, worker }) => {
+test("a plain textarea on any website is checked, and an edit swaps just the words", async ({ page, worker, extensionId }) => {
   await openWebsite(page, worker)
   // Badges stay out of the way until a box is used
   await expect(badges(page)).toHaveCount(0)
@@ -39,6 +39,14 @@ test("a plain textarea on any website is checked, and an edit swaps just the wor
   await row.locator(".btn-apply").click()
   await expect(comment(page)).toHaveValue("honestly this is so a lot right now sometimes")
   await expect(badges(page)).toHaveAttribute("data-state", "fine")
+
+  // The toolbar popup cheers it on
+  const toolbar = await page.context().newPage()
+  await toolbar.goto(`chrome-extension://${extensionId}/popup.html`)
+  await expect(toolbar.locator("#weekLine")).toHaveText("This week: you took 1 suggestion 🎉")
+  await toolbar.close()
+  await page.bringToFront()
+  await comment(page).focus()
 
   // Posting the form starts afresh
   await comment(page).press("Control+a")

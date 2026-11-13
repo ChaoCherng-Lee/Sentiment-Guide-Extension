@@ -16,6 +16,7 @@ import type { AIStatus, CheckFailure, Message, MessageOf, Responses } from "../s
 import { OPTIONAL_SITES } from "../src/platforms/sites"
 import type { ScriptPublicPath } from "wxt/utils/inject-script"
 import { getSettings, isActive, setEnabled, subscribeSettings, type Settings, updateSettings } from "../src/settings/store"
+import { recordWeek } from "../src/settings/week"
 
 const RESUME_ALARM          = "resume"
 /** Retry uploads that failed (offline, server down) */
@@ -64,6 +65,7 @@ export default defineBackground(() => {
           .then(() => sendResponse(), () => sendResponse())
         return true
       case "UPDATE_ACCEPTANCE":
+        if (msg.accepted) recordWeek("accepted", msg.eventId)
         getSettings().then(s => logAcceptance(msg.eventId, msg.accepted, isActive(s)))
         return false
       case "UNLINK_AND_DELETE":
@@ -242,6 +244,7 @@ export default defineBackground(() => {
 
     const { verdict } = msg
     if (verdict.tone !== "green") {
+      recordWeek("flagged", msg.eventId)
       // What a parent may see: no text, no contact (Plan 5.2)
       logEvent({
         id:         msg.eventId,

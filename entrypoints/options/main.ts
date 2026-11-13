@@ -1,14 +1,90 @@
-// options — switch optional sites (Instagram, Gmail) on and off. Each one is
-// an optional host permission; the background worker registers the site's
-// content script when it's granted.
+// Settings — four tabs (General, Sites, Parent sharing, The AI), picked by
+// the address's #hash so other pages can link straight to one.
+//
+// Sites: each optional site is an optional host permission; the background
+// worker registers its content script while it's granted. "All websites"
+// covers Instagram and Gmail too, so those two can also be switched off by
+// name (settings.disabledSites) while all websites stays on.
 import { browser } from "#imports"
+import type { SuggestionStyle } from "../../src/analysis/types"
 import { sendMessage } from "../../src/messaging"
 import { OPTIONAL_SITES, type OptionalSite } from "../../src/platforms/sites"
+import {
+  getSettings, isSiteDisabled, setSiteDisabled, type Settings, subscribeSettings, updateSettings,
+} from "../../src/settings/store"
 
-const list   = document.getElementById("sites")!
-const status = document.getElementById("status")!
+const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
 
-function row(site: OptionalSite): HTMLElement {
+let settings: Settings | null = null
+
+// ── Tabs ────────────────────────────────────────────────────────────────────
+
+const TABS = ["general", "sites", "sharing", "ai"]
+
+function showTab() {
+  const current = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "general"
+  for (const id of TABS) {
+    $(id).hidden = id !== current
+    $("tab-" + id).setAttribute("aria-selected", String(id === current))
+  }
+  if (current === "ai") showStatus()
+}
+
+window.addEventListener("hashchange", showTab)
+showTab()
+
+// ── General ─────────────────────────────────────────────────────────────────
+
+const STYLE_HINTS: Record<SuggestionStyle, string> = {
+  casual: "Like texting a friend — slang and emoji are fine",
+  formal: "Polite full sentences — for teachers or email",
+  direct: "Short and clear — keeps your point, drops the harshness",
+}
+
+function renderGeneral(s: Settings) {
+  document.querySelectorAll<HTMLElement>("#style [data-style]").forEach(btn => {
+    btn.setAttribute("aria-checked", String(btn.dataset.style === s.suggestionStyle))
+  })
+  $("styleHint").textContent = STYLE_HINTS[s.suggestionStyle]
+
+  $<HTMLInputElement>("chatContext").checked = s.chatContext
+  $("chatContextSub").textContent = s.chatContext
+    ? "On — checks read the last 6 messages in the chat. They stay on this computer and are never saved."
+    : "Off — only your own message is checked"
+
+  $<HTMLInputElement>("incomingAnalysis").checked = s.incomingAnalysis
+  $("incomingSub").textContent = s.incomingAnalysis
+    ? "On — a dot shows how a new message probably reads, when it isn't obvious"
+    : "Off — received messages aren't read"
+}
+
+document.querySelectorAll<HTMLElement>("#style [data-style]").forEach(btn => {
+  btn.addEventListener("click", () => updateSettings({ suggestionStyle: btn.dataset.style as SuggestionStyle }))
+})
+$<HTMLInputElement>("chatContext").addEventListener("change", e => updateSettings({
+  chatContext: (e.target as HTMLInputElement).checked,
+  chatContextOffered: true,
+}))
+$<HTMLInputElement>("incomingAnalysis").addEventListener("change", e =>
+  updateSettings({ incomingAnalysis: (e.target as HTMLInputElement).checked }))
+
+// ── Sites ───────────────────────────────────────────────────────────────────
+
+const status = $("status")
+
+/** The hostname a single-site pattern is for ("https://mail.google.com/*" → "mail.google.com"); null for wildcards. */
+function hostOf(site: OptionalSite): string | null {
+  const host = site.origins[0].match(/^\w+:\/\/([^/*]+)\//)?.[1]
+  return host ?? null
+}
+
+async function isOn(site: OptionalSite): Promise<boolean> {
+  const granted = await browser.permissions.contains({ origins: site.origins })
+  const host = hostOf(site)
+  return granted && !(host && settings && isSiteDisabled(settings, host))
+}
+
+function siteRow(site: OptionalSite): HTMLElement {
   const el = document.createElement("div")
   el.className = "site"
   el.innerHTML = `
@@ -18,27 +94,54 @@ function row(site: OptionalSite): HTMLElement {
   el.querySelector("p")!.textContent  = site.description
   const input = el.querySelector("input")!
   input.id = "site-" + site.id
-  input.setAttribute("aria-label", `Check messages on ${site.name}`)
-
-  browser.permissions.contains({ origins: site.origins }).then(on => { input.checked = on })
+  input.setAttribute("aria-label", `Check what you write on ${site.name}`)
 
   input.addEventListener("change", async () => {
     status.textContent = ""
+    const host = hostOf(site)
     try {
-      // Must run straight from the click: Chrome only shows the prompt for a user gesture
-      const ok = input.checked
-        ? await browser.permissions.request({ origins: site.origins })
-        : await browser.permissions.remove({ origins: site.origins })
-      if (!ok) status.textContent = input.checked ? `${site.name} wasn't allowed, so it stays off.` : `Couldn't switch ${site.name} off.`
+      if (input.checked) {
+        // Must run straight from the click: Chrome only shows the prompt for a user gesture
+        const ok = await browser.permissions.request({ origins: site.origins })
+        if (!ok) status.textContent = `${site.name} wasn't allowed, so it stays off.`
+        else if (host) await setSiteDisabled(host, false)
+      } else {
+        await browser.permissions.remove({ origins: site.origins })
+        // Still allowed through "All websites": switch it off by name instead
+        if (host && await browser.permissions.contains({ origins: site.origins })) await setSiteDisabled(host, true)
+      }
     } catch (err) {
       status.textContent = (err as Error).message
     }
-    input.checked = await browser.permissions.contains({ origins: site.origins })
+    renderSites()
   })
   return el
 }
 
-list.replaceChildren(...OPTIONAL_SITES.map(row))
+$("siteList").replaceChildren(...OPTIONAL_SITES.map(siteRow))
+
+async function renderSites() {
+  for (const site of OPTIONAL_SITES) {
+    $<HTMLInputElement>("site-" + site.id).checked = await isOn(site)
+  }
+  const off = settings?.disabledSites ?? []
+  $("offEmpty").hidden = off.length > 0
+  $("offList").replaceChildren(...off.map(host => {
+    const li = document.createElement("li")
+    const name = document.createElement("span")
+    name.textContent = host
+    const btn = document.createElement("button")
+    btn.className = "btn small"
+    btn.textContent = "Turn back on"
+    btn.setAttribute("aria-label", `Turn checking back on for ${host}`)
+    btn.addEventListener("click", () => setSiteDisabled(host, false))
+    li.append(name, btn)
+    return li
+  }))
+}
+
+browser.permissions.onAdded.addListener(() => renderSites())
+browser.permissions.onRemoved.addListener(() => renderSites())
 
 // ── Share with a parent ─────────────────────────────────────────────────────
 
@@ -50,35 +153,62 @@ const PAIR_ERRORS = {
 }
 
 async function renderSharing() {
-  const status = await sendMessage({ type: "SHARING_STATUS" })
-  document.getElementById("sharing")!.hidden    = !status?.configured
-  document.getElementById("sharingOff")!.hidden = !!status?.paired
-  document.getElementById("sharingOn")!.hidden  = !status?.paired
+  const s = await sendMessage({ type: "SHARING_STATUS" })
+  $("sharingNotSetUp").hidden = !!s?.configured
+  $("sharingSetUp").hidden    = !s?.configured
+  $("sharingOff").hidden      = !!s?.paired
+  $("sharingOn").hidden       = !s?.paired
 }
 
 // Pairing only unlocks once the child has read what's shared and agreed
-document.getElementById("consent")!.addEventListener("change", e => {
+$("consent").addEventListener("change", e => {
   const agreed = (e.target as HTMLInputElement).checked
-  ;(document.getElementById("pairCode") as HTMLInputElement).disabled = !agreed
-  ;(document.getElementById("pairBtn") as HTMLButtonElement).disabled = !agreed
+  $<HTMLInputElement>("pairCode").disabled = !agreed
+  $<HTMLButtonElement>("pairBtn").disabled = !agreed
 })
 
-document.getElementById("unlinkBtn")!.addEventListener("click", async () => {
+$("unlinkBtn").addEventListener("click", async () => {
   if (!confirm("Stop sharing with your parent and delete everything that was shared?")) return
-  const out = document.getElementById("unlinkStatus")!
+  const out = $("unlinkStatus")
   out.textContent = "Deleting…"
   const ok = await sendMessage({ type: "UNLINK_AND_DELETE" })
   out.textContent = ok ? "" : "Couldn't reach the server, so nothing was deleted yet. Try again when you're online."
   renderSharing()
 })
 
-document.getElementById("pairBtn")!.addEventListener("click", async () => {
-  const input = document.getElementById("pairCode") as HTMLInputElement
-  const out   = document.getElementById("pairStatus")!
+$("pairBtn").addEventListener("click", async () => {
+  const out = $("pairStatus")
   out.textContent = "Linking…"
-  const result = await sendMessage({ type: "PAIR", code: input.value.trim() })
+  const result = await sendMessage({ type: "PAIR", code: $<HTMLInputElement>("pairCode").value.trim() })
   out.textContent = !result || result === "ok" ? "" : PAIR_ERRORS[result]
   renderSharing()
 })
 
 renderSharing()
+
+// ── The AI ──────────────────────────────────────────────────────────────────
+
+async function showStatus() {
+  const s   = await sendMessage({ type: "AI_STATUS" })
+  const ok  = s?.state === "ready" || s?.state === "idle"
+  $("statusDot").className = "status-dot " + (ok ? "green" : "red")
+  $("statusText").textContent =
+      s?.state === "ready"    ? `Ready · ${s.model}`
+    : s?.state === "idle"     ? `Ollama is running · ${s.model} loads on the first check`
+    : s?.state === "no-model" ? "Ollama is running, but the AI model isn't installed yet"
+    :                           "Ollama isn't running"
+  $("setupBtn").textContent = ok ? "Open setup" : "Set it up"
+}
+
+$("setupBtn").addEventListener("click", () => sendMessage({ type: "OPEN_PAGE", page: "setup" }))
+
+// ── Start ───────────────────────────────────────────────────────────────────
+
+function render(s: Settings) {
+  settings = s
+  renderGeneral(s)
+  renderSites()
+}
+
+getSettings().then(render)
+subscribeSettings(render)

@@ -1,6 +1,6 @@
 # Sentiment Guide Chrome Extension
 
-A Chrome extension that analyses tone as you type on WhatsApp Web, and optionally Instagram DMs and Gmail — like Grammarly, but for kindness. It flags harsh or unkind language in outgoing messages.
+A Chrome extension that analyses tone as you type — on WhatsApp Web, Instagram DMs, Gmail and the text boxes of any other website — like Grammarly, but for kindness. It flags harsh or unkind language in what you write.
 
 ## Features
 
@@ -8,9 +8,10 @@ A Chrome extension that analyses tone as you type on WhatsApp Web, and optionall
 - **Emoji-aware** — emoji count as tone: "sure 🙂" can read as cold, "💀" usually means laughing
 - **Chat context** *(opt-in, off by default)* — checks can read the last 6 messages in the chat, so a joke reads differently from an argument. Names, emails and phone numbers are taken out first, and the messages only go to your local model
 - **Incoming analysis** *(opt-in, off by default)* — a small dot on a received message says how it probably reads ("probably teasing", "might be sarcastic") when that isn't obvious; hover or focus it for a short, hedged explanation. It explains — it never judges the sender
-- **More sites, one by one** — Instagram direct messages and Gmail can be switched on in the options page (**Sites…** in the toolbar popup); Chrome asks for permission to that site only then
+- **Every website** *(on by default from the setup page)* — comments, posts, forms and other chat apps are checked too, in plain text boxes and rich editors alike. Chrome asks for permission once. Any website can be switched off from its text box (**Don't check this site**) or the toolbar popup, and Instagram DMs and Gmail can also be switched on by themselves under **Settings → Sites**
 - **Email-aware on Gmail** — checks the paragraph you're writing as you go, and the whole email when you press Send (a flagged email waits for you to fix it or choose **Send anyway**). Rewrites default to Formal, and quoted replies and signatures are left alone
 - **Runs entirely locally** — tone analysis is done by a local Ollama model (`gemma3:4b`) on your own machine; nothing is sent to any external AI service, and no API key is required
+- **Your week** — the toolbar popup keeps a private tally and cheers you on ("This week: you took 6 suggestions 🎉"). It stays on your computer and isn't part of parent sharing
 - **Personalised suggestions** — an onboarding flow collects your role, age range, texting style, and goals so the model tailors its language to you
 - **Parent dashboard** *(optional)* — a separate web app (`dashboard/`) where a parent sees a weekly summary: suggestions taken, yellow and red flags per week, and which apps and kinds of message. Counts only, never message text. Try it with made-up data: `cd dashboard && npm install && npm run dev`, then open `/?demo`
 - **Private by default** — messages never leave your device; your profile stays on-device only. Sharing with a parent's dashboard is optional: it needs a Supabase project configured at build time *and* the child entering their parent's pairing code
@@ -49,19 +50,21 @@ A setup page opens when the extension is installed. No terminal is needed:
 
 1. **Install Ollama** — if it isn't running, the page links to [ollama.com/download](https://ollama.com/download) and notices by itself once Ollama is open
 2. **Get the AI model** — one button downloads `gemma3:4b` (3.3 GB) with a progress bar. A download that stops can be carried on where it left off
-3. **Your choices** — e.g. whether to explain messages you receive
+3. **Your choices** — checking all websites (on by default; Chrome asks to allow it when you press Done) and whether to explain messages you receive
 
-The setup page opens again whenever the AI isn't ready: from the amber badge in a message box, or **Set up the AI** in the toolbar popup. Prefer a terminal? `ollama pull gemma3:4b` does the same as step 2.
+The setup page opens again whenever the AI isn't ready: from the amber badge in a message box, or **Set up** in the toolbar popup. Prefer a terminal? `ollama pull gemma3:4b` does the same as step 2.
 
 ## Usage
 
-1. Open [web.whatsapp.com](https://web.whatsapp.com) and start a chat. To use it on Instagram or Gmail too, open **Sites…** in the toolbar popup and switch the site on
-2. Type a message. The round badge in the corner of the message box shows what's happening: a spinner while checking, a green ✓ when it sounds fine, yellow or red ! when it might hurt. Red opens the suggestion card straight away; for yellow, rest the pointer on the underlined words or click the badge
-3. Read the explanation, then **Apply** a single phrase swap (only those words change), **Replace all (Tab)** with the full rewrite, or **Dismiss** to send as-is
-4. Pick how rewrites should sound — **Casual**, **Formal** or **Direct** — in the toolbar popup (your default) or with the style buttons in the suggestion popup (remembered for that chat). Chats you marked as formal in the context form start in Formal
-5. After your first flagged message, the popup offers **chat context**: with it on, checks read the last 6 messages in the chat so they know what you're replying to. The popup says *Checked with the last few messages in this chat* when it was used. Switch it on or off any time under **Chat context** in the toolbar popup
-6. To take a break, use the toolbar popup: switch it off, **Pause 1 hour** or **Pause until tomorrow**. `Alt+Shift+G` turns it on or off, and **Don't check this chat** in the suggestion popup turns it off for one chat. The toolbar icon shows `OFF` or `II` while it isn't checking
-7. To get help reading messages you receive, switch on **Messages you receive** in the toolbar popup (or tick it during onboarding). Only the last 3 received messages are read when a chat opens, then new ones as they arrive. Your own checks always go first. **Was this helpful?** 👍/👎 is counted on your computer only
+1. Open [web.whatsapp.com](https://web.whatsapp.com) and start a chat, or click into a text box on any website (if you allowed all websites during setup)
+2. Type. The round badge in the corner of the box shows what's happening: a spinner while checking, a green ✓ when it sounds fine, yellow or red ! when it might hurt. On ordinary websites it only shows on the box you're using. Red opens the suggestion card straight away; for yellow, rest the pointer on the underlined words or click the badge
+3. Read the explanation, then **Apply** a single phrase swap (only those words change), **Replace all (Tab)** with the full rewrite, or **Dismiss** to leave it as it is
+4. Pick how rewrites should sound — **Casual**, **Formal** or **Direct** — under **Settings → General** (your default) or with the style buttons on the card (remembered for that chat). Chats you marked as formal in the context form start in Formal
+5. After your first flagged chat message, the card offers **chat context**: with it on, checks read the last 6 messages in the chat so they know what you're replying to. The card says *Checked with the last few messages in this chat* when it was used. Switch it on or off any time under **Settings → General**
+6. To take a break, use the ◆ toolbar popup: switch it off, **Pause 1 hour** or **Pause until tomorrow**. `Alt+Shift+G` turns it on or off. The popup also has an **on/off switch for the site you're on**; the badge's menu or the card's ⋯ menu has **Don't check this chat** (on WhatsApp, Instagram, Gmail) or **Don't check this site** (elsewhere). Sites you switched off are listed under **Settings → Sites**. The toolbar icon shows `OFF` or `II` while it isn't checking
+7. To get help reading messages you receive, switch on **Messages you receive** under **Settings → General** (or tick it during setup). Only the last 3 received messages are read when a chat opens, then new ones as they arrive. Your own checks always go first. **Was this helpful?** 👍/👎 is counted on your computer only
+
+The toolbar popup also says whether the AI is ready (with **Set up** when it isn't) and how your week is going. **Settings** has four tabs: General, Sites, Parent sharing and The AI.
 
 See [CHANGES.md](CHANGES.md) for what is new compared with the original extension.
 
@@ -71,14 +74,14 @@ See [CHANGES.md](CHANGES.md) for what is new compared with the original extensio
 |---|---|
 | `wxt.config.ts` | Build config; the manifest is generated from it |
 | `entrypoints/background.ts` | Service worker — queues tone checks to the local Ollama, AI status, optional Supabase logging |
-| `entrypoints/whatsapp.content.ts` | Content script — picks the WhatsApp adapter and starts the engine |
-| `entrypoints/popup/`, `entrypoints/onboarding/` | Toolbar popup and first-run page |
+| `entrypoints/*.content.ts` | Content scripts — each picks a site's adapter and starts the engine (`web.content.ts`: every other website) |
+| `entrypoints/popup/`, `entrypoints/onboarding/` | Toolbar popup (on/off, this site, AI status, your week) and the setup page |
 | `src/analysis/` | Prompts, JSON schema + validation, Ollama client, request queue |
-| `src/platforms/` | One adapter per site (WhatsApp, Instagram, Gmail); all page selectors live here. `sites.ts` lists the optional sites |
-| `entrypoints/options/` | Options page: switch optional sites on and off |
+| `src/platforms/` | One adapter per site (WhatsApp, Instagram, Gmail, and `web.ts` for any other website); all page selectors live here. `sites.ts` lists the optional sites |
+| `entrypoints/options/` | Settings: General, Sites, Parent sharing, The AI |
 | `src/engine/` | `ComposeSession` (one per compose box) and the engine that wires everything |
-| `src/ui/` | Suggestion card, highlight, context form, status badge (Shadow DOM) |
-| `src/settings/store.ts` | Typed settings and per-chat data |
+| `src/ui/` | Suggestion card, highlight, context form, status badge (Shadow DOM); `box-text.ts` reads and measures text in textareas and rich editors alike |
+| `src/settings/` | Typed settings and per-chat data (`store.ts`); the private weekly tally (`week.ts`) |
 | `eval/` | Labelled messages and the tone evaluation runner |
 | `dashboard/` | Parent dashboard: a separate React web app reading the shared counts (see `dashboard/README.md`) |
 | `supabase/migrations/` | Database schema and rules for parent sharing (apply in order with `supabase db push`) |
@@ -105,8 +108,9 @@ summary line in the commit message.
 - Chat context is off unless you turn it on. When on, the last 6 messages (each cut to 200 characters, with the contact's name, emails and phone numbers removed) are read from the page at check time, sent only to your local Ollama, and never stored, logged or sent to Supabase
 - Text is only sent to your local Ollama server (`http://localhost:11434`) — never to an external server
 - Your profile is stored locally using `chrome.storage.local`
+- With **all websites** on, the extension can read text boxes on every site, which is why Chrome asks first. It only reads the box you're writing in, and only sends that text to your local Ollama
 - No API key is required or used
-- Optional sharing with a parent: only if the extension was built with a Supabase project (`WXT_SUPABASE_URL` / `WXT_SUPABASE_ANON_KEY` in `.env`, see `.env.example`) **and** the child reads what is shared, agrees, and links to a parent with a 6-digit pairing code under **Sites… → Share with a parent**. Until then nothing is sent. Only counts are shared — per flagged message: yellow/red, a category from a fixed list (e.g. "sarcasm"), confidence, whether the suggestion was taken, the app, and the time. Never message text, rewrites, flagged words, contacts, chat context, incoming readings or context answers. "Shared with parent: on" shows in the toolbar popup, **Unlink and delete my data** removes everything shared, and the server deletes events after 90 days. The database rules (`supabase/migrations/`) let each child write only their own rows and a parent read only rows of children linked to them
+- Optional sharing with a parent: only if the extension was built with a Supabase project (`WXT_SUPABASE_URL` / `WXT_SUPABASE_ANON_KEY` in `.env`, see `.env.example`) **and** the child reads what is shared, agrees, and links to a parent with a 6-digit pairing code under **Settings → Parent sharing**. Until then nothing is sent. Only counts are shared — per flagged message: yellow/red, a category from a fixed list (e.g. "sarcasm"), confidence, whether the suggestion was taken, the app (WhatsApp, Instagram, Gmail, or just "other websites" — never which one), and the time. Never message text, rewrites, flagged words, contacts, chat context, incoming readings or context answers. "Shared with parent: on" shows in the toolbar popup, **Unlink and delete my data** removes everything shared, and the server deletes events after 90 days. The database rules (`supabase/migrations/`) let each child write only their own rows and a parent read only rows of children linked to them
 
 ## Requirements
 

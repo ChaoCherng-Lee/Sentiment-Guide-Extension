@@ -59,9 +59,9 @@ test("turning it on re-checks with the last messages, scrubbed, and says so", as
   await expect(popup(page).locator("#context-note")).toBeVisible({ timeout: 30_000 })
   await expect(offer(page)).toBeHidden()
 
-  // The extension menu shows it's on
+  // Settings shows it's on
   const menu = await page.context().newPage()
-  await menu.goto(`chrome-extension://${extensionId}/popup.html`)
+  await menu.goto(`chrome-extension://${extensionId}/options.html#general`)
   await expect(menu.locator("#chatContext")).toBeChecked()
   await expect(menu.locator("#chatContextSub")).toContainText("never saved")
 })

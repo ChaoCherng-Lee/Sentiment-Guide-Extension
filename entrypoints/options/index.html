@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Sentiment Guide — Sites</title>
+    <title>Sentiment Guide — Settings</title>
     <meta name="manifest.open_in_tab" content="true" />
     <style>
       * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -55,24 +55,124 @@
       .btn:disabled { background: #c7c9d9; cursor: not-allowed; }
       .btn.quiet { background: none; border: 1px solid #fca5a5; color: #b91c1c; margin-top: 10px; }
       .btn.quiet:hover { background: #fef2f2; }
+      header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 18px; }
+      header h1 { margin: 0; }
+      header span { color: #6b7280; font-size: 13px; }
+      .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin-bottom: 22px; overflow-x: auto; }
+      .tabs a {
+        padding: 9px 12px; color: #4b5563; text-decoration: none; font-weight: 500; white-space: nowrap;
+        border-bottom: 2px solid transparent; margin-bottom: -1px;
+      }
+      .tabs a:hover { color: #111827; }
+      .tabs a[aria-selected="true"] { color: #4338ca; border-bottom-color: #4f46e5; font-weight: 600; }
+      .tabs a:focus-visible { outline: 2px solid #a5b4fc; outline-offset: -2px; border-radius: 6px; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+      .row + .row { margin-top: 14px; padding-top: 14px; border-top: 1px solid #f3f4f6; }
+      .card h3, .row h3 { font-size: 14px; }
+      .sub { font-size: 12px; color: #6b7280; }
+      .segmented { display: flex; gap: 4px; margin-top: 8px; }
+      .segmented button {
+        flex: 1; padding: 7px 4px; border-radius: 8px; border: 1px solid #e5e7eb; background: #f9fafb;
+        color: #374151; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer;
+      }
+      .segmented button:hover { background: #f3f4f6; }
+      .segmented button[aria-checked="true"] { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
+      .hint { font-size: 12px; color: #6b7280; margin-top: 6px; min-height: 18px; }
+      .off-list { list-style: none; }
+      .off-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+      .off-list li + li { border-top: 1px solid #f3f4f6; }
+      .btn.small { padding: 5px 10px; font-size: 12px; background: #f9fafb; color: #374151; border: 1px solid #e5e7eb; }
+      .btn.small:hover { background: #f3f4f6; }
+      .status-row { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+      .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
+      .status-dot.green { background: #10b981; }
+      .status-dot.red { background: #ef4444; }
+      kbd { font: inherit; font-size: 11px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0 4px; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #0f1117; color: #e5e7eb; }
+        .site, .card { background: #1a1d27; box-shadow: none; border: 1px solid #262a36; }
+        .tabs { border-bottom-color: #262a36; }
+        .tabs a { color: #9ca3af; }
+        .tabs a:hover { color: #e5e7eb; }
+        .tabs a[aria-selected="true"] { color: #a5b4fc; border-bottom-color: #818cf8; }
+        .row + .row, .off-list li + li { border-top-color: #262a36; }
+        .segmented button, .btn.small { background: #232734; border-color: #343a4a; color: #d1d5db; }
+        .segmented button[aria-checked="true"] { background: #312e81; border-color: #6366f1; color: #e0e7ff; }
+        .consent ul, .agree { color: #d1d5db; }
+        .pair-row input { background: #232734; color: #e5e7eb; border-color: #343a4a; }
+        kbd { background: #232734; border-color: #343a4a; }
+      }
       [hidden] { display: none !important; }
     </style>
   </head>
   <body>
     <main>
-      <h1>Sites</h1>
-      <p class="lead">Choose where Sentiment Guide checks your messages. Chrome asks you to allow each site the first time.</p>
-      <div class="site">
-        <div>
-          <h2>WhatsApp Web</h2>
-          <p>Checks messages you write on web.whatsapp.com.</p>
+      <header><h1>◆ Sentiment Guide</h1><span>Settings</span></header>
+      <nav class="tabs" role="tablist" aria-label="Settings">
+        <a href="#general" role="tab" id="tab-general" aria-controls="general">General</a>
+        <a href="#sites" role="tab" id="tab-sites" aria-controls="sites">Sites</a>
+        <a href="#sharing" role="tab" id="tab-sharing" aria-controls="sharing">Parent sharing</a>
+        <a href="#ai" role="tab" id="tab-ai" aria-controls="ai">The AI</a>
+      </nav>
+
+      <section class="panel" id="general" role="tabpanel" aria-labelledby="tab-general" hidden>
+        <div class="card">
+          <h3>Suggestion style</h3>
+          <p class="sub">How rewrites sound. You can pick another style for one chat from its card.</p>
+          <div class="segmented" id="style" role="radiogroup" aria-label="Suggestion style">
+            <button role="radio" data-style="casual" aria-checked="false">Casual</button>
+            <button role="radio" data-style="formal" aria-checked="false">Formal</button>
+            <button role="radio" data-style="direct" aria-checked="false">Direct</button>
+          </div>
+          <div class="hint" id="styleHint"></div>
         </div>
-        <span class="always">Always on</span>
-      </div>
-      <div id="sites"></div>
-      <p class="status" id="status" role="status"></p>
-      <section id="sharing" hidden>
-        <h2 class="section">Share with a parent</h2>
+        <div class="card" style="margin-top:12px">
+          <div class="row">
+            <div>
+              <h3>Chat context</h3>
+              <div class="sub" id="chatContextSub">Off — only your own message is checked</div>
+            </div>
+            <label class="switch" title="Let checks read the last few messages in the chat">
+              <input type="checkbox" id="chatContext" aria-label="Use recent chat messages as context" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="row">
+            <div>
+              <h3>Messages you receive</h3>
+              <div class="sub" id="incomingSub">Off — received messages aren't read</div>
+            </div>
+            <label class="switch" title="Explain how received messages probably read">
+              <input type="checkbox" id="incomingAnalysis" aria-label="Explain messages you receive" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+        <p class="note">Turn everything on or off, or pause, from the ◆ button in Chrome's toolbar, or with <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd>.</p>
+      </section>
+
+      <section class="panel" id="sites" role="tabpanel" aria-labelledby="tab-sites" hidden>
+        <p class="lead">Choose where Sentiment Guide checks what you write. Chrome asks you to allow a site the first time.</p>
+        <div class="site">
+          <div>
+            <h2>WhatsApp Web</h2>
+            <p>Checks messages you write on web.whatsapp.com.</p>
+          </div>
+          <span class="always">Always on</span>
+        </div>
+        <div id="siteList"></div>
+        <p class="status" id="status" role="status"></p>
+        <h2 class="section">Sites you switched off</h2>
+        <div class="card">
+          <ul class="off-list" id="offList"></ul>
+          <p class="sub" id="offEmpty">None. To switch a site off, use the badge in one of its text boxes ("Don't check this site"), or the ◆ button in Chrome's toolbar.</p>
+        </div>
+        <p class="note">Whatever the site, what you write is only ever sent to the AI running on this computer.</p>
+      </section>
+
+      <section class="panel" id="sharing" role="tabpanel" aria-labelledby="tab-sharing" hidden>
+        <p class="lead" id="sharingNotSetUp" hidden>Sharing with a parent isn't set up in this version of the extension.</p>
+        <div id="sharingSetUp" hidden>
         <div class="card">
           <div id="sharingOff" class="consent">
             <p>Only if you want to: a parent can see a summary of how you're doing on their dashboard. Here's exactly what that means.</p>
@@ -81,7 +181,7 @@
               <li>How many of your messages were flagged each week, and whether yellow or red</li>
               <li>What kind of problem it was, like "sarcasm" or "harsh tone"</li>
               <li>How often you took a suggestion</li>
-              <li>Which app: WhatsApp, Instagram or Gmail</li>
+              <li>Which app: WhatsApp, Instagram, Gmail or "other websites" (never which website)</li>
             </ul>
             <h3>What they won't see</h3>
             <ul>
@@ -108,9 +208,16 @@
             <p class="status" id="unlinkStatus" role="status"></p>
           </div>
         </div>
+        </div>
       </section>
 
-      <p class="note">Switching a site off removes the permission to read that site. Whatever the site, your messages are only ever sent to the AI running on this computer.</p>
+      <section class="panel" id="ai" role="tabpanel" aria-labelledby="tab-ai" hidden>
+        <div class="card">
+          <div class="status-row"><span class="status-dot" id="statusDot"></span><span id="statusText">Checking…</span></div>
+          <p class="sub" style="margin-top:8px">Sentiment Guide uses Ollama, a free app that runs an AI model on this computer. Nothing you write is sent anywhere else, and there's nothing to pay.</p>
+          <button class="btn" id="setupBtn" style="margin-top:12px">Open setup</button>
+        </div>
+      </section>
     </main>
     <script type="module" src="./main.ts"></script>
   </body>

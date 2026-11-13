@@ -32,9 +32,9 @@ test("switching style in the popup rewrites the suggestion and is remembered for
   await expect(styleChip(page, "formal")).toHaveAttribute("aria-pressed", "true")
 })
 
-test("the default style from the toolbar popup is used for new flags", async ({ context, extensionId, page }) => {
+test("the default style from Settings is used for new flags", async ({ context, extensionId, page }) => {
   const toolbar = await context.newPage()
-  await toolbar.goto(`chrome-extension://${extensionId}/popup.html`)
+  await toolbar.goto(`chrome-extension://${extensionId}/options.html#general`)
   await toolbar.locator('#style [data-style="direct"]').click()
   await expect(toolbar.locator('#style [data-style="direct"]')).toHaveAttribute("aria-checked", "true")
   await expect(toolbar.locator("#styleHint")).toContainText("Short and clear")

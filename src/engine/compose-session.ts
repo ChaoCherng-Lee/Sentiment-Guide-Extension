@@ -336,7 +336,8 @@ export class ComposeSession {
     this.deps.onStyleChange(style)
     // A new Flag object, so a rewrite still on its way for the old style is ignored
     this.flag    = { ...old, style, advice: null, applied: new Set() }
-    this.eventId = crypto.randomUUID()
+    // Still the same flagged message: shared (and counted) once
+    this.eventId ??= crypto.randomUUID()
     this.deps.popup.setAdvice(null)
     this.fetchAdvice(this.flag, this.deps.conversation())
   }

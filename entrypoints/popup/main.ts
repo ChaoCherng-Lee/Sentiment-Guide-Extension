@@ -1,11 +1,13 @@
-// popup — runs inside the extension action popup
+// Toolbar popup — the quick things: on / off / pause, this site, whether the
+// AI is ready, and how the week is going. Everything else is in Settings.
 import { browser } from "#imports"
-import type { SuggestionStyle } from "../../src/analysis/types"
 import { sendMessage } from "../../src/messaging"
+import { WHATSAPP_ORIGIN } from "../../src/platforms/sites"
 import {
-  getSettings, isActive, pauseUntil, resume, setEnabled, type Settings, subscribeSettings, tomorrowMorning,
-  updateSettings,
+  getSettings, isActive, isSiteDisabled, pauseUntil, resume, setEnabled, setSiteDisabled, type Settings,
+  subscribeSettings, tomorrowMorning,
 } from "../../src/settings/store"
+import { getWeek, weekLine } from "../../src/settings/week"
 
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T
 
@@ -24,8 +26,8 @@ function renderPower(s: Settings) {
   $<HTMLInputElement>("enabled").checked = s.enabled
   $("powerState").textContent = !s.enabled ? "Off" : paused ? "Paused" : "On"
   $("powerSub").textContent   = !s.enabled
-    ? "Not checking any messages"
-    : paused ? `Back on at ${formatTime(s.pausedUntil!)}` : "Checking your messages"
+    ? "Not checking anything"
+    : paused ? `Back on at ${formatTime(s.pausedUntil!)}` : "Checking what you write"
   $("pauseRow").hidden  = !s.enabled || paused
   $("resumeRow").hidden = !paused
 }
@@ -35,97 +37,71 @@ $("pause1h").addEventListener("click", () => pauseUntil(Date.now() + HOUR))
 $("pauseTomorrow").addEventListener("click", () => pauseUntil(tomorrowMorning()))
 $("resume").addEventListener("click", () => resume())
 
-// ── Suggestion style ────────────────────────────────────────────────────────
+// ── This site ───────────────────────────────────────────────────────────────
 
-const STYLE_HINTS: Record<SuggestionStyle, string> = {
-  casual: "Like texting a friend — slang and emoji are fine",
-  formal: "Polite full sentences — for teachers or email",
-  direct: "Short and clear — keeps your point, drops the harshness",
+/** The open tab's site, if Sentiment Guide checks it (Chrome only shows us its address then). */
+let site: string | null = null
+
+async function findSite() {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true })
+  if (!tab?.url || !/^https?:/.test(tab.url)) return
+  const url = new URL(tab.url)
+  const covered = tab.url.startsWith(WHATSAPP_ORIGIN.slice(0, -1))
+    || await browser.permissions.contains({ origins: [`${url.origin}/*`] })
+  if (!covered) return
+  site = url.hostname
+  $("siteName").textContent = site.replace(/^www\./, "")
+  $("siteSection").hidden = false
+  getSettings().then(renderSite)
 }
 
-function renderStyle(s: Settings) {
-  document.querySelectorAll<HTMLElement>("#style [data-style]").forEach(btn => {
-    btn.setAttribute("aria-checked", String(btn.dataset.style === s.suggestionStyle))
-  })
-  $("styleHint").textContent = STYLE_HINTS[s.suggestionStyle]
+function renderSite(s: Settings) {
+  if (!site) return
+  const on = !isSiteDisabled(s, site)
+  $<HTMLInputElement>("siteEnabled").checked = on
+  $("siteSub").textContent = on ? "Checking this site" : "Not checking this site"
 }
 
-document.querySelectorAll<HTMLElement>("#style [data-style]").forEach(btn => {
-  btn.addEventListener("click", () => updateSettings({ suggestionStyle: btn.dataset.style as SuggestionStyle }))
+$<HTMLInputElement>("siteEnabled").addEventListener("change", e => {
+  if (site) setSiteDisabled(site, !(e.target as HTMLInputElement).checked)
 })
 
-// ── Chat context ────────────────────────────────────────────────────────────
+// ── AI status ───────────────────────────────────────────────────────────────
 
-function renderChatContext(s: Settings) {
-  $<HTMLInputElement>("chatContext").checked = s.chatContext
-  $("chatContextSub").textContent = s.chatContext
-    ? "On — checks read the last 6 messages in the chat. They stay on this computer and are never saved."
-    : "Off — only your own message is checked"
+async function showStatus() {
+  const status = await sendMessage({ type: "AI_STATUS" })
+  const ok = status?.state === "ready" || status?.state === "idle"
+  $("statusDot").classList.add(ok ? "green" : "red")
+  $("statusText").textContent = ok ? "The AI is ready"
+    : status?.state === "no-model" ? "The AI model isn't installed yet"
+    : "The AI isn't running"
+  $("statusText").title = ok ? `${status!.model}, running on this computer` : ""
+  $("setupBtn").hidden = ok
 }
 
-$<HTMLInputElement>("chatContext").addEventListener("change", e => updateSettings({
-  chatContext: (e.target as HTMLInputElement).checked,
-  chatContextOffered: true,
-}))
+$("setupBtn").addEventListener("click", () => {
+  sendMessage({ type: "OPEN_PAGE", page: "setup" })
+  window.close()
+})
 
-// ── Incoming messages ───────────────────────────────────────────────────────
+// ── Week, settings ──────────────────────────────────────────────────────────
 
-function renderIncoming(s: Settings) {
-  $<HTMLInputElement>("incomingAnalysis").checked = s.incomingAnalysis
-  $("incomingSub").textContent = s.incomingAnalysis
-    ? "On — a dot shows how a new message probably reads, when it isn't obvious"
-    : "Off — received messages aren't read"
-}
+getWeek().then(stats => { $("weekLine").textContent = weekLine(stats, new Date()) })
 
-$<HTMLInputElement>("incomingAnalysis").addEventListener("change", e =>
-  updateSettings({ incomingAnalysis: (e.target as HTMLInputElement).checked }))
-
-function render(s: Settings) {
-  renderPower(s)
-  renderStyle(s)
-  renderChatContext(s)
-  renderIncoming(s)
-}
-
-$("openSites").addEventListener("click", () => browser.runtime.openOptionsPage())
+$("openSettings").addEventListener("click", () => {
+  browser.runtime.openOptionsPage()
+  window.close()
+})
 
 // The child can always see when sharing with a parent is on (Plan 5.2)
 sendMessage({ type: "SHARING_STATUS" }).then(s => { $("sharedLine").hidden = !s?.paired })
 
-getSettings().then(render)
-subscribeSettings(render)
-
-// ── AI status ───────────────────────────────────────────────────────────────
-
-const dot  = $("statusDot")
-const text = $("statusText")
-
-$("setupBtn").addEventListener("click", () => {
-  browser.tabs.create({ url: browser.runtime.getURL("/onboarding.html") })
-  window.close()
-})
-
-async function showStatus() {
-  const status = await sendMessage({ type: "AI_STATUS" })
-  switch (status?.state) {
-    case "ready":
-      dot.classList.add("green")
-      text.textContent = "Ready · " + status.model
-      break
-    case "idle":
-      dot.classList.add("green")
-      text.textContent = "Ollama running · " + status.model + " (loads on first check)"
-      break
-    case "no-model":
-      dot.classList.add("red")
-      text.textContent = "The AI model isn't installed yet"
-      $("setupBtn").hidden = false
-      break
-    default:
-      dot.classList.add("red")
-      text.textContent = "The AI isn't running"
-      $("setupBtn").hidden = false
-  }
+function render(s: Settings) {
+  renderPower(s)
+  renderSite(s)
 }
 
+getSettings().then(render)
+subscribeSettings(render)
+findSite()
 showStatus()

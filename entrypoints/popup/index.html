@@ -104,18 +104,20 @@
       .btn.primary { background: #4f46e5; border-color: #4f46e5; color: white; }
       .btn.primary:hover { background: #4338ca; }
       [hidden] { display: none !important; }
-
-      .segmented { display: flex; gap: 4px; }
-      .segmented button {
-        flex: 1; padding: 6px 4px; border-radius: 8px;
-        border: 1px solid #e5e7eb; background: #f9fafb; color: #374151;
-        font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer;
+      .site-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 190px; }
+      .week { font-size: 12px; color: #374151; text-align: center; margin: 4px 0 10px; }
+      .ai-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .ai-row .btn { flex: 0 0 auto; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #0f1117; color: #e5e7eb; }
+        .section { background: #1a1d27; box-shadow: none; border: 1px solid #262a36; }
+        .status-text { color: #e5e7eb; }
+        .btn { background: #232734; border-color: #343a4a; color: #d1d5db; }
+        .btn:hover { background: #2b3040; }
+        .week { color: #d1d5db; }
+        kbd { background: #232734; border-color: #343a4a; }
       }
-      .segmented button:hover { background: #f3f4f6; }
-      .segmented button[aria-checked="true"] { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
-      .hint { font-size: 11px; color: #6b7280; margin-top: 6px; min-height: 16px; }
 
-      .chat-title { margin-bottom: 2px; }
       .shared { font-size: 11px; color: #166534; font-weight: 600; margin-top: 8px; }
 
       .shortcut { font-size: 11px; color: #9ca3af; margin-top: 8px; }
@@ -123,25 +125,17 @@
         font-family: inherit; font-size: 10px; background: #f3f4f6;
         border: 1px solid #e5e7eb; border-radius: 4px; padding: 0 4px;
       }
-
-      .note {
-        font-size: 11px;
-        color: #9ca3af;
-        margin-top: 12px;
-        line-height: 1.6;
-        text-align: center;
-      }
     </style>
   </head>
   <body>
     <h1>◆ Sentiment Guide</h1>
-    <p class="subtitle">Tone analysis for kinder texting on WhatsApp Web</p>
+    <p class="subtitle">Kinder messages, checked on your own computer</p>
 
     <div class="section">
       <div class="power-row">
         <div>
           <div class="power-state" id="powerState">On</div>
-          <div class="power-sub" id="powerSub">Checking your messages</div>
+          <div class="power-sub" id="powerSub">Checking what you write</div>
         </div>
         <label class="switch" title="Turn Sentiment Guide on or off">
           <input type="checkbox" id="enabled" aria-label="Sentiment Guide on" checked />
@@ -159,54 +153,32 @@
       <div class="shortcut">Shortcut: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> turns it on or off</div>
     </div>
 
-    <div class="section">
-      <div class="section-title">Suggestion style</div>
-      <div class="segmented" id="style" role="radiogroup" aria-label="Suggestion style">
-        <button role="radio" data-style="casual" aria-checked="false">Casual</button>
-        <button role="radio" data-style="formal" aria-checked="false">Formal</button>
-        <button role="radio" data-style="direct" aria-checked="false">Direct</button>
-      </div>
-      <div class="hint" id="styleHint"></div>
-    </div>
-
-    <div class="section">
+    <div class="section" id="siteSection" hidden>
       <div class="power-row">
         <div>
-          <div class="section-title chat-title">Chat context</div>
-          <div class="power-sub" id="chatContextSub">Off — only your own message is checked</div>
+          <div class="site-name" id="siteName"></div>
+          <div class="power-sub" id="siteSub">Checking this site</div>
         </div>
-        <label class="switch" title="Let checks read the last few messages in the chat">
-          <input type="checkbox" id="chatContext" aria-label="Use recent chat messages as context" />
+        <label class="switch" title="Check what you write on this site">
+          <input type="checkbox" id="siteEnabled" aria-label="Check this site" />
           <span class="slider"></span>
         </label>
       </div>
     </div>
 
     <div class="section">
-      <div class="power-row">
-        <div>
-          <div class="section-title chat-title">Messages you receive</div>
-          <div class="power-sub" id="incomingSub">Off — received messages aren't read</div>
+      <div class="ai-row">
+        <div class="status-row">
+          <span class="status-dot" id="statusDot"></span>
+          <span class="status-text" id="statusText">Checking the AI…</span>
         </div>
-        <label class="switch" title="Explain how received messages probably read">
-          <input type="checkbox" id="incomingAnalysis" aria-label="Explain messages you receive" />
-          <span class="slider"></span>
-        </label>
+        <button class="btn primary" id="setupBtn" hidden>Set up</button>
       </div>
     </div>
 
-    <div class="section">
-      <div class="section-title">Local AI Status</div>
-      <div class="status-row">
-        <span class="status-dot" id="statusDot"></span>
-        <span class="status-text" id="statusText">Checking…</span>
-      </div>
-      <button class="btn primary" id="setupBtn" style="width:100%;margin-top:10px" hidden>Set up the AI</button>
-    </div>
+    <p class="week" id="weekLine"></p>
 
-    <button class="btn" id="openSites" style="width:100%">Sites: WhatsApp, Instagram, Gmail…</button>
-
-    <p class="note">Powered by Ollama running locally on your computer.<br>No data leaves your device. No API key needed.</p>
+    <button class="btn" id="openSettings" style="width:100%">Settings</button>
 
     <script type="module" src="./main.ts"></script>
   </body>

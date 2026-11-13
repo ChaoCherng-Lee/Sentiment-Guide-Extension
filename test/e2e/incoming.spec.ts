@@ -13,7 +13,7 @@ const isIncoming = (turn: string) => turn.includes("Message they received")
 
 async function turnOnIncoming(context: BrowserContext, extensionId: string) {
   const menu = await context.newPage()
-  await menu.goto(`chrome-extension://${extensionId}/popup.html`)
+  await menu.goto(`chrome-extension://${extensionId}/options.html#general`)
   await menu.locator(".switch:has(#incomingAnalysis)").click()
   await expect(menu.locator("#incomingSub")).toContainText("On")
   await menu.close()
