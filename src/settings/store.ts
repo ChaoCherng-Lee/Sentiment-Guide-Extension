@@ -9,7 +9,7 @@
 
 import { browser } from "#imports"
 import type { BackendId } from "../analysis/backend"
-import type { ChatContext, IncomingReading, SuggestionStyle } from "../analysis/types"
+import type { ChatContext, IncomingReading, Sensitivity, SuggestionStyle } from "../analysis/types"
 
 export interface Settings {
   /** Main on/off switch. */
@@ -22,6 +22,8 @@ export interface Settings {
   disabledSites: string[]
   /** Default style for rewrites; chats can override it. */
   suggestionStyle: SuggestionStyle
+  /** How readily messages are flagged (Spec FR-3.1). */
+  sensitivity: Sensitivity
   /**
    * Where checks run (Spec FR-4). Installs from before round 2 set up Ollama,
    * so that's the default; setup picks for new installs (Plan 8.4).
@@ -43,6 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   disabledConversations: [],
   disabledSites: [],
   suggestionStyle: "casual",
+  sensitivity: "balanced",
   backend: "ollama",
   model: null,
   chatContext: false,

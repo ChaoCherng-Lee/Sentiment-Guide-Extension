@@ -52,6 +52,13 @@ describe("cloud backend", () => {
     expect(calls[0].body.context).toEqual({ q1: "close_friend", q2: "casual", q3: "no", q4: "no", q5: "normal" })
   })
 
+  it("sends the sensitivity, and applies it to the answer too", async () => {
+    const { b, calls } = backend(() => ok({ result: { tone: "yellow", confidence: 0.7, flagged_phrase: "stupid" } }), memoryTokens("id.sig"))
+    const v = await b.judge("you are stupid", null, [], { sensitivity: "gentle" })
+    expect(calls[0].body.sensitivity).toBe("gentle")
+    expect(v.tone).toBe("green")
+  })
+
   it("gets a new token once if the server stops accepting the old one", async () => {
     let first = true
     const { b, tokens } = backend((url) => {

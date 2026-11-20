@@ -10,6 +10,7 @@
 //   npm run eval -- --advice              # also time step 2 on flagged messages
 //   npm run eval -- --advice --style formal
 //   npm run eval -- --category context --no-recent   # same cases without the chat
+//   npm run eval -- --sensitivity gentle  # gentle | balanced (default) | strict
 //   npm run eval -- --compare             # also show the change from the last saved run
 //   npm run eval -- --check               # exit 1 if a Spec target (NFR-1) is missed
 //
@@ -30,7 +31,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import path from "node:path"
 import { parseArgs } from "node:util"
 import { evalBackend } from "./backends"
-import type { ChatContext, ChatMessage, SuggestionStyle, Tone, ToneVerdict } from "../src/analysis/types"
+import { type ChatContext, type ChatMessage, type Sensitivity, SENSITIVITIES, type SuggestionStyle, type Tone, type ToneVerdict } from "../src/analysis/types"
 
 interface Case {
   id: number
@@ -67,6 +68,7 @@ const { values: args } = parseArgs({
     file:     { type: "string", default: path.join(DIR, "messages.jsonl") },
     advice:   { type: "boolean", default: false },
     style:    { type: "string", default: "casual" },
+    sensitivity: { type: "string", default: "balanced" },
     "no-recent": { type: "boolean", default: false },
     compare:  { type: "boolean", default: false },
     check:    { type: "boolean", default: false },
@@ -278,7 +280,10 @@ async function main() {
     throw new Error(`The ${backend.id} backend isn't ready (${status.state}${status.detail ? ": " + status.detail : ""})` +
       (backend.id === "ollama" ? " — run: ollama serve, and ollama pull gemma3:4b" : ""))
   }
-  const model = status.model ? `${backend.id} · ${status.model}` : backend.id
+  const sensitivity = args.sensitivity as Sensitivity
+  if (!SENSITIVITIES.includes(sensitivity)) throw new Error(`--sensitivity must be one of ${SENSITIVITIES.join(", ")}`)
+  const model = (status.model ? `${backend.id} · ${status.model}` : backend.id) +
+    (sensitivity === "balanced" ? "" : ` · ${sensitivity}`)
 
   process.stdout.write(`Loading ${model}… `)
   await backend.warm()
@@ -291,7 +296,7 @@ async function main() {
     const start = performance.now()
     try {
       const ctx    = fullContext(c.context)
-      const result = await backend.judge(c.text, ctx, recentOf(c), { timeoutMs: 120_000 })
+      const result = await backend.judge(c.text, ctx, recentOf(c), { timeoutMs: 120_000, sensitivity })
       const outcome: Outcome = { case: c, result, ms: performance.now() - start }
       if (args.advice && result.tone !== "green") {
         const adviceStart = performance.now()
@@ -314,7 +319,7 @@ async function main() {
 
   mkdirSync(outDir, { recursive: true })
   const file = path.join(outDir, `${new Date().toISOString().replace(/[:.]/g, "-")}.json`)
-  writeFileSync(file, JSON.stringify({ backend: backend.id, model, summary, metrics: now, outcomes }, null, 2))
+  writeFileSync(file, JSON.stringify({ backend: backend.id, model, sensitivity, summary, metrics: now, outcomes }, null, 2))
   console.log(`\nSaved ${path.relative(process.cwd(), file)}`)
   if (args.check && missed.length) {
     console.error(`\nMissed: ${missed.join(", ")}`)

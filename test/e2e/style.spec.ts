@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test"
-import { HARSH, expect, openWhatsApp, test } from "./fixtures"
+import { HARSH, expect, openWhatsApp, recordModelRequests, test } from "./fixtures"
 
 const popup = (page: Page) => page.locator("#sg-popup-host .popup")
 const styleChip = (page: Page, style: string) => popup(page).locator(`.style-chip[data-style="${style}"]`)
@@ -58,4 +58,19 @@ test("a chat marked formal in the context form starts in Formal", async ({ page 
   await page.locator("footer [contenteditable]").pressSequentially(HARSH)
   await expect(popup(page)).toBeVisible()
   await expect(styleChip(page, "formal")).toHaveAttribute("aria-pressed", "true")
+})
+
+test("the sensitivity from Settings goes with each check", async ({ context, extensionId, page, worker }) => {
+  const toolbar = await context.newPage()
+  await toolbar.goto(`chrome-extension://${extensionId}/options.html#general`)
+  await expect(toolbar.locator('#sensitivity [data-sensitivity="balanced"]')).toHaveAttribute("aria-checked", "true")
+  await toolbar.locator('#sensitivity [data-sensitivity="strict"]').click()
+  await expect(toolbar.locator('#sensitivity [data-sensitivity="strict"]')).toHaveAttribute("aria-checked", "true")
+  await expect(toolbar.locator("#sensitivityHint")).toContainText("cold or curt")
+
+  const turns = await recordModelRequests(worker)
+  await page.bringToFront()
+  await openWhatsApp(page)
+  await page.locator("footer [contenteditable]").pressSequentially("see you at 5 then")
+  await expect.poll(async () => (await turns()).some(t => t.includes("STRICT checking"))).toBe(true)
 })

@@ -109,7 +109,15 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | 8.3 | **A private cloud check as a backend.** For computers that can't run a model, checks can go to a small server function (`supabase/functions/tone-check`, in the same Supabase project as parent sharing). It asks a hosted model (Claude Haiku by default; any OpenAI-compatible one with a setting) exactly the questions the extension asks locally, because the prompts are built on the server from a copy of the extension's own code. The message is checked and forgotten: nothing stores it, and the function logs only timing and status. The chat itself never goes to the cloud (chat context isn't offered with it). Each browser gets an anonymous install token on first use, so the function can cap checks at 300 an hour per install and 20 new installs an hour per network without knowing who anyone is. When the cap is reached the badge says so. No API key is in the extension. Nobody is switched over yet; setup offers it in 8.4 |
 | 8.4 | **Setup picks for you.** The setup page's first question is now *Where should checks happen?* **Recommended** (the default) uses Chrome's built-in AI if this computer can run it, with a button that lets Chrome download its model, and otherwise the private cloud check: nothing to install either way. It says in one line which it picked and why. **Fully private (advanced)** is the old Ollama walkthrough. A new **Try it** box checks a sample message (or your own) so you see a flag before leaving; it isn't counted in your week or shared. **Settings → The AI** lists all three with how each stands (ready, needs a download, not available here, can't be reached) and switches between them. Sentiment Guide never moves you to the cloud by itself. The toolbar popup's AI line now speaks for whichever is in use. Installs that already use Ollama stay on it |
 
+### Phase 9: Fewer wrong flags
+
+| Step | New for users |
+|---|---|
+| 9.1 | **Sensitivity.** Settings → General has **How much to flag**: **Gentle** (only what would clearly hurt; blunt is fine), **Balanced** (the default) or **Strict** (also cold or curt messages). It applies from the next message, on every backend: Gentle and Strict add a line to the check, and Gentle also lets through a yellow the AI isn't sure about. `npm run eval -- --sensitivity gentle` scores each one |
+
 ## Changed behaviour worth knowing
+
+- **9.1:** the three levels on the blunt-but-fine and passive-aggressive cases (60 messages, gemma3:4b): fine messages flagged — Gentle 3%, Balanced 60%, Strict 90%; passive-aggressive caught — Gentle 10%, Balanced 87%, Strict 93%. Balanced doesn't meet the Spec targets yet; that's 9.3
 
 - **8.3 needs setting up before it works:** the rate-limit migration
   (`20261121000000_cloud_rate_limit.sql`), two secrets (`TONE_TOKEN_SECRET`,

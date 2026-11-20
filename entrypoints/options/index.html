@@ -122,6 +122,16 @@
 
       <section class="panel" id="general" role="tabpanel" aria-labelledby="tab-general" hidden>
         <div class="card">
+          <h3>How much to flag</h3>
+          <p class="sub">Change it any time: it applies from the next message.</p>
+          <div class="segmented" id="sensitivity" role="radiogroup" aria-label="How much to flag">
+            <button role="radio" data-sensitivity="gentle" aria-checked="false">Gentle</button>
+            <button role="radio" data-sensitivity="balanced" aria-checked="false">Balanced</button>
+            <button role="radio" data-sensitivity="strict" aria-checked="false">Strict</button>
+          </div>
+          <div class="hint" id="sensitivityHint"></div>
+        </div>
+        <div class="card" style="margin-top:12px">
           <h3>Suggestion style</h3>
           <p class="sub">How rewrites sound. You can pick another style for one chat from its card.</p>
           <div class="segmented" id="style" role="radiogroup" aria-label="Suggestion style">

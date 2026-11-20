@@ -159,3 +159,16 @@ describe("recent conversation in prompts", () => {
     expect(user.content.indexOf("Recent conversation")).toBeLessThan(user.content.indexOf("This message was flagged"))
   })
 })
+
+describe("sensitivity in the prompt", () => {
+  it("Balanced adds nothing, Gentle and Strict say what to flag", () => {
+    const balanced = buildVerdictMessages("ok.", null)[1].content
+    expect(buildVerdictMessages("ok.", null, [], "balanced")[1].content).toBe(balanced)
+    expect(buildVerdictMessages("ok.", null, [], "gentle")[1].content).toContain("GENTLE")
+    expect(buildVerdictMessages("ok.", null, [], "strict")[1].content).toContain("STRICT")
+  })
+
+  it("goes in the message, so the instructions stay the same for the cache", () => {
+    expect(buildVerdictMessages("ok.", null, [], "strict")[0].content).toBe(buildVerdictMessages("ok.", null)[0].content)
+  })
+})

@@ -10,7 +10,7 @@
 import { answerLabel } from "./context-questions"
 import { emojiNotesFor } from "./emoji"
 import { findToneTags } from "./tone-tags"
-import type { ChatContext, ChatMessage, SuggestionStyle, ToneVerdict } from "./types"
+import type { ChatContext, ChatMessage, Sensitivity, SuggestionStyle, ToneVerdict } from "./types"
 
 export interface ChatTurn {
   role: "system" | "user" | "assistant"
@@ -109,8 +109,17 @@ function contextBlock(ctx: ChatContext): string {
  * instructions. Chosen in code: a small model follows "between these two,
  * teasing is banter" far better than a list of if-this-then-that rules.
  */
-function messageNotes(text: string, ctx: ChatContext | null): string[] {
+/** The user's sensitivity setting, as a note; Balanced needs none. */
+const SENSITIVITY_NOTES: Record<Sensitivity, string | null> = {
+  gentle:   "The writer chose GENTLE checking: flag only messages that would clearly hurt the reader. Blunt, curt or grumpy is green. When in doubt, green.",
+  balanced: null,
+  strict:   "The writer chose STRICT checking: also flag (yellow) messages that may come across as cold, curt, dismissive or passive-aggressive, even if they aren't insults.",
+}
+
+function messageNotes(text: string, ctx: ChatContext | null, sensitivity: Sensitivity = "balanced"): string[] {
   const notes: string[] = []
+  const level = SENSITIVITY_NOTES[sensitivity]
+  if (level) notes.push(level)
   const teasing = ctx?.q2 === "very_casual"   // "we joke and tease"
   const friends = ctx?.q1 === "close_friend"
 
@@ -166,10 +175,15 @@ function recentBlock(recent: ChatMessage[]): string | null {
     `Read the message as a reply to this. Joking along with something funny or friendly is green, even with teasing words or jokey exaggeration; the same words are yellow if they are arguing or Them is upset or hurt.`
 }
 
-export function buildVerdictMessages(text: string, context: ChatContext | null, recent: ChatMessage[] = []): ChatTurn[] {
+export function buildVerdictMessages(
+  text: string,
+  context: ChatContext | null,
+  recent: ChatMessage[] = [],
+  sensitivity: Sensitivity = "balanced",
+): ChatTurn[] {
   const parts: string[] = []
   if (context?.q1) parts.push(contextBlock(context))
-  const notes = messageNotes(text, context)
+  const notes = messageNotes(text, context, sensitivity)
   if (notes.length) parts.push(`Notes for this message:\n${notes.map(n => `- ${n}`).join("\n")}`)
   const emoji = emojiBlock(text)
   if (emoji) parts.push(emoji)

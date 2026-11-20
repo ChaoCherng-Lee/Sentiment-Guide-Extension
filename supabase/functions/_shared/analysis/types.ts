@@ -76,6 +76,13 @@ export type SuggestionStyle = "casual" | "formal" | "direct"
 
 export const SUGGESTION_STYLES: SuggestionStyle[] = ["casual", "formal", "direct"]
 
+/**
+ * How readily messages are flagged (Spec FR-3.1). Gentle: only what would
+ * clearly hurt. Balanced (default). Strict: also cold or curt messages.
+ */
+export type Sensitivity = "gentle" | "balanced" | "strict"
+export const SENSITIVITIES: Sensitivity[] = ["gentle", "balanced", "strict"]
+
 /** Where a message was written. "web" is any other website (a plain text box). */
 export type Platform = "whatsapp" | "instagram" | "gmail" | "outlook" | "web"
 

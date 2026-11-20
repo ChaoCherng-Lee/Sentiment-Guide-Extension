@@ -12,7 +12,7 @@
 // =============================================================================
 
 import type { ChatTurn } from "./prompts"
-import type { ChatContext, ChatMessage, IncomingAnalysis, SuggestionStyle, ToneAdvice, ToneVerdict } from "./types"
+import type { ChatContext, ChatMessage, IncomingAnalysis, Sensitivity, SuggestionStyle, ToneAdvice, ToneVerdict } from "./types"
 
 export const BACKEND_IDS = ["ollama", "builtin", "cloud"] as const
 export type BackendId = (typeof BACKEND_IDS)[number]
@@ -56,6 +56,11 @@ export interface CallOptions {
   timeoutMs?: number
 }
 
+export interface JudgeOptions extends CallOptions {
+  /** How readily to flag (Settings → General); balanced if not given */
+  sensitivity?: Sensitivity
+}
+
 export interface ToneBackend {
   readonly id: BackendId
   /**
@@ -69,7 +74,7 @@ export interface ToneBackend {
   /** Load the model ahead of the first check. */
   warm(): Promise<void>
   /** Step 1: fast verdict. `recent`: the last few chat messages, already scrubbed. */
-  judge(text: string, context: ChatContext | null, recent: ChatMessage[], opts?: CallOptions): Promise<ToneVerdict>
+  judge(text: string, context: ChatContext | null, recent: ChatMessage[], opts?: JudgeOptions): Promise<ToneVerdict>
   /** Step 2, for flagged messages: explanation, rewrite and phrase edits. */
   advise(text: string, verdict: ToneVerdict, context: ChatContext | null, style: SuggestionStyle, recent: ChatMessage[], opts?: CallOptions): Promise<ToneAdvice>
   /** Opt-in: how a received message probably reads. */

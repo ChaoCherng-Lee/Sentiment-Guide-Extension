@@ -22,7 +22,10 @@ export function promptBackend(parts: PromptBackendParts): ToneBackend {
     status: () => parts.status(),
     isCold: () => parts.isCold(),
     warm:   () => parts.warm(),
-    judge:  (text, context, recent, opts) => judgeTone(chat, text, context, opts, recent),
+    judge:  (text, context, recent, opts = {}) => {
+      const { sensitivity, ...call } = opts
+      return judgeTone(chat, text, context, call, recent, sensitivity)
+    },
     advise: (text, verdict, context, style, recent, opts) => adviseTone(chat, text, verdict, context, style, opts, recent),
     readIncoming: (text, opts) => readIncoming(chat, text, opts),
   }

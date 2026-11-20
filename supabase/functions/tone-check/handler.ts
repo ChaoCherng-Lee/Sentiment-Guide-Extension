@@ -19,7 +19,7 @@
 
 import { buildAdviceMessages, buildIncomingMessages, buildVerdictMessages, type ChatTurn } from "../_shared/analysis/prompts.ts"
 import { ADVICE_SCHEMA, INCOMING_SCHEMA, VERDICT_SCHEMA } from "../_shared/analysis/schema.ts"
-import type { ChatContext, SuggestionStyle, ToneVerdict } from "../_shared/analysis/types.ts"
+import type { ChatContext, Sensitivity, SuggestionStyle, ToneVerdict } from "../_shared/analysis/types.ts"
 
 export type Task = "verdict" | "advice" | "incoming"
 
@@ -41,6 +41,7 @@ export const MAX_TEXT = 2000
 const MODEL_TIMEOUT_MS = 20_000
 
 const STYLES: SuggestionStyle[] = ["casual", "formal", "direct"]
+const SENSITIVITIES: Sensitivity[] = ["gentle", "balanced", "strict"]
 const TONES = ["green", "yellow", "red"]
 
 const json = (body: unknown, status = 200) =>
@@ -114,7 +115,11 @@ export function buildTask(body: Record<string, unknown>): Built {
   switch (body.task) {
     case "verdict":
       // No chat context, ever: other people's messages stay on the computer
-      return { messages: buildVerdictMessages(text, context, []), schema: VERDICT_SCHEMA }
+      return {
+        messages: buildVerdictMessages(text, context, [],
+          SENSITIVITIES.includes(body.sensitivity as Sensitivity) ? body.sensitivity as Sensitivity : "balanced"),
+        schema: VERDICT_SCHEMA,
+      }
     case "advice": {
       const verdict = cleanVerdict(body.verdict, text)
       if (!verdict) return { error: "verdict is required" }

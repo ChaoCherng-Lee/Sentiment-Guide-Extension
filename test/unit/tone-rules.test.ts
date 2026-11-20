@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { findToneTags } from "../../src/analysis/tone-tags"
-import { applyBanterRule } from "../../src/analysis/tone"
+import { applyBanterRule, applySensitivity, GENTLE_MIN_YELLOW_CONFIDENCE, verdictFromRaw } from "../../src/analysis/tone"
 import type { ChatContext, ToneVerdict } from "../../src/analysis/types"
 
 const TEASING: ChatContext = {
@@ -51,5 +51,26 @@ describe("findToneTags", () => {
 
   it("is case-insensitive and lists each tag once", () => {
     expect(findToneTags("/J lol /j")).toEqual([{ tag: "/j", meaning: "joking", notLiteral: true }])
+  })
+})
+
+describe("sensitivity", () => {
+  const yellow = (confidence: number): ToneVerdict => ({ tone: "yellow", confidence, flagged_phrase: "fine" })
+
+  it("Gentle lets an unsure yellow through, and keeps sure ones and every red", () => {
+    expect(applySensitivity(yellow(0.8), "gentle")).toMatchObject({ tone: "green", flagged_phrase: "" })
+    expect(applySensitivity(yellow(GENTLE_MIN_YELLOW_CONFIDENCE), "gentle").tone).toBe("yellow")
+    expect(applySensitivity({ tone: "red", confidence: 0.5, flagged_phrase: "x" }, "gentle").tone).toBe("red")
+  })
+
+  it("Balanced and Strict keep the model's verdict", () => {
+    expect(applySensitivity(yellow(0.8), "balanced").tone).toBe("yellow")
+    expect(applySensitivity(yellow(0.8), "strict").tone).toBe("yellow")
+  })
+
+  it("applies after the answer is checked", () => {
+    const raw = { tone: "yellow", confidence: 0.8, flagged_phrase: "fine" }
+    expect(verdictFromRaw(raw, "fine, whatever", null, "gentle").tone).toBe("green")
+    expect(verdictFromRaw(raw, "fine, whatever", null).tone).toBe("yellow")
   })
 })

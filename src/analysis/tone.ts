@@ -5,7 +5,7 @@
 import type { CallOptions, ChatJSON } from "./backend"
 import { buildAdviceMessages, buildVerdictMessages } from "./prompts"
 import { ADVICE_SCHEMA, VERDICT_SCHEMA, validateAdvice, validateVerdict } from "./schema"
-import type { ChatContext, ChatMessage, SuggestionStyle, ToneAdvice, ToneVerdict } from "./types"
+import type { ChatContext, ChatMessage, Sensitivity, SuggestionStyle, ToneAdvice, ToneVerdict } from "./types"
 
 /** `recent`: the last few messages in the chat, already scrubbed (chat-context.ts). */
 export async function judgeTone(
@@ -14,14 +14,23 @@ export async function judgeTone(
   context: ChatContext | null,
   opts: CallOptions = {},
   recent: ChatMessage[] = [],
+  sensitivity: Sensitivity = "balanced",
 ): Promise<ToneVerdict> {
-  const raw = await chat({ ...opts, messages: buildVerdictMessages(text, context, recent), format: VERDICT_SCHEMA })
-  return verdictFromRaw(raw, text, context)
+  const raw = await chat({ ...opts, messages: buildVerdictMessages(text, context, recent, sensitivity), format: VERDICT_SCHEMA })
+  return verdictFromRaw(raw, text, context, sensitivity)
 }
 
 /** Check the model's verdict and apply the rules on top of it. */
-export function verdictFromRaw(raw: unknown, text: string, context: ChatContext | null): ToneVerdict {
-  return applyBanterRule(validateVerdict(raw, text), text, context)
+export function verdictFromRaw(raw: unknown, text: string, context: ChatContext | null, sensitivity: Sensitivity = "balanced"): ToneVerdict {
+  return applySensitivity(applyBanterRule(validateVerdict(raw, text), text, context), sensitivity)
+}
+
+/** Gentle: a yellow the model isn't sure about isn't flagged. */
+export const GENTLE_MIN_YELLOW_CONFIDENCE = 0.85
+
+export function applySensitivity(verdict: ToneVerdict, sensitivity: Sensitivity): ToneVerdict {
+  if (sensitivity !== "gentle" || verdict.tone !== "yellow" || verdict.confidence >= GENTLE_MIN_YELLOW_CONFIDENCE) return verdict
+  return { ...verdict, tone: "green", flagged_phrase: "" }
 }
 
 // lol, lmao, lmfao, haha(ha), hehe, rofl, plus laughing emoji

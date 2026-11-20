@@ -226,8 +226,9 @@ export default defineBackground(() => {
   }
 
   async function checkTone(msg: MessageOf<"CHECK_TONE">): Promise<Responses["CHECK_TONE"]> {
+    const { sensitivity } = await getSettings()
     const res = await runModelCall("outgoing:" + msg.sessionId, async (backend, signal, timeoutMs) =>
-      backend.judge(msg.text, msg.context, await allowedRecent(msg.recent, backend), { signal, timeoutMs }))
+      backend.judge(msg.text, msg.context, await allowedRecent(msg.recent, backend), { signal, timeoutMs, sensitivity }))
     return res.ok ? { ok: true, verdict: res.value } : res
   }
 

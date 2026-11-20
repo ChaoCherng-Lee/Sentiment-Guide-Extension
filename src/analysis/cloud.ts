@@ -97,9 +97,10 @@ export function cloudBackend(cfg: CloudConfig | null): ToneBackend {
     },
     isCold: async () => false,
     warm:   async () => {},
-    async judge(text, context, _recent, opts) {
-      const raw = await call("verdict", { text, context: contextAnswers(context) }, opts)
-      return verdictFromRaw(raw, text, context)
+    async judge(text, context, _recent, opts = {}) {
+      const { sensitivity = "balanced", ...callOpts } = opts
+      const raw = await call("verdict", { text, sensitivity, context: contextAnswers(context) }, callOpts)
+      return verdictFromRaw(raw, text, context, sensitivity)
     },
     async advise(text, verdict, context, style, _recent, opts) {
       const raw = await call("advice", { text, verdict, style, context: contextAnswers(context) }, opts)

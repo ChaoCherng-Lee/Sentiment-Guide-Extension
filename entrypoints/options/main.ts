@@ -7,7 +7,7 @@
 // name (settings.disabledSites) while all websites stays on.
 import { browser } from "#imports"
 import { BACKEND_IDS, type BackendId } from "../../src/analysis/backend"
-import type { SuggestionStyle } from "../../src/analysis/types"
+import type { Sensitivity, SuggestionStyle } from "../../src/analysis/types"
 import { type AIStatus, sendMessage } from "../../src/messaging"
 import { OPTIONAL_SITES, type OptionalSite } from "../../src/platforms/sites"
 import {
@@ -42,7 +42,18 @@ const STYLE_HINTS: Record<SuggestionStyle, string> = {
   direct: "Short and clear — keeps your point, drops the harshness",
 }
 
+const SENSITIVITY_HINTS: Record<Sensitivity, string> = {
+  gentle:   "Only messages that would clearly hurt. Blunt is fine",
+  balanced: "Unkind, rude or sarcastic messages — the usual choice",
+  strict:   "Also messages that might come across as cold or curt",
+}
+
 function renderGeneral(s: Settings) {
+  document.querySelectorAll<HTMLElement>("#sensitivity [data-sensitivity]").forEach(btn => {
+    btn.setAttribute("aria-checked", String(btn.dataset.sensitivity === s.sensitivity))
+  })
+  $("sensitivityHint").textContent = SENSITIVITY_HINTS[s.sensitivity]
+
   document.querySelectorAll<HTMLElement>("#style [data-style]").forEach(btn => {
     btn.setAttribute("aria-checked", String(btn.dataset.style === s.suggestionStyle))
   })
@@ -61,6 +72,9 @@ function renderGeneral(s: Settings) {
 
 document.querySelectorAll<HTMLElement>("#style [data-style]").forEach(btn => {
   btn.addEventListener("click", () => updateSettings({ suggestionStyle: btn.dataset.style as SuggestionStyle }))
+})
+document.querySelectorAll<HTMLElement>("#sensitivity [data-sensitivity]").forEach(btn => {
+  btn.addEventListener("click", () => updateSettings({ sensitivity: btn.dataset.sensitivity as Sensitivity }))
 })
 $<HTMLInputElement>("chatContext").addEventListener("change", e => updateSettings({
   chatContext: (e.target as HTMLInputElement).checked,
