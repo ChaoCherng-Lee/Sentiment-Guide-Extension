@@ -10,6 +10,7 @@
 import { findEmoji, graphemeLength } from "../analysis/emoji"
 import type { ChatContext, ChatMessage, SuggestionStyle, ToneAdvice, ToneVerdict } from "../analysis/types"
 import { type CheckFailure, sendMessage } from "../messaging"
+import type { FineReason } from "../settings/feedback"
 import type { PlatformAdapter } from "../platforms/types"
 import { boxText, caretIn, findInBox, phraseRects, placeCaret, type Span } from "../ui/box-text"
 import { caretAfterEdit } from "../ui/dom-range"
@@ -159,6 +160,8 @@ export class ComposeSession {
 
   private onInput() {
     clearTimeout(this.timer)
+    // Typing on after "It's fine" closes the "what was it?" question
+    if (!this.flag && this.popupOpen) this.deps.popup.hide()
     if (!this.deps.isActive()) return
     this.highlighter.refresh()
     if (!this.text) { this.clearUI(); this.badge.setBox({ kind: "idle" }); return }
@@ -357,11 +360,32 @@ export class ComposeSession {
     this.eventId = null
   }
 
+  /**
+   * "It's fine": leave this message alone. The card stays a moment to ask
+   * why (optional); the answer is counted on this computer only.
+   */
   dismiss() {
-    const text = this.text
+    const flag    = this.flag
+    const eventId = this.eventId ?? crypto.randomUUID()
+    const text    = this.text
     if (text) this.ignored.add(text)
     this.reportAcceptance(false)
-    this.clearUI()
+    const asking = flag && this.popupOpen
+    if (asking) {
+      // Clear the flag but keep the card, which now asks "what was it?"
+      this.flag = null
+      this.textAfterEdit = null
+      this.highlighter.clear()
+      if (this.badge.boxKind === "flagged") this.badge.setBox({ kind: "idle" })
+    } else {
+      this.clearUI()
+    }
+    if (!flag) return
+    const tone = flag.verdict.tone === "red" ? "red" : "yellow"
+    const report = (reason: FineReason | null) =>
+      sendMessage({ type: "FINE_FEEDBACK", eventId, tone, reason })
+    if (asking) this.deps.popup.askWhyFine(report)
+    else report(null)
   }
 
   /** Edits of this flag not yet applied whose words are still in the message. */

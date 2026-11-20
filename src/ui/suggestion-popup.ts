@@ -8,6 +8,10 @@
 // =============================================================================
 
 import { SUGGESTION_STYLES, type SuggestionStyle, type ToneAdvice, type ToneVerdict } from "../analysis/types"
+import { FINE_REASON_LABELS, FINE_REASONS, type FineReason } from "../settings/feedback"
+
+/** How long the "what was it?" question stays before the card closes by itself */
+const FINE_ASK_MS = 8000
 
 /** What happened to one phrase edit after the user clicked Apply. */
 export type EditState = "applied" | "copied" | "missing" | "failed"
@@ -23,7 +27,7 @@ export interface PopupHandlers {
   onAccept(): void
   /** Apply advice.edits[index] only. */
   onApplyEdit(index: number): void
-  /** "Dismiss": leave this message alone. */
+  /** "It's fine": leave this message alone (the card then asks why, see askWhyFine). */
   onDismiss(): void
   /** ×: close the card; the message stays flagged and can be reopened. */
   onClose(): void
@@ -220,6 +224,16 @@ const STYLES = `
   .offer-actions .offer-yes { background: #7c3aed; border-color: #7c3aed; color: white; }
   .offer-actions .offer-yes:hover { background: #6d28d9; }
   .offer-done { font-size: 11px; color: #5b21b6; }
+
+  .fine-title { font-size: 12px; font-weight: 600; color: #065f46; margin-bottom: 2px; }
+  .fine-text { font-size: 11px; color: #6b7280; margin-bottom: 8px; }
+  .fine-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .fine-chip {
+    padding: 3px 10px; border-radius: 14px; font-size: 11px; font-weight: 500;
+    font-family: inherit; cursor: pointer; border: 1px solid #e5e7eb; background: white; color: #374151;
+  }
+  .fine-chip:hover, .fine-chip:focus-visible { background: #f3f4f6; }
+  .popup.thanks .tone-badge, .popup.thanks #more { visibility: hidden; }
 `
 
 const TEMPLATE = `
@@ -241,6 +255,14 @@ const TEMPLATE = `
       <button role="menuitem" id="disable-chat">Don't check this chat</button>
       <button role="menuitem" id="open-settings">Settings</button>
     </div>
+    <div class="fine" id="fine" hidden>
+      <div class="fine-title">Got it — this message won't be flagged again.</div>
+      <div class="fine-text">What was it? Optional, and it stays on this computer.</div>
+      <div class="fine-chips" role="group" aria-label="Why it was fine">
+        ${FINE_REASONS.map(r => `<button class="fine-chip" data-reason="${r}">${FINE_REASON_LABELS[r]}</button>`).join("")}
+      </div>
+    </div>
+    <div id="main">
     <div class="context-note" id="context-note">💬 Checked with the last few messages in this chat</div>
     <div class="explanation" id="explanation"></div>
     <div class="emoji-notes" id="emoji-notes" aria-label="How the emoji may come across"></div>
@@ -256,7 +278,7 @@ const TEMPLATE = `
     </div>
     <div class="actions">
       <button class="btn-accept" id="accept">${ACCEPT_LABEL}</button>
-      <button class="btn-dismiss" id="dismiss">Dismiss</button>
+      <button class="btn-dismiss" id="dismiss">It's fine</button>
       <button class="btn-dismiss" id="send-anyway">Send anyway</button>
     </div>
     <div class="offer" id="offer" role="group" aria-label="Use the chat as context">
@@ -270,6 +292,7 @@ const TEMPLATE = `
       </div>
       <div class="offer-done" id="offer-done" hidden></div>
     </div>
+    </div>
   </div>
 `
 
@@ -279,6 +302,9 @@ export class SuggestionPopup {
   private handlers: PopupHandlers | null = null
   private owner: unknown = null
   private style: SuggestionStyle = "casual"
+  /** While "what was it?" is on show: reports the answer (null = none) exactly once */
+  private fineDone: ((reason: FineReason | null) => void) | null = null
+  private fineTimer: ReturnType<typeof setTimeout> | undefined
 
   constructor() {
     this.host = document.createElement("div")
@@ -304,6 +330,13 @@ export class SuggestionPopup {
       if (!btn || btn.disabled) return
       e.stopPropagation()
       this.handlers?.onApplyEdit(Number(btn.dataset.index))
+    })
+    this.root.querySelectorAll<HTMLButtonElement>(".fine-chip").forEach(chip => {
+      chip.addEventListener("click", (e) => {
+        e.stopPropagation()
+        this.finishFine(chip.dataset.reason as FineReason)
+        this.hide()
+      })
     })
     this.root.querySelectorAll<HTMLButtonElement>(".style-chip").forEach(chip => {
       chip.addEventListener("click", (e) => {
@@ -340,6 +373,9 @@ export class SuggestionPopup {
     options: PopupOptions = {},
   ) {
     const chat  = options.chat ?? { used: false, offer: false }
+    this.finishFine(null)
+    this.$("fine").hidden = true
+    this.$("main").hidden = false
     this.owner    = owner
     this.handlers = handlers
     this.setStyle(style)
@@ -473,10 +509,35 @@ export class SuggestionPopup {
     btn.textContent = EDIT_STATE_LABELS[state]
   }
 
+  /**
+   * After "It's fine": the card turns into a one-line question, "what was
+   * it?", with a chip per reason. `done` gets the reason picked, or null when
+   * the card closes without one (×, typing, a new flag, or after 8 s).
+   */
+  askWhyFine(done: (reason: FineReason | null) => void) {
+    this.finishFine(null)
+    this.fineDone = done
+    this.toggleMore(false)
+    this.$("main").hidden = true
+    this.$("fine").hidden = false
+    this.$("popup").classList.add("thanks")
+    // Focus stays in the message box: typing on simply closes the question
+    this.fineTimer = setTimeout(() => { this.finishFine(null); this.hide() }, FINE_ASK_MS)
+  }
+
+  private finishFine(reason: FineReason | null) {
+    clearTimeout(this.fineTimer)
+    const done = this.fineDone
+    this.fineDone = null
+    done?.(reason)
+  }
+
   hide() {
+    this.finishFine(null)
     this.owner    = null
     this.handlers = null
     this.$("popup").style.display = "none"
+    this.$("popup").classList.remove("thanks")
   }
 
   /** Temporarily relabel the accept button (e.g. "✓ Replaced!"). */

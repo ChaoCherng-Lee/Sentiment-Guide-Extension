@@ -10,6 +10,8 @@ export interface WeekStats {
   week: string
   flagged: number
   accepted: number
+  /** Flagged messages the user said were fine (missing in tallies from before 7.3) */
+  fine?: number
   /** Events already counted, so a re-written suggestion isn't counted twice */
   ids: string[]
 }
@@ -28,15 +30,17 @@ export function weekOf(now: Date): string {
 /** This week's tally: last week's numbers don't carry over. */
 export function current(stats: WeekStats | undefined, now: Date): WeekStats {
   const week = weekOf(now)
-  return stats?.week === week ? stats : { week, flagged: 0, accepted: 0, ids: [] }
+  return stats?.week === week ? stats : { week, flagged: 0, accepted: 0, fine: 0, ids: [] }
 }
 
-/** Count one flagged message, or one suggestion taken, once per event. */
-export function addToWeek(stats: WeekStats | undefined, kind: "flagged" | "accepted", eventId: string, now: Date): WeekStats {
+export type WeekKind = "flagged" | "accepted" | "fine"
+
+/** Count one flagged message, one suggestion taken, or one "It's fine", once per event. */
+export function addToWeek(stats: WeekStats | undefined, kind: WeekKind, eventId: string, now: Date): WeekStats {
   const s   = current(stats, now)
   const key = `${kind}:${eventId}`
   if (s.ids.includes(key)) return s
-  return { ...s, [kind]: s[kind] + 1, ids: [...s.ids, key].slice(-MAX_IDS) }
+  return { ...s, [kind]: (s[kind] ?? 0) + 1, ids: [...s.ids, key].slice(-MAX_IDS) }
 }
 
 /** The line shown in the toolbar popup. */
@@ -51,7 +55,7 @@ export function weekLine(stats: WeekStats | undefined, now: Date): string {
 let writing: Promise<unknown> = Promise.resolve()
 
 /** Record in storage. Called by the background worker only, one write at a time. */
-export function recordWeek(kind: "flagged" | "accepted", eventId: string): Promise<void> {
+export function recordWeek(kind: WeekKind, eventId: string): Promise<void> {
   const next = writing.then(async () => {
     const stats = (await browser.storage.local.get(KEY))[KEY] as WeekStats | undefined
     await browser.storage.local.set({ [KEY]: addToWeek(stats, kind, eventId, new Date()) })

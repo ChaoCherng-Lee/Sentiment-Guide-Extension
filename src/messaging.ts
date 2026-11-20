@@ -3,6 +3,7 @@ import { browser } from "#imports"
 import type {
   ChatContext, ChatMessage, IncomingAnalysis, SuggestionStyle, ToneAdvice, ToneVerdict,
 } from "./analysis/types"
+import type { FineReason } from "./settings/feedback"
 
 export type PairResult = "ok" | "invalid" | "too_many" | "not_configured" | "error"
 
@@ -33,6 +34,8 @@ export type Message =
   /** Opt-in: how a received message probably reads. Low priority; never logged. */
   | { type: "READ_INCOMING"; text: string; key: string }
   | { type: "UPDATE_ACCEPTANCE"; eventId: string; accepted: boolean }
+  /** "It's fine" on a flagged message, with the reason if one was picked. Kept on this computer. */
+  | { type: "FINE_FEEDBACK"; eventId: string; tone: "yellow" | "red"; reason: FineReason | null }
   /** Link this browser to a parent with their 6-digit pairing code. */
   | { type: "PAIR"; code: string }
   /** Whether sharing with a parent is set up in this build, and paired. */
@@ -67,6 +70,7 @@ export interface Responses {
   GET_ADVICE: ModelResponse<{ advice: ToneAdvice }>
   READ_INCOMING: ModelResponse<{ analysis: IncomingAnalysis }>
   UPDATE_ACCEPTANCE: void
+  FINE_FEEDBACK: void
   PAIR: PairResult
   SHARING_STATUS: { configured: boolean; paired: boolean }
   UNLINK_AND_DELETE: boolean

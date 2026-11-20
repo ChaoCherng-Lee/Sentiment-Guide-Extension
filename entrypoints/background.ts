@@ -16,6 +16,7 @@ import type { AIStatus, CheckFailure, Message, MessageOf, Responses } from "../s
 import { OPTIONAL_SITES } from "../src/platforms/sites"
 import type { ScriptPublicPath } from "wxt/utils/inject-script"
 import { getSettings, isActive, setEnabled, subscribeSettings, type Settings, updateSettings } from "../src/settings/store"
+import { recordFine } from "../src/settings/feedback"
 import { recordWeek } from "../src/settings/week"
 
 const RESUME_ALARM          = "resume"
@@ -67,6 +68,10 @@ export default defineBackground(() => {
       case "UPDATE_ACCEPTANCE":
         if (msg.accepted) recordWeek("accepted", msg.eventId)
         getSettings().then(s => logAcceptance(msg.eventId, msg.accepted, isActive(s)))
+        return false
+      case "FINE_FEEDBACK":
+        recordWeek("fine", msg.eventId)
+        recordFine(msg.tone, msg.reason)
         return false
       case "UNLINK_AND_DELETE":
         unlinkAndDelete().then(sendResponse)
