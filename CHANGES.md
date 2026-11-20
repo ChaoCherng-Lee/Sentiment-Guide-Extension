@@ -92,6 +92,12 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | 6.5 | **A simpler toolbar popup and a Settings page.** The ◆ popup keeps to the quick things: on/off and pause, a switch for the site you're on, whether the AI is ready (with **Set up** when it isn't), and your week. Everything else moved to **Settings**, which has four tabs: General (suggestion style, chat context, messages you receive), Sites (all websites, Instagram, Gmail, and the sites you switched off, each with **Turn back on**), Parent sharing, and The AI. Before, the popup held every option and the options page only had sites and sharing |
 | 6.6 | **Your week.** The popup cheers you on: "This week: you took 6 suggestions 🎉", or how many messages were flagged. The tally starts again each Monday, stays on this computer, and isn't shared with a parent. Picking another rewrite style for the same message no longer counts (or shares) it twice |
 
+### Phase 7: Measure first (after round 2 of Plan.md, for a consumer launch)
+
+| Step | New for users |
+|---|---|
+| 7.1 | **A bigger test set (no change in the extension).** `eval/messages.jsonl` grew from 210 to 400 labelled messages. New kinds: passive-aggressive ("per my last message…"), blunt but fine ("no, I can't make it tonight"), swearing for emphasis vs at someone ("this traffic is fucking insane" vs "fuck you"), and 30 messages in other languages. Banter, sarcasm, slang and tense chats were topped up to 30 each, with more grown-up situations (partners, flatmates, work). A unit test checks every line. The labels are a judgement call and need a second person's review |
+
 ## Changed behaviour worth knowing
 
 - **6.1:** measured with the eval on the same day and model, before and

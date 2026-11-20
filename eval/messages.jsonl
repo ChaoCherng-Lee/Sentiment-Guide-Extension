@@ -208,3 +208,193 @@
 {"id": 208, "category": "context", "text": "I'm going to kill you 😂", "expected": "red", "thread": "tense", "recent": [{"from": "them", "text": "I'm not scared of you"}, {"from": "me", "text": "you should be"}, {"from": "them", "text": "go on then, what are you going to do"}]}
 {"id": 209, "category": "context", "text": "good for you", "expected": "green", "thread": "joking", "recent": [{"from": "them", "text": "I finally finished my art project!"}, {"from": "them", "text": "took me 3 weeks"}]}
 {"id": 210, "category": "context", "text": "good for you", "expected": "yellow", "thread": "tense", "recent": [{"from": "them", "text": "I'm going to the party with Mia instead of you"}, {"from": "them", "text": "she's more fun anyway"}]}
+{"id": 211, "category": "passive_aggressive", "text": "per my last message, the answer is still no", "expected": "yellow"}
+{"id": 212, "category": "passive_aggressive", "text": "no worries, I'll just do it myself like always", "expected": "yellow"}
+{"id": 213, "category": "passive_aggressive", "text": "must be nice to have so much free time", "expected": "yellow"}
+{"id": 214, "category": "passive_aggressive", "text": "it's fine. I'm used to it by now", "expected": "yellow"}
+{"id": 215, "category": "passive_aggressive", "text": "glad you finally found time for me", "expected": "yellow"}
+{"id": 216, "category": "passive_aggressive", "text": "as I already said twice", "expected": "yellow"}
+{"id": 217, "category": "passive_aggressive", "text": "sure, whatever works best for you. as usual", "expected": "yellow"}
+{"id": 218, "category": "passive_aggressive", "text": "don't worry about me, I'll figure it out alone", "expected": "yellow"}
+{"id": 219, "category": "passive_aggressive", "text": "wow, you actually replied", "expected": "yellow"}
+{"id": 220, "category": "passive_aggressive", "text": "I guess some people just don't read messages", "expected": "yellow"}
+{"id": 221, "category": "passive_aggressive", "text": "thanks for letting me know… eventually", "expected": "yellow"}
+{"id": 222, "category": "passive_aggressive", "text": "I'm not mad. I'm just disappointed", "expected": "yellow"}
+{"id": 223, "category": "passive_aggressive", "text": "funny how you're always busy when I need something", "expected": "yellow"}
+{"id": 224, "category": "passive_aggressive", "text": "k. thanks for nothing I guess", "expected": "yellow"}
+{"id": 225, "category": "passive_aggressive", "text": "noted.", "expected": "yellow"}
+{"id": 226, "category": "passive_aggressive", "text": "I see how it is", "expected": "yellow"}
+{"id": 227, "category": "passive_aggressive", "text": "interesting that you remembered to text her but not me", "expected": "yellow"}
+{"id": 228, "category": "passive_aggressive", "text": "no rush, it's only been three days", "expected": "yellow"}
+{"id": 229, "category": "passive_aggressive", "text": "must be hard being you", "expected": "yellow"}
+{"id": 230, "category": "passive_aggressive", "text": "good to know where I stand", "expected": "yellow"}
+{"id": 231, "category": "passive_aggressive", "text": "I'll wait. again.", "expected": "yellow"}
+{"id": 232, "category": "passive_aggressive", "text": "nice of you to show up", "expected": "yellow"}
+{"id": 233, "category": "passive_aggressive", "text": "oh, so NOW you want to talk", "expected": "yellow"}
+{"id": 234, "category": "passive_aggressive", "text": "it's cool, I didn't expect you to remember anyway", "expected": "yellow"}
+{"id": 235, "category": "passive_aggressive", "text": "just a gentle reminder that I asked a week ago", "expected": "yellow"}
+{"id": 236, "category": "passive_aggressive", "text": "happy for you. really.", "expected": "yellow"}
+{"id": 237, "category": "passive_aggressive", "text": "do what you want, you always do", "expected": "yellow"}
+{"id": 238, "category": "passive_aggressive", "text": "I'll just assume you saw this and ignored it", "expected": "yellow"}
+{"id": 239, "category": "passive_aggressive", "text": "next time maybe ask before you invite yourself", "expected": "yellow"}
+{"id": 240, "category": "passive_aggressive", "text": "hope she was worth cancelling on me", "expected": "yellow"}
+{"id": 241, "category": "blunt_fine", "text": "no, I can't make it tonight", "expected": "green"}
+{"id": 242, "category": "blunt_fine", "text": "I disagree, I think option B is better", "expected": "green"}
+{"id": 243, "category": "blunt_fine", "text": "that doesn't work for me, can we do Thursday?", "expected": "green"}
+{"id": 244, "category": "blunt_fine", "text": "please stop sending me memes during work hours", "expected": "green"}
+{"id": 245, "category": "blunt_fine", "text": "I need the money back by Friday", "expected": "green"}
+{"id": 246, "category": "blunt_fine", "text": "I'm not comfortable with that", "expected": "green"}
+{"id": 247, "category": "blunt_fine", "text": "can you call me instead? texting is confusing", "expected": "green"}
+{"id": 248, "category": "blunt_fine", "text": "I'm too tired to go out, sorry", "expected": "green"}
+{"id": 249, "category": "blunt_fine", "text": "that's not what we agreed", "expected": "green"}
+{"id": 250, "category": "blunt_fine", "text": "I don't want to talk about it right now", "expected": "green"}
+{"id": 251, "category": "blunt_fine", "text": "you're late, we started without you", "expected": "green"}
+{"id": 252, "category": "blunt_fine", "text": "I'm going to bed, talk tomorrow", "expected": "green"}
+{"id": 253, "category": "blunt_fine", "text": "no thanks", "expected": "green"}
+{"id": 254, "category": "blunt_fine", "text": "I said no, please respect that", "expected": "green"}
+{"id": 255, "category": "blunt_fine", "text": "that's wrong, the meeting is at 3 not 4", "expected": "green"}
+{"id": 256, "category": "blunt_fine", "text": "I need some space this weekend", "expected": "green"}
+{"id": 257, "category": "blunt_fine", "text": "I'm leaving the group chat, too many notifications", "expected": "green"}
+{"id": 258, "category": "blunt_fine", "text": "your part of the rent is due today", "expected": "green"}
+{"id": 259, "category": "blunt_fine", "text": "I'm not lending you my car again", "expected": "green"}
+{"id": 260, "category": "blunt_fine", "text": "I don't like that restaurant, pick somewhere else", "expected": "green"}
+{"id": 261, "category": "blunt_fine", "text": "honestly the first draft was better", "expected": "green"}
+{"id": 262, "category": "blunt_fine", "text": "can you turn the music down? I'm on a call", "expected": "green"}
+{"id": 263, "category": "blunt_fine", "text": "I'm busy, can it wait?", "expected": "green"}
+{"id": 264, "category": "blunt_fine", "text": "stop, I already decided", "expected": "green"}
+{"id": 265, "category": "blunt_fine", "text": "I'd rather not say", "expected": "green"}
+{"id": 266, "category": "blunt_fine", "text": "don't tell anyone yet", "expected": "green"}
+{"id": 267, "category": "blunt_fine", "text": "I'm annoyed that you didn't tell me, can we talk later?", "expected": "green"}
+{"id": 268, "category": "blunt_fine", "text": "you hurt my feelings yesterday and I want to talk about it", "expected": "green"}
+{"id": 269, "category": "blunt_fine", "text": "that joke wasn't funny to me", "expected": "green"}
+{"id": 270, "category": "blunt_fine", "text": "I won't be able to help this time", "expected": "green"}
+{"id": 271, "category": "profanity", "text": "this traffic is fucking insane", "expected": "green"}
+{"id": 272, "category": "profanity", "text": "holy shit that's amazing news!!", "expected": "green"}
+{"id": 273, "category": "profanity", "text": "I'm so damn proud of you", "expected": "green"}
+{"id": 274, "category": "profanity", "text": "what the hell, it's snowing in april", "expected": "green"}
+{"id": 275, "category": "profanity", "text": "that concert was fucking incredible", "expected": "green"}
+{"id": 276, "category": "profanity", "text": "shit, I forgot my keys", "expected": "green"}
+{"id": 277, "category": "profanity", "text": "damn that's a good photo", "expected": "green"}
+{"id": 278, "category": "profanity", "text": "I'm so fucking tired today", "expected": "green"}
+{"id": 279, "category": "profanity", "text": "hell yeah, let's go", "expected": "green"}
+{"id": 280, "category": "profanity", "text": "this pizza slaps so fucking hard", "expected": "green"}
+{"id": 281, "category": "profanity", "text": "omg shit I'm so sorry I missed your call", "expected": "green"}
+{"id": 282, "category": "profanity", "text": "fuck, I'm going to be late", "expected": "green"}
+{"id": 283, "category": "profanity", "text": "bloody hell, that was close", "expected": "green"}
+{"id": 284, "category": "profanity", "text": "the exam was a total shitshow but I passed", "expected": "green"}
+{"id": 285, "category": "profanity", "text": "that's badass, congrats", "expected": "green"}
+{"id": 286, "category": "profanity", "text": "wtf did my boss just email me at midnight", "expected": "green"}
+{"id": 287, "category": "profanity", "text": "you're fucking amazing, thank you", "expected": "green"}
+{"id": 288, "category": "profanity", "text": "fuck yes! you got the job!", "expected": "green"}
+{"id": 289, "category": "profanity", "text": "what the hell were you thinking", "expected": "yellow"}
+{"id": 290, "category": "profanity", "text": "stop being a dick about it", "expected": "yellow"}
+{"id": 291, "category": "profanity", "text": "that's a shit excuse", "expected": "yellow"}
+{"id": 292, "category": "profanity", "text": "are you fucking kidding me right now", "expected": "yellow"}
+{"id": 293, "category": "profanity", "text": "cut the crap", "expected": "yellow"}
+{"id": 294, "category": "profanity", "text": "why the fuck would you do that", "expected": "yellow"}
+{"id": 295, "category": "profanity", "text": "fuck you", "expected": "red"}
+{"id": 296, "category": "profanity", "text": "you're a worthless piece of shit", "expected": "red"}
+{"id": 297, "category": "profanity", "text": "go to hell, I mean it", "expected": "red"}
+{"id": 298, "category": "profanity", "text": "shut the fuck up you useless prick", "expected": "red"}
+{"id": 299, "category": "profanity", "text": "you stupid bitch", "expected": "red"}
+{"id": 300, "category": "profanity", "text": "fuck off and never text me again", "expected": "red"}
+{"id": 301, "category": "non_english", "text": "¿quedamos mañana a las 6?", "expected": "green"}
+{"id": 302, "category": "non_english", "text": "gracias por todo, eres un sol", "expected": "green"}
+{"id": 303, "category": "non_english", "text": "on se voit ce soir ?", "expected": "green"}
+{"id": 304, "category": "non_english", "text": "merci beaucoup, c'était super", "expected": "green"}
+{"id": 305, "category": "non_english", "text": "bis morgen, schlaf gut", "expected": "green"}
+{"id": 306, "category": "non_english", "text": "danke, du bist die beste!", "expected": "green"}
+{"id": 307, "category": "non_english", "text": "nanti malam kita makan di mana?", "expected": "green"}
+{"id": 308, "category": "non_english", "text": "terima kasih banyak ya", "expected": "green"}
+{"id": 309, "category": "non_english", "text": "você vem para o jantar?", "expected": "green"}
+{"id": 310, "category": "non_english", "text": "parabéns pelo novo emprego!", "expected": "green"}
+{"id": 311, "category": "non_english", "text": "明天见！", "expected": "green"}
+{"id": 312, "category": "non_english", "text": "谢谢你帮我", "expected": "green"}
+{"id": 313, "category": "non_english", "text": "ci vediamo domani in ufficio", "expected": "green"}
+{"id": 314, "category": "non_english", "text": "今日はありがとう！", "expected": "green"}
+{"id": 315, "category": "non_english", "text": "잘 자, 내일 봐", "expected": "green"}
+{"id": 316, "category": "non_english", "text": "lol ok nanti aku call kau", "expected": "green"}
+{"id": 317, "category": "non_english", "text": "can lah, see you at 7", "expected": "green"}
+{"id": 318, "category": "non_english", "text": "jom makan, I'm starving", "expected": "green"}
+{"id": 319, "category": "non_english", "text": "eres un pesado, déjame en paz", "expected": "yellow"}
+{"id": 320, "category": "non_english", "text": "t'es vraiment nul", "expected": "yellow"}
+{"id": 321, "category": "non_english", "text": "du nervst so sehr", "expected": "yellow"}
+{"id": 322, "category": "non_english", "text": "kau ni memang menyusahkan", "expected": "yellow"}
+{"id": 323, "category": "non_english", "text": "você nunca escuta ninguém", "expected": "yellow"}
+{"id": 324, "category": "non_english", "text": "你怎么这么烦", "expected": "yellow"}
+{"id": 325, "category": "non_english", "text": "eres un inútil y nadie te quiere", "expected": "red"}
+{"id": 326, "category": "non_english", "text": "ferme ta gueule, connard", "expected": "red"}
+{"id": 327, "category": "non_english", "text": "du bist so hässlich und dumm", "expected": "red"}
+{"id": 328, "category": "non_english", "text": "bodoh betul kau, pergi mampus", "expected": "red"}
+{"id": 329, "category": "non_english", "text": "vai se foder", "expected": "red"}
+{"id": 330, "category": "non_english", "text": "你去死吧", "expected": "red"}
+{"id": 331, "category": "banter", "text": "you're a menace to society and I adore you", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 332, "category": "banter", "text": "lmao you're so bad at directions", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 333, "category": "banter", "text": "idiot 😂 you left your jacket at mine", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 334, "category": "banter", "text": "you clown, that was MY fries", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 335, "category": "banter", "text": "ugh I hate you (I don't) 💕", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 336, "category": "banter", "text": "bestie you're unhinged and I'm here for it", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 337, "category": "banter", "text": "absolute goblin behaviour 😂", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 338, "category": "banter", "text": "you're the worst cook alive but I'll still come", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 339, "category": "banter", "text": "dork 🤓 happy birthday", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 340, "category": "banter", "text": "lmaooo you're such a loser, see you at 8", "expected": "green", "context": {"q1": "close_friend", "q2": "very_casual", "q3": "yes", "q4": "yes", "q5": "normal"}}
+{"id": 341, "category": "banter", "text": "you're a menace to society", "expected": "yellow"}
+{"id": 342, "category": "banter", "text": "you're the worst cook alive", "expected": "yellow"}
+{"id": 343, "category": "banter", "text": "lol you're so bad at everything", "expected": "yellow"}
+{"id": 344, "category": "banter", "text": "you're unhinged", "expected": "yellow"}
+{"id": 345, "category": "banter", "text": "absolute goblin behaviour", "expected": "yellow"}
+{"id": 346, "category": "sarcasm", "text": "oh perfect, another plan you changed last minute", "expected": "yellow"}
+{"id": 347, "category": "sarcasm", "text": "thanks for the 'help'", "expected": "yellow"}
+{"id": 348, "category": "sarcasm", "text": "wow, so considerate of you", "expected": "yellow"}
+{"id": 349, "category": "sarcasm", "text": "great, love being ignored", "expected": "yellow"}
+{"id": 350, "category": "sarcasm", "text": "sure, because your opinion matters most", "expected": "yellow"}
+{"id": 351, "category": "sarcasm", "text": "clearly you know everything", "expected": "yellow"}
+{"id": 352, "category": "sarcasm", "text": "oh yes, please tell me more about how busy you are", "expected": "yellow"}
+{"id": 353, "category": "sarcasm", "text": "brilliant idea, really", "expected": "yellow"}
+{"id": 354, "category": "sarcasm", "text": "amazing how you're never wrong", "expected": "yellow"}
+{"id": 355, "category": "sarcasm", "text": "I'm so glad you told everyone first", "expected": "yellow"}
+{"id": 356, "category": "sarcasm", "text": "oh great, my phone died again", "expected": "green"}
+{"id": 357, "category": "sarcasm", "text": "love that the printer jams every single time", "expected": "green"}
+{"id": 358, "category": "sarcasm", "text": "fantastic, the train's delayed. again.", "expected": "green"}
+{"id": 359, "category": "sarcasm", "text": "my favourite thing: doing taxes", "expected": "green"}
+{"id": 360, "category": "sarcasm", "text": "wow what a surprise, it's raining on my day off", "expected": "green"}
+{"id": 361, "category": "slang", "text": "ok that's lowkey iconic", "expected": "green"}
+{"id": 362, "category": "slang", "text": "this song is a whole vibe", "expected": "green"}
+{"id": 363, "category": "slang", "text": "I'm deceased 😭", "expected": "green"}
+{"id": 364, "category": "slang", "text": "big W for you", "expected": "green"}
+{"id": 365, "category": "slang", "text": "sheesh, ok rich person", "expected": "green"}
+{"id": 366, "category": "slang", "text": "it's lit fr", "expected": "green"}
+{"id": 367, "category": "slang", "text": "say less", "expected": "green"}
+{"id": 368, "category": "slang", "text": "omw rn", "expected": "green"}
+{"id": 369, "category": "slang", "text": "bro said 'trust me' 💀", "expected": "green"}
+{"id": 370, "category": "slang", "text": "L + ratio", "expected": "yellow"}
+{"id": 371, "category": "tense", "text": "I'm really upset and I need a minute", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 372, "category": "tense", "text": "can we talk when we're both calm?", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 373, "category": "tense", "text": "I'm hurt, but I still want to fix this", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 374, "category": "tense", "text": "I felt left out today", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 375, "category": "tense", "text": "I'm angry right now so I'll reply later", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 376, "category": "tense", "text": "I didn't like how that conversation went", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 377, "category": "tense", "text": "I need you to listen to me for a second", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 378, "category": "tense", "text": "this is hard for me to say", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 379, "category": "tense", "text": "please don't shout at me", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 380, "category": "tense", "text": "I'm sorry I snapped earlier", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 381, "category": "tense", "text": "I'm overwhelmed, can we reschedule?", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 382, "category": "tense", "text": "I don't feel heard", "expected": "green", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 383, "category": "tense", "text": "you only ever think about yourself", "expected": "yellow", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 384, "category": "tense", "text": "I can't believe you'd do that to me", "expected": "yellow", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 385, "category": "tense", "text": "don't bother apologising", "expected": "yellow", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 386, "category": "tense", "text": "you're impossible to talk to", "expected": "yellow", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 387, "category": "tense", "text": "I'm done explaining myself to you", "expected": "yellow", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 388, "category": "tense", "text": "you made everything worse", "expected": "yellow", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 389, "category": "tense", "text": "I wish I'd never met you", "expected": "red", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 390, "category": "tense", "text": "you're a terrible friend and a worse person", "expected": "red", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 391, "category": "tense", "text": "everyone would be better off without you", "expected": "red", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 392, "category": "tense", "text": "you disgust me", "expected": "red", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 393, "category": "tense", "text": "I hope you're miserable", "expected": "red", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 394, "category": "tense", "text": "you're a waste of my time and everyone's", "expected": "red", "context": {"q1": "close_friend", "q2": "casual", "q3": "no", "q4": "no", "q5": "tense"}}
+{"id": 395, "category": "neutral", "text": "running 10 min late, sorry!", "expected": "green"}
+{"id": 396, "category": "neutral", "text": "can you grab milk on the way home?", "expected": "green"}
+{"id": 397, "category": "neutral", "text": "happy anniversary ❤️", "expected": "green"}
+{"id": 398, "category": "neutral", "text": "how did the interview go?", "expected": "green"}
+{"id": 399, "category": "neutral", "text": "the package arrived, thanks", "expected": "green"}
+{"id": 400, "category": "neutral", "text": "sending you the address now", "expected": "green"}
