@@ -8,6 +8,8 @@
 //   npm run eval -- --advice              # also time step 2 on flagged messages
 //   npm run eval -- --advice --style formal
 //   npm run eval -- --category context --no-recent   # same cases without the chat
+//   npm run eval -- --compare             # also show the change from the last saved run
+//   npm run eval -- --check               # exit 1 if a Spec target (NFR-1) is missed
 //
 // Cases with "recent" carry the last few chat messages (chat context, 2.3).
 // The "context" category has pairs: the same message after a joking thread
@@ -22,7 +24,7 @@
 // and correct them in messages.jsonl as you go.
 // =============================================================================
 
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs"
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { parseArgs } from "node:util"
 import { listModels, pickModel, warmUp } from "../src/analysis/ollama"
@@ -64,8 +66,103 @@ const { values: args } = parseArgs({
     advice:   { type: "boolean", default: false },
     style:    { type: "string", default: "casual" },
     "no-recent": { type: "boolean", default: false },
+    compare:  { type: "boolean", default: false },
+    check:    { type: "boolean", default: false },
   },
 })
+
+// ---------------------------------------------------------------------------
+// Spec targets (Spec.md NFR-1 accuracy, NFR-2 speed). "Fine" = expected green;
+// "hurtful" = expected yellow or red.
+// ---------------------------------------------------------------------------
+
+export interface Metrics {
+  n: number
+  exact: number
+  /** Fine messages that came out red */
+  falseRed: number
+  /** Fine messages that came out yellow or red */
+  anyFlagOnFine: number
+  /** Hurtful messages flagged (yellow or red) */
+  caught: number
+  p50Ms: number
+  p95Ms: number
+}
+
+interface Target { key: keyof Metrics; label: string; max?: number; min?: number; unit: "%" | "ms" }
+
+const TARGETS: Target[] = [
+  { key: "falseRed",      label: "false red on fine",  max: 0.02, unit: "%" },
+  { key: "anyFlagOnFine", label: "any flag on fine",   max: 0.08, unit: "%" },
+  { key: "caught",        label: "hurtful caught",     min: 0.90, unit: "%" },
+  { key: "p50Ms",         label: "verdict p50",        max: 700,  unit: "ms" },
+  { key: "p95Ms",         label: "verdict p95",        max: 1500, unit: "ms" },
+]
+
+const ratio = (n: number, d: number) => (d === 0 ? 0 : n / d)
+
+function quantile(values: number[], q: number) {
+  if (!values.length) return 0
+  const sorted = [...values].sort((a, b) => a - b)
+  return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]
+}
+
+/** Works on fresh outcomes and on ones read back from eval/results. */
+export function metrics(outcomes: Pick<Outcome, "case" | "result" | "ms">[]): Metrics {
+  const done = outcomes.filter(o => o.result)
+  const fine = done.filter(o => o.case.expected === "green")
+  const hurtful = done.filter(o => o.case.expected !== "green")
+  return {
+    n: done.length,
+    exact: ratio(done.filter(o => o.result!.tone === o.case.expected).length, done.length),
+    falseRed: ratio(fine.filter(o => o.result!.tone === "red").length, fine.length),
+    anyFlagOnFine: ratio(fine.filter(o => o.result!.tone !== "green").length, fine.length),
+    caught: ratio(hurtful.filter(o => o.result!.tone !== "green").length, hurtful.length),
+    p50Ms: quantile(done.map(o => o.ms), 0.5),
+    p95Ms: quantile(done.map(o => o.ms), 0.95),
+  }
+}
+
+const show = (t: Target, v: number) =>
+  t.unit === "%" ? `${(100 * v).toFixed(1)}%` : `${(v / 1000).toFixed(2)} s`
+
+function meets(t: Target, v: number) {
+  return (t.max === undefined || v <= t.max) && (t.min === undefined || v >= t.min)
+}
+
+/** Prints the Spec table; returns the targets missed. */
+function reportTargets(now: Metrics, before: { metrics: Metrics, file: string } | null, slowModel: boolean) {
+  console.log("\nSpec targets" + (before ? `   (vs ${before.file})` : ""))
+  const missed: string[] = []
+  for (const t of TARGETS) {
+    const v = now[t.key]
+    const speed = t.unit === "ms"
+    const ok = meets(t, v)
+    const goal = t.max !== undefined ? `≤ ${show(t, t.max)}` : `≥ ${show(t, t.min!)}`
+    // Speed is best effort on a local Ollama model (Spec NFR-2)
+    const mark = ok ? "✓" : speed && slowModel ? "–" : "✗"
+    if (!ok && !(speed && slowModel)) missed.push(t.label)
+    let diff = ""
+    if (before) {
+      const d = v - before.metrics[t.key]
+      diff = t.unit === "%" ? `${d >= 0 ? "+" : ""}${(100 * d).toFixed(1)} pts` : `${d >= 0 ? "+" : ""}${(d / 1000).toFixed(2)} s`
+      diff = `  (${diff})`
+    }
+    console.log(`  ${mark} ${t.label.padEnd(18)} ${show(t, v).padStart(8)}   target ${goal}${diff}`)
+  }
+  if (slowModel) console.log("  (– speed is best effort on Ollama)")
+  return missed
+}
+
+/** The newest saved run before this one, with metrics worked out from its outcomes. */
+function previousRun(dir: string): { metrics: Metrics, file: string } | null {
+  if (!existsSync(dir)) return null
+  const files = readdirSync(dir).filter(f => f.endsWith(".json")).sort()
+  const last = files.at(-1)
+  if (!last) return null
+  const saved = JSON.parse(readFileSync(path.join(dir, last), "utf8"))
+  return { metrics: saved.metrics ?? metrics(saved.outcomes), file: last }
+}
 
 const recentFor = (c: Case): ChatMessage[] => (args["no-recent"] ? [] : c.recent ?? [])
 
@@ -122,11 +219,15 @@ function report(outcomes: Outcome[], model: string) {
   const advised       = done.filter(o => o.adviceMs !== undefined)
   const avgAdviceMs   = advised.reduce((s, o) => s + o.adviceMs!, 0) / Math.max(1, advised.length)
 
-  console.log("\nper category (exact match)")
+  console.log("\nper category        exact   flag on fine   hurtful caught")
   for (const cat of [...new Set(done.map(o => o.case.category))]) {
     const inCat = done.filter(o => o.case.category === cat)
     const ok = inCat.filter(o => predicted(o) === o.case.expected).length
-    console.log(`  ${cat.padEnd(12)} ${pct(ok, inCat.length)}  (${ok}/${inCat.length})`)
+    const fine = inCat.filter(o => !flagged(o.case.expected))
+    const hurt = inCat.filter(o => flagged(o.case.expected))
+    const fp = fine.filter(o => flagged(predicted(o))).length
+    const tp = hurt.filter(o => flagged(predicted(o))).length
+    console.log(`  ${cat.padEnd(18)} ${pct(ok, inCat.length)}   ${pct(fp, fine.length).padStart(8)} ${`(${fp}/${fine.length})`.padStart(7)}   ${pct(tp, hurt.length).padStart(8)} ${`(${tp}/${hurt.length})`.padStart(7)}`)
   }
 
   // Context pairs: the same message after different threads should get different tones
@@ -198,10 +299,18 @@ async function main() {
 
   const summary = report(outcomes, model)
   const outDir = path.join(DIR, "results")
+  const before = args.compare ? previousRun(outDir) : null
+  const now = metrics(outcomes)
+  const missed = reportTargets(now, before, true)
+
   mkdirSync(outDir, { recursive: true })
   const file = path.join(outDir, `${new Date().toISOString().replace(/[:.]/g, "-")}.json`)
-  writeFileSync(file, JSON.stringify({ model, summary, outcomes }, null, 2))
+  writeFileSync(file, JSON.stringify({ model, summary, metrics: now, outcomes }, null, 2))
   console.log(`\nSaved ${path.relative(process.cwd(), file)}`)
+  if (args.check && missed.length) {
+    console.error(`\nMissed: ${missed.join(", ")}`)
+    process.exit(1)
+  }
 }
 
 main().catch(err => {
