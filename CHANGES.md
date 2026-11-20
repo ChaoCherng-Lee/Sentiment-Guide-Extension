@@ -108,6 +108,17 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 
 ## Changed behaviour worth knowing
 
+- **7.2 baseline (round 2 starts here):** the current prompt on `gemma3:4b`,
+  all 400 messages. False red on fine messages **0.9%** ✓ (target ≤ 2%);
+  hurtful messages caught **93.4%** ✓ (≥ 90%); but **any flag on fine
+  messages 27.1%** ✗ (target ≤ 8%), so about one fine message in four
+  gets a yellow underline. The worst kinds: blunt but fine (60% flagged),
+  sarcasm about a situation (70%), swearing for emphasis (50%), the joking
+  half of the context pairs (50%) and slang (42%). Verdicts take 2.9 s
+  (p50) and 4.4 s (p95) on the test laptop. On the old 210 messages the
+  same run gave 16.4% false flags; the new messages are harder on purpose.
+  Phase 9 works on this number.
+
 - **6.1:** measured with the eval on the same day and model, before and
   after: on the original 190 messages, exactly right stayed at 86.8% and
   false flags went from 13.0% to 12.0%; the quick check went from 3.14 s to
