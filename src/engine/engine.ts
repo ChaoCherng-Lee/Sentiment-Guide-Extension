@@ -139,11 +139,12 @@ export function startEngine(adapter: PlatformAdapter) {
 
   const chatContext = {
     // Read from the page at check time and scrubbed here, before it leaves the page
-    recent: () => settings.chatContext
+    // Never read for the cloud check, which mustn't see other people's messages
+    recent: () => settings.chatContext && settings.backend !== "cloud"
       ? prepareRecent(adapter.getRecentMessages(RECENT_LIMIT), [adapter.getConversationTitle()])
       : [],
     takeOffer: () => {
-      if (scope === "site" || settings.chatContext || settings.chatContextOffered) return false
+      if (scope === "site" || settings.backend === "cloud" || settings.chatContext || settings.chatContextOffered) return false
       patchSettings({ chatContextOffered: true })
       return true
     },
@@ -178,6 +179,7 @@ export function startEngine(adapter: PlatformAdapter) {
           if (!active()) return
           if (outcome.ok) { if (page.kind !== "ok") setPage({ kind: "ok" }) }
           else if (outcome.reason === "timeout") setPage({ kind: "slow" })
+          else if (outcome.reason === "limit") setPage({ kind: "limit" })
           else if (outcome.reason === "offline" || outcome.reason === "no-model") setPage({ kind: outcome.reason })
         },
         badge: badgeActions,

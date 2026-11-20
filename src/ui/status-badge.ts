@@ -19,6 +19,8 @@ export type PageState =
   | { kind: "offline" }
   | { kind: "no-model" }
   | { kind: "slow" }
+  /** The cloud check's hourly limit was reached */
+  | { kind: "limit" }
   | { kind: "paused"; until: number }
   | { kind: "chat-off" }
 
@@ -64,6 +66,7 @@ function describe(s: Shown, scope: "chat" | "site"): string {
     case "offline":  return "The AI isn't running — click to set it up"
     case "no-model": return "The AI model isn't installed — click to set it up"
     case "slow":     return "The AI is slow — the last check was skipped"
+    case "limit":    return "You've reached this hour's limit for cloud checks — they start again within the hour"
     case "paused":   return `Paused until ${formatUntil(s.until)}`
     case "chat-off": return `Not checking this ${scope}`
   }
@@ -87,7 +90,8 @@ function icon(s: Shown): string {
     case "flagged":
     case "offline":
     case "no-model":
-    case "slow":     return ICONS.alert
+    case "slow":
+    case "limit":    return ICONS.alert
     case "paused":   return ICONS.pause
     case "chat-off": return ICONS.off
   }
@@ -112,7 +116,7 @@ const STYLES = `
   .badge[data-state="fine"]     { background: #10b981; border-color: #10b981; color: white; }
   .badge[data-state="flagged"][data-tone="yellow"] { background: #F59E0B; border-color: #F59E0B; color: white; }
   .badge[data-state="flagged"][data-tone="red"]    { background: #DC2626; border-color: #DC2626; color: white; }
-  .badge[data-state="offline"], .badge[data-state="no-model"], .badge[data-state="slow"] {
+  .badge[data-state="offline"], .badge[data-state="no-model"], .badge[data-state="slow"], .badge[data-state="limit"] {
     background: #fffbeb; border-color: #f59e0b; color: #b45309;
   }
   .badge[data-state="paused"], .badge[data-state="chat-off"] { background: #f3f4f6; border-color: #d1d5db; color: #6b7280; }

@@ -273,7 +273,7 @@ function failureReason(err: unknown): CheckFailure {
       case "aborted":      return "cancelled"
       case "bad-response": return "error"
       case "unsupported":  return "offline"
-      case "rate-limited": return "error"
+      case "rate-limited": return "limit"
       default:             return err.kind
     }
   }

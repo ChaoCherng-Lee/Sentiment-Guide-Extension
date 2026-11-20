@@ -99,12 +99,29 @@ npm run eval       # tone evaluation on eval/messages.jsonl (needs Ollama runnin
 ```
 
 Run `npm run eval` before and after any prompt change and include the
-summary line in the commit message.
+summary line in the commit message. `npm run eval -- --backend cloud`
+scores the deployed cloud check instead.
+
+### The private cloud check (for whoever runs the Supabase project)
+
+The cloud check is a Supabase Edge Function in the same project as parent
+sharing (`supabase/functions/tone-check`). It asks a hosted model the
+extension's own questions and keeps nothing. To run it:
+
+1. Run `supabase/migrations/20261121000000_cloud_rate_limit.sql` (SQL Editor, or `supabase db push`)
+2. Set its secrets: `supabase secrets set TONE_TOKEN_SECRET=<40+ random characters> TONE_API_KEY=<model provider key>`.
+   It uses Anthropic's Claude Haiku by default; `TONE_PROVIDER=openai-compatible` with `TONE_BASE_URL` and `TONE_MODEL` uses another provider. Turn on the provider's zero-data-retention setting if it has one
+3. `supabase functions deploy tone-check --no-verify-jwt` (the function checks its own install tokens; Supabase's newer `sb_publishable_` keys aren't JWTs)
+
+The prompt code in `supabase/functions/_shared/analysis` is a copy of
+`src/analysis`. After changing a prompt, run `npm run sync:function` and
+deploy again; a unit test fails while the copy is out of date.
 
 ## Privacy
 
 - Your messages are never stored or logged by this extension
 - Incoming analysis is off unless you turn it on. Received messages are read from the page, sent only to your local Ollama, and never stored, logged or sent to Supabase; readings are kept in memory for the open tab only
+- With the **cloud check** (if you choose it), each message you write is sent to the project's tone-check function and a hosted AI model, checked, and forgotten: neither keeps the text, and the function logs only timing and status. The chat's context answers (e.g. "close friend") go with it; the chat itself never does. Chat context isn't offered with the cloud check. Each browser has an anonymous token so the function can limit checks per hour (300) without knowing who you are
 - Chat context is off unless you turn it on. When on, the last 6 messages (each cut to 200 characters, with the contact's name, emails and phone numbers removed) are read from the page at check time, sent only to your local Ollama, and never stored, logged or sent to Supabase
 - Text is only sent to your local Ollama server (`http://localhost:11434`) — never to an external server
 - Your profile is stored locally using `chrome.storage.local`

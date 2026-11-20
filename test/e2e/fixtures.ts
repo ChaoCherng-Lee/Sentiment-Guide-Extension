@@ -211,6 +211,43 @@ export async function useBuiltinAI(worker: Worker, availability = "available") {
   }, availability)
 }
 
+/**
+ * Switch to the cloud check, with a stand-in for the tone-check function in
+ * the background worker. It flags "stupid" and "idiot" (red) and records
+ * every request body in `__cloudBodies`. `limited`: answer 429 to checks.
+ */
+export async function useCloud(worker: Worker, opts: { limited?: boolean } = {}) {
+  await worker.evaluate(async (limited) => {
+    const g = globalThis as unknown as {
+      chrome: typeof import("wxt/browser").browser
+      fetch: typeof fetch
+      __cloudBodies: Record<string, unknown>[]
+    }
+    g.__cloudBodies = []
+    const original = g.fetch
+    const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status })
+    g.fetch = async (input, init) => {
+      const url = String(input)
+      if (!url.includes("/functions/v1/tone-check")) return original(input, init)
+      if (init?.method === "GET") return json({ ok: true })
+      if (url.endsWith("/register")) return json({ token: "install.sig" })
+      const body = JSON.parse(String(init?.body ?? "{}")) as { task: string; text: string }
+      g.__cloudBodies.push(body)
+      if (limited) return json({ error: "hourly limit reached" }, 429)
+      const word = ["stupid", "idiot"].find(w => body.text.toLowerCase().includes(w))
+      if (body.task === "verdict") {
+        return json({ result: word ? { tone: "red", confidence: 0.9, flagged_phrase: word } : { tone: "green", confidence: 0.9, flagged_phrase: "" } })
+      }
+      return json({ result: {
+        label: "Insult", category: "insult", explanation: "Name-calling can hurt.",
+        suggestion: "I'm frustrated, can we talk later?", edits: [], emoji_notes: [],
+      } })
+    }
+    const { settings } = await g.chrome.storage.sync.get("settings") as { settings?: object }
+    await g.chrome.storage.sync.set({ settings: { ...settings, backend: "cloud" } })
+  }, opts.limited ?? false)
+}
+
 /** With the stand-in model: pretend the model hasn't been downloaded. */
 export async function setNoModel(worker: Worker, missing: boolean) {
   await worker.evaluate(m => { (globalThis as unknown as { __noModel?: boolean }).__noModel = m }, missing)

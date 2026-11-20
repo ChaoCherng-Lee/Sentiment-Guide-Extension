@@ -21,6 +21,10 @@ $$;
 
 create role anon nologin;
 create role authenticated nologin;
+-- The Edge Functions' role: bypasses row level security
+create role service_role nologin bypassrls;
+grant usage on schema public to service_role;
+alter default privileges in schema public grant all on tables to service_role;
 
 grant usage on schema public, auth to anon, authenticated;
 grant execute on all functions in schema auth to anon, authenticated;

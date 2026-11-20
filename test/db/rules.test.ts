@@ -205,3 +205,28 @@ describe("data minimisation (5.2)", () => {
     expect((await db.query("select id from events")).rows).toEqual([{ id: event(2).id }])
   })
 })
+
+describe("cloud check rate limit (8.3)", () => {
+  async function asService<T = Record<string, unknown>>(sql: string, params: unknown[] = []): Promise<T[]> {
+    await db.exec("set role service_role")
+    try {
+      return (await db.query<T>(sql, params)).rows
+    } finally {
+      await db.exec("reset role")
+    }
+  }
+
+  it("counts hits per key per hour and says no once over the limit", async () => {
+    const hit = async (key: string) => (await asService<{ ok: boolean }>("select cloud_rate_hit($1, 2) as ok", [key]))[0].ok
+    expect(await hit("t:a")).toBe(true)
+    expect(await hit("t:a")).toBe(true)
+    expect(await hit("t:a")).toBe(false)
+    expect(await hit("t:b")).toBe(true)
+  })
+
+  it("is out of reach for the extension's own keys", async () => {
+    await expect(as(null, "select cloud_rate_hit('t:a', 1000)")).rejects.toThrow(/permission denied/)
+    await expect(as(CHILD, "select cloud_rate_hit('t:a', 1000)")).rejects.toThrow(/permission denied/)
+    await expect(as(null, "select * from cloud_rate")).rejects.toThrow(/permission denied/)
+  })
+})

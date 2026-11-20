@@ -52,9 +52,10 @@ export type Message =
 
 /**
  * Why a check produced no result. "cancelled" means a newer check replaced
- * it; "paused" means the extension is off or paused.
+ * it; "paused" means the extension is off or paused; "limit" means the
+ * cloud check's hourly limit was reached.
  */
-export type CheckFailure = "offline" | "no-model" | "timeout" | "cancelled" | "paused" | "error"
+export type CheckFailure = "offline" | "no-model" | "timeout" | "limit" | "cancelled" | "paused" | "error"
 
 export type ModelResponse<T> =
   | ({ ok: true } & T)
