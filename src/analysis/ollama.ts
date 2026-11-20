@@ -1,46 +1,40 @@
 // =============================================================================
-// Ollama client — the only module that talks to the model.
+// Ollama client and the "ollama" backend (backend.ts): the advanced, fully
+// private choice, a model running on this computer.
 //
 // The address is fixed to this computer. The privacy promise ("messages never
 // leave your device") depends on it, so it is deliberately not a setting.
 // =============================================================================
 
+import { BackendError, type BackendStatus, callSignal, type ToneBackend } from "./backend"
 import type { ChatTurn } from "./prompts"
+import { promptBackend } from "./prompt-backend"
 
 export const OLLAMA_URL = "http://127.0.0.1:11434"
 /** Match patterns for the Ollama server — used for host permissions and header rules. */
 export const OLLAMA_HOSTS = ["127.0.0.1", "localhost"]
 
-/**
- * Whether the model runs on this computer. Chat context (the other person's
- * messages) is only ever sent to a local model — if a remote one is added,
- * this turns it off.
- */
-export const MODEL_IS_LOCAL = OLLAMA_HOSTS.includes(new URL(OLLAMA_URL).hostname)
+/** Always this computer (see above); chat context depends on it. */
+const MODEL_IS_LOCAL = OLLAMA_HOSTS.includes(new URL(OLLAMA_URL).hostname)
 
 /** Keep the model loaded between checks; a cold load can take over a minute. */
 const KEEP_ALIVE = "30m"
 const PREFERRED_MODELS = ["gemma3:4b", "gemma3:latest"]
 
-export class OllamaError extends Error {
-  constructor(readonly kind: "offline" | "no-model" | "timeout" | "aborted" | "bad-response", message: string) {
-    super(message)
-  }
-}
 
 async function request(path: string, init: RequestInit = {}): Promise<Response> {
   try {
     const res = await fetch(OLLAMA_URL + path, init)
-    if (res.status === 404 && path === "/api/chat") throw new OllamaError("no-model", "model not found")
-    if (!res.ok) throw new OllamaError("bad-response", `Ollama HTTP ${res.status}`)
+    if (res.status === 404 && path === "/api/chat") throw new BackendError("no-model", "model not found")
+    if (!res.ok) throw new BackendError("bad-response", `Ollama HTTP ${res.status}`)
     return res
   } catch (err) {
-    if (err instanceof OllamaError) throw err
+    if (err instanceof BackendError) throw err
     if ((err as Error).name === "AbortError") {
       const reason = init.signal?.reason
-      throw reason instanceof OllamaError ? reason : new OllamaError("aborted", "request cancelled")
+      throw reason instanceof BackendError ? reason : new BackendError("aborted", "request cancelled")
     }
-    throw new OllamaError("offline", (err as Error).message)
+    throw new BackendError("offline", (err as Error).message)
   }
 }
 
@@ -70,13 +64,7 @@ export interface ChatOptions {
 
 /** One non-streaming chat call. Returns the parsed JSON reply. */
 export async function chatJSON({ model, messages, format, signal, timeoutMs = 60_000 }: ChatOptions): Promise<unknown> {
-  const timeout = AbortSignal.timeout(timeoutMs)
-  const ctrl    = new AbortController()
-  const abort   = (reason: unknown) => { if (!ctrl.signal.aborted) ctrl.abort(reason) }
-  timeout.addEventListener("abort", () => abort(new OllamaError("timeout", `no reply after ${timeoutMs} ms`)))
-  signal?.addEventListener("abort", () => abort(new OllamaError("aborted", "request cancelled")))
-  if (signal?.aborted) abort(new OllamaError("aborted", "request cancelled"))
-
+  const callAbort = callSignal({ signal, timeoutMs })
   const res = await request("/api/chat", {
     method:  "POST",
     headers: { "Content-Type": "application/json" },
@@ -88,14 +76,14 @@ export async function chatJSON({ model, messages, format, signal, timeoutMs = 60
       keep_alive: KEEP_ALIVE,
       options:    { temperature: 0.2 },
     }),
-    signal: ctrl.signal,
+    signal: callAbort,
   })
   const data = await res.json()
-  if (data.error) throw new OllamaError("bad-response", data.error)
+  if (data.error) throw new BackendError("bad-response", data.error)
   try {
     return JSON.parse(data.message?.content ?? "")
   } catch (_) {
-    throw new OllamaError("bad-response", "reply was not JSON")
+    throw new BackendError("bad-response", "reply was not JSON")
   }
 }
 
@@ -138,7 +126,7 @@ export async function pullModel(model: string, onUpdate: (u: PullUpdate) => void
     body:    JSON.stringify({ model, stream: true }),
     signal,
   })
-  if (!res.body) throw new OllamaError("bad-response", "no download progress")
+  if (!res.body) throw new BackendError("bad-response", "no download progress")
   const reader  = res.body.pipeThrough(new TextDecoderStream()).getReader()
   let buffered = ""
   let done = false
@@ -151,7 +139,7 @@ export async function pullModel(model: string, onUpdate: (u: PullUpdate) => void
     for (const line of lines) {
       if (!line.trim()) continue
       const u = JSON.parse(line) as PullUpdate & { error?: string }
-      if (u.error) throw new OllamaError("bad-response", u.error)
+      if (u.error) throw new BackendError("bad-response", u.error)
       onUpdate(u)
     }
   }
@@ -175,4 +163,38 @@ export async function isLoaded(model: string): Promise<boolean> {
   } catch (_) {
     return false
   }
+}
+
+/** The model to use: the user's choice if installed, else the best Gemma installed. */
+export async function resolveModel(preferred: string | null): Promise<string> {
+  const model = pickModel(await listModels(), preferred)
+  if (!model) throw new BackendError("no-model", "no Gemma model installed")
+  return model
+}
+
+/**
+ * The "ollama" backend. `preferred` is read for every call, so a model
+ * picked in Settings applies straight away.
+ */
+export function ollamaBackend(preferred: () => Promise<string | null> | string | null = () => null): ToneBackend {
+  const model = async () => resolveModel(await preferred())
+  return promptBackend({
+    id:    "ollama",
+    local: MODEL_IS_LOCAL,
+    chat:  async (req) => chatJSON({ ...req, model: await model() }),
+    async status(): Promise<BackendStatus> {
+      try {
+        const m = await model()
+        return { state: (await isLoaded(m)) ? "ready" : "idle", model: m }
+      } catch (err) {
+        const state = err instanceof BackendError && err.kind === "no-model" ? "no-model" : "offline"
+        return { state, model: null }
+      }
+    },
+    isCold: async () => !(await isLoaded(await model())),
+    async warm() {
+      const m = await model()
+      if (!(await isLoaded(m))) await warmUp(m)
+    },
+  })
 }

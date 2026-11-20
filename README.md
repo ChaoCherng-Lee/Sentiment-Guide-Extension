@@ -76,7 +76,7 @@ See [CHANGES.md](CHANGES.md) for what is new compared with the original extensio
 | `entrypoints/background.ts` | Service worker — queues tone checks to the local Ollama, AI status, optional Supabase logging |
 | `entrypoints/*.content.ts` | Content scripts — each picks a site's adapter and starts the engine (`web.content.ts`: every other website) |
 | `entrypoints/popup/`, `entrypoints/onboarding/` | Toolbar popup (on/off, this site, AI status, your week) and the setup page |
-| `src/analysis/` | Prompts, JSON schema + validation, Ollama client, request queue |
+| `src/analysis/` | Prompts, JSON schema + validation, request queue; `backend.ts` is the one interface every AI backend implements (`ollama.ts` today) |
 | `src/platforms/` | One adapter per site (WhatsApp, Instagram, Gmail, and `web.ts` for any other website); all page selectors live here. `sites.ts` lists the optional sites |
 | `entrypoints/options/` | Settings: General, Sites, Parent sharing, The AI |
 | `src/engine/` | `ComposeSession` (one per compose box) and the engine that wires everything |

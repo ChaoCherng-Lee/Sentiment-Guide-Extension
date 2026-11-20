@@ -8,6 +8,7 @@
 // =============================================================================
 
 import { browser } from "#imports"
+import type { BackendId } from "../analysis/backend"
 import type { ChatContext, IncomingReading, SuggestionStyle } from "../analysis/types"
 
 export interface Settings {
@@ -21,6 +22,11 @@ export interface Settings {
   disabledSites: string[]
   /** Default style for rewrites; chats can override it. */
   suggestionStyle: SuggestionStyle
+  /**
+   * Where checks run (Spec FR-4). Installs from before round 2 set up Ollama,
+   * so that's the default; setup picks for new installs (Plan 8.4).
+   */
+  backend: BackendId
   /** Ollama model to use; null picks the best installed Gemma model. */
   model: string | null
   /** Let checks read the last few messages in the chat. Off until the user opts in. */
@@ -37,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
   disabledConversations: [],
   disabledSites: [],
   suggestionStyle: "casual",
+  backend: "ollama",
   model: null,
   chatContext: false,
   chatContextOffered: false,

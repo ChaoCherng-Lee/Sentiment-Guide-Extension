@@ -4,8 +4,13 @@ import { badge, expect, HARSH, openWhatsApp, test } from "./fixtures"
 const box   = (page: Page) => page.locator("footer [contenteditable]")
 const popup = (page: Page) => page.locator("#sg-popup-host .popup")
 
+interface Stored {
+  fineFeedback?: { byTone: Record<string, number>; byReason: Record<string, number> }
+  weekStats?: { fine?: number }
+}
+
 const stored = (worker: Worker) => worker.evaluate(() =>
-  (globalThis as unknown as { chrome: typeof import("wxt/browser").browser }).chrome.storage.local.get(["fineFeedback", "weekStats"]))
+  (globalThis as unknown as { chrome: typeof import("wxt/browser").browser }).chrome.storage.local.get(["fineFeedback", "weekStats"])) as Promise<Stored>
 
 test("'It's fine' leaves the message alone and asks why, without keeping any text", async ({ page, worker }) => {
   await openWhatsApp(page)
@@ -25,8 +30,8 @@ test("'It's fine' leaves the message alone and asks why, without keeping any tex
 
   await expect.poll(async () => (await stored(worker)).fineFeedback?.byReason?.joke).toBe(1)
   const s = await stored(worker)
-  expect(s.fineFeedback.byTone.red).toBe(1)
-  expect(s.weekStats.fine).toBe(1)
+  expect(s.fineFeedback?.byTone.red).toBe(1)
+  expect(s.weekStats?.fine).toBe(1)
   expect(JSON.stringify(s)).not.toContain("stupid")
 
   // The same message isn't flagged again

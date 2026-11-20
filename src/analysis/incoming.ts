@@ -1,14 +1,13 @@
 // Incoming analysis (opt-in): explain how a received message probably reads.
 // One model call; the result is never stored or logged.
 
-import { chatJSON } from "./ollama"
+import type { CallOptions, ChatJSON } from "./backend"
 import { buildIncomingMessages } from "./prompts"
 import { INCOMING_SCHEMA, validateIncoming } from "./schema"
-import type { ModelCallOptions } from "./tone"
 import type { IncomingAnalysis, IncomingReading } from "./types"
 
-export async function readIncoming(text: string, opts: ModelCallOptions): Promise<IncomingAnalysis> {
-  const raw = await chatJSON({ ...opts, messages: buildIncomingMessages(text), format: INCOMING_SCHEMA })
+export async function readIncoming(chat: ChatJSON, text: string, opts: CallOptions = {}): Promise<IncomingAnalysis> {
+  const raw = await chat({ ...opts, messages: buildIncomingMessages(text), format: INCOMING_SCHEMA })
   return validateIncoming(raw)
 }
 

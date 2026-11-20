@@ -100,6 +100,12 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | 7.2 | **The eval checks the Spec targets (no change in the extension).** `npm run eval` now ends with the Spec numbers, each marked ✓ or ✗ against its target: false red on fine messages (≤ 2%), any flag on fine messages (≤ 8%), hurtful messages caught (≥ 90%), and how long a verdict takes (p50 ≤ 0.7 s, p95 ≤ 1.5 s; best effort on Ollama). Each category shows its own false flags and catches. `--compare` shows the change from the last saved run, and `--check` fails when a target is missed, for CI later |
 | 7.3 | **"It's fine" instead of Dismiss.** The card's Dismiss button is now **It's fine**. The message is left alone as before, and the card turns into one question for a few seconds: *what was it?* (a joke between us / they know what I mean / it's true and needs saying / something else). Answering is optional; typing on closes it. Only counts are kept, on this computer: how many flags were marked fine, by colour and reason, plus a "fine" count in the weekly tally. No text is stored. This is the live signal for wrong flags (Spec §8) and what 9.4 will learn from |
 
+### Phase 8: AI that just works
+
+| Step | New for users |
+|---|---|
+| 8.1 | **One way in for every AI (no change for users).** Checks no longer call Ollama directly. They go through one `ToneBackend` interface (`src/analysis/backend.ts`), and Ollama is its first backend. A `backend` setting says which one to use (Ollama for everyone so far). The queue, the engine and `npm run eval` (now `--backend`) work with any backend, so Chrome's built-in AI and the cloud check can be added next to it. Chat context still only goes to a backend on this computer |
+
 ## Changed behaviour worth knowing
 
 - **6.1:** measured with the eval on the same day and model, before and

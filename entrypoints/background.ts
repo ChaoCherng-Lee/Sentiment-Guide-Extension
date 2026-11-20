@@ -1,14 +1,15 @@
 // =============================================================================
 // background.ts
-// Service worker. Runs tone analysis against the local Ollama server through
-// a priority queue, reports AI status, and does optional Supabase logging.
+// Service worker. Runs tone analysis on the chosen backend (Ollama, Chrome's
+// built-in AI or the cloud check) through a priority queue, reports AI
+// status, and does optional Supabase logging.
 // =============================================================================
 
 import { browser, defineBackground } from "#imports"
-import { listModels, MODEL_IS_LOCAL, OLLAMA_HOSTS, OllamaError, isLoaded, pickModel, warmUp } from "../src/analysis/ollama"
-import { readIncoming } from "../src/analysis/incoming"
+import { BackendError, type ToneBackend } from "../src/analysis/backend"
+import { backendFor } from "../src/analysis/backends"
+import { OLLAMA_HOSTS } from "../src/analysis/ollama"
 import { CancelledError, type Priority, RequestQueue } from "../src/analysis/queue"
-import { adviseTone, judgeTone } from "../src/analysis/tone"
 import {
   flushUploads, isPaired, logAcceptance, logEvent, pairWithCode, supabaseConfigured, unlinkAndDelete,
 } from "../src/backend/supabase"
@@ -170,28 +171,18 @@ export default defineBackground(() => {
 
   // ── Model ─────────────────────────────────────────────────────────────────
 
-  async function resolveModel(): Promise<string> {
-    const [installed, settings] = await Promise.all([listModels(), getSettings()])
-    const model = pickModel(installed, settings.model)
-    if (!model) throw new OllamaError("no-model", "no Gemma model installed")
-    return model
+  /** The backend the user chose, read for every call so a change applies straight away. */
+  async function currentBackend(): Promise<ToneBackend> {
+    return backendFor((await getSettings()).backend)
   }
 
   async function getStatus(): Promise<AIStatus> {
-    try {
-      const model = await resolveModel()
-      return { state: (await isLoaded(model)) ? "ready" : "idle", model }
-    } catch (err) {
-      const kind = err instanceof OllamaError && err.kind === "no-model" ? "no-model" : "offline"
-      return { state: kind, model: null }
-    }
+    const backend = await currentBackend()
+    return { backend: backend.id, ...(await backend.status()) }
   }
 
   function warm(): Promise<void> {
-    warming ??= (async () => {
-      const model = await resolveModel()
-      if (!(await isLoaded(model))) await warmUp(model)
-    })().finally(() => { warming = null })
+    warming ??= currentBackend().then(b => b.warm()).finally(() => { warming = null })
     return warming
   }
 
@@ -204,7 +195,7 @@ export default defineBackground(() => {
    */
   async function runModelCall<T>(
     key: string,
-    call: (model: string, signal: AbortSignal, timeoutMs: number) => Promise<T>,
+    call: (backend: ToneBackend, signal: AbortSignal, timeoutMs: number) => Promise<T>,
     timeoutMs = CHECK_TIMEOUT_MS,
     priority: Priority = "high",
   ): Promise<{ ok: true; value: T } | { ok: false; reason: CheckFailure }> {
@@ -212,9 +203,9 @@ export default defineBackground(() => {
     if (!isActive(await getSettings())) return { ok: false, reason: "paused" }
     try {
       const value = await queue.add(async (signal) => {
-        const model = await resolveModel()
-        const cold  = !(await isLoaded(model))
-        return call(model, signal, cold ? COLD_CHECK_TIMEOUT_MS : timeoutMs)
+        const backend = await currentBackend()
+        const cold    = await backend.isCold()
+        return call(backend, signal, cold ? COLD_CHECK_TIMEOUT_MS : timeoutMs)
       }, { priority, key })
       return { ok: true, value }
     } catch (err) {
@@ -229,22 +220,21 @@ export default defineBackground(() => {
    * context on and the model is on this computer. They are passed straight
    * to the prompt — never stored or logged.
    */
-  async function allowedRecent(recent: MessageOf<"CHECK_TONE">["recent"] | undefined) {
-    if (!recent?.length || !MODEL_IS_LOCAL) return []
+  async function allowedRecent(recent: MessageOf<"CHECK_TONE">["recent"] | undefined, backend: ToneBackend) {
+    if (!recent?.length || !backend.local) return []
     return (await getSettings()).chatContext ? recent : []
   }
 
   async function checkTone(msg: MessageOf<"CHECK_TONE">): Promise<Responses["CHECK_TONE"]> {
-    const recent = await allowedRecent(msg.recent)
-    const res = await runModelCall("outgoing:" + msg.sessionId, (model, signal, timeoutMs) =>
-      judgeTone(msg.text, msg.context, { model, signal, timeoutMs }, recent))
+    const res = await runModelCall("outgoing:" + msg.sessionId, async (backend, signal, timeoutMs) =>
+      backend.judge(msg.text, msg.context, await allowedRecent(msg.recent, backend), { signal, timeoutMs }))
     return res.ok ? { ok: true, verdict: res.value } : res
   }
 
   async function getAdvice(msg: MessageOf<"GET_ADVICE">): Promise<Responses["GET_ADVICE"]> {
-    const recent = await allowedRecent(msg.recent)
-    const res = await runModelCall("outgoing:" + msg.sessionId, (model, signal, timeoutMs) =>
-      adviseTone(msg.text, msg.verdict, msg.context, msg.style, { model, signal, timeoutMs }, recent), ADVICE_TIMEOUT_MS)
+    const res = await runModelCall("outgoing:" + msg.sessionId, async (backend, signal, timeoutMs) =>
+      backend.advise(msg.text, msg.verdict, msg.context, msg.style, await allowedRecent(msg.recent, backend), { signal, timeoutMs }),
+      ADVICE_TIMEOUT_MS)
     if (!res.ok) return res
 
     const { verdict } = msg
@@ -265,8 +255,8 @@ export default defineBackground(() => {
   /** Opt-in reading of a received message. Never logged or uploaded. */
   async function explainIncoming(msg: MessageOf<"READ_INCOMING">): Promise<Responses["READ_INCOMING"]> {
     if (!(await getSettings()).incomingAnalysis) return { ok: false, reason: "paused" }
-    const res = await runModelCall("incoming:" + msg.key, (model, signal, timeoutMs) =>
-      readIncoming(msg.text, { model, signal, timeoutMs }), CHECK_TIMEOUT_MS, "low")
+    const res = await runModelCall("incoming:" + msg.key, (backend, signal, timeoutMs) =>
+      backend.readIncoming(msg.text, { signal, timeoutMs }), CHECK_TIMEOUT_MS, "low")
     return res.ok ? { ok: true, analysis: res.value } : res
   }
 })
@@ -278,10 +268,14 @@ function matchesPattern(url: string | undefined, pattern: string): boolean {
 
 function failureReason(err: unknown): CheckFailure {
   if (err instanceof CancelledError) return err.message === "paused" ? "paused" : "cancelled"
-  if (err instanceof OllamaError) {
-    if (err.kind === "aborted") return "cancelled"
-    if (err.kind === "bad-response") return "error"
-    return err.kind
+  if (err instanceof BackendError) {
+    switch (err.kind) {
+      case "aborted":      return "cancelled"
+      case "bad-response": return "error"
+      case "unsupported":  return "offline"
+      case "rate-limited": return "error"
+      default:             return err.kind
+    }
   }
   return "error"
 }

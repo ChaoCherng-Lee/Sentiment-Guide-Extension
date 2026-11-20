@@ -1,10 +1,12 @@
 // =============================================================================
 // Tone evaluation — runs every labelled message in eval/messages.jsonl
-// through the real prompt + local Ollama and reports how well it does.
+// through the real prompt on a backend (Ollama by default) and reports how
+// well it does against the Spec targets.
 //
 //   npm run eval                          # whole set
 //   npm run eval -- --category emoji      # one category (or several: emoji,slang)
 //   npm run eval -- --limit 20 --model gemma3:4b
+//   npm run eval -- --backend cloud        # see eval/backends.ts
 //   npm run eval -- --advice              # also time step 2 on flagged messages
 //   npm run eval -- --advice --style formal
 //   npm run eval -- --category context --no-recent   # same cases without the chat
@@ -27,8 +29,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs"
 import path from "node:path"
 import { parseArgs } from "node:util"
-import { listModels, pickModel, warmUp } from "../src/analysis/ollama"
-import { adviseTone, judgeTone } from "../src/analysis/tone"
+import { evalBackend } from "./backends"
 import type { ChatContext, ChatMessage, SuggestionStyle, Tone, ToneVerdict } from "../src/analysis/types"
 
 interface Case {
@@ -62,6 +63,7 @@ const { values: args } = parseArgs({
     category: { type: "string" },
     limit:    { type: "string" },
     model:    { type: "string" },
+    backend:  { type: "string", default: "ollama" },
     file:     { type: "string", default: path.join(DIR, "messages.jsonl") },
     advice:   { type: "boolean", default: false },
     style:    { type: "string", default: "casual" },
@@ -269,24 +271,31 @@ function report(outcomes: Outcome[], model: string) {
 }
 
 async function main() {
-  const cases = loadCases()
-  const model = pickModel(await listModels(), args.model ?? null)
-  if (!model) throw new Error("No Gemma model installed — run: ollama pull gemma3:4b")
+  const cases   = loadCases()
+  const backend = evalBackend(args.backend!, args.model ?? null)
+  const status  = await backend.status()
+  if (status.state !== "ready" && status.state !== "idle") {
+    throw new Error(`The ${backend.id} backend isn't ready (${status.state}${status.detail ? ": " + status.detail : ""})` +
+      (backend.id === "ollama" ? " — run: ollama serve, and ollama pull gemma3:4b" : ""))
+  }
+  const model = status.model ? `${backend.id} · ${status.model}` : backend.id
 
   process.stdout.write(`Loading ${model}… `)
-  await warmUp(model)
+  await backend.warm()
   console.log("ready")
+  // Chat context only ever goes to a backend on this computer
+  const recentOf = (c: Case) => (backend.local ? recentFor(c) : [])
 
   const outcomes: Outcome[] = []
   for (const [i, c] of cases.entries()) {
     const start = performance.now()
     try {
       const ctx    = fullContext(c.context)
-      const result = await judgeTone(c.text, ctx, { model, timeoutMs: 120_000 }, recentFor(c))
+      const result = await backend.judge(c.text, ctx, recentOf(c), { timeoutMs: 120_000 })
       const outcome: Outcome = { case: c, result, ms: performance.now() - start }
       if (args.advice && result.tone !== "green") {
         const adviceStart = performance.now()
-        outcome.suggestion = (await adviseTone(c.text, result, ctx, args.style as SuggestionStyle, { model, timeoutMs: 120_000 }, recentFor(c))).suggestion
+        outcome.suggestion = (await backend.advise(c.text, result, ctx, args.style as SuggestionStyle, recentOf(c), { timeoutMs: 120_000 })).suggestion
         outcome.adviceMs   = performance.now() - adviceStart
       }
       outcomes.push(outcome)
@@ -301,11 +310,11 @@ async function main() {
   const outDir = path.join(DIR, "results")
   const before = args.compare ? previousRun(outDir) : null
   const now = metrics(outcomes)
-  const missed = reportTargets(now, before, true)
+  const missed = reportTargets(now, before, backend.id === "ollama")
 
   mkdirSync(outDir, { recursive: true })
   const file = path.join(outDir, `${new Date().toISOString().replace(/[:.]/g, "-")}.json`)
-  writeFileSync(file, JSON.stringify({ model, summary, metrics: now, outcomes }, null, 2))
+  writeFileSync(file, JSON.stringify({ backend: backend.id, model, summary, metrics: now, outcomes }, null, 2))
   console.log(`\nSaved ${path.relative(process.cwd(), file)}`)
   if (args.check && missed.length) {
     console.error(`\nMissed: ${missed.join(", ")}`)

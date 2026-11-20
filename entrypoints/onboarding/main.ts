@@ -2,7 +2,8 @@
 // badge or the toolbar popup). Walks through installing Ollama and the model
 // without a terminal, then the user's choices.
 import { browser } from "#imports"
-import { OllamaError, type PullUpdate, pullModel, pullProgress, SETUP_MODEL } from "../../src/analysis/ollama"
+import { BackendError } from "../../src/analysis/backend"
+import { type PullUpdate, pullModel, pullProgress, SETUP_MODEL } from "../../src/analysis/ollama"
 import { sendMessage } from "../../src/messaging"
 import { ALL_WEBSITES } from "../../src/platforms/sites"
 import { getSettings, updateSettings } from "../../src/settings/store"
@@ -70,7 +71,7 @@ async function download() {
     })
     $("pullFill").style.width = "100%"
   } catch (err) {
-    const offline = err instanceof OllamaError && err.kind === "offline"
+    const offline = err instanceof BackendError && err.kind === "offline"
     pullError = offline
       ? "The download stopped — is Ollama still open? Press the button to carry on where it left off."
       : `The download didn't finish (${(err as Error).message}). Press the button to carry on.`

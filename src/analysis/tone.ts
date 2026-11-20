@@ -1,25 +1,26 @@
 // Outgoing tone check, in two model calls: a fast verdict for every message,
-// then advice (explanation + rewrite) only for flagged ones.
+// then advice (explanation + rewrite) only for flagged ones. Works with any
+// backend that can answer a chat with JSON (backend.ts).
 
-import { chatJSON } from "./ollama"
+import type { CallOptions, ChatJSON } from "./backend"
 import { buildAdviceMessages, buildVerdictMessages } from "./prompts"
 import { ADVICE_SCHEMA, VERDICT_SCHEMA, validateAdvice, validateVerdict } from "./schema"
 import type { ChatContext, ChatMessage, SuggestionStyle, ToneAdvice, ToneVerdict } from "./types"
 
-export interface ModelCallOptions {
-  model: string
-  signal?: AbortSignal
-  timeoutMs?: number
-}
-
 /** `recent`: the last few messages in the chat, already scrubbed (chat-context.ts). */
 export async function judgeTone(
+  chat: ChatJSON,
   text: string,
   context: ChatContext | null,
-  opts: ModelCallOptions,
+  opts: CallOptions = {},
   recent: ChatMessage[] = [],
 ): Promise<ToneVerdict> {
-  const raw = await chatJSON({ ...opts, messages: buildVerdictMessages(text, context, recent), format: VERDICT_SCHEMA })
+  const raw = await chat({ ...opts, messages: buildVerdictMessages(text, context, recent), format: VERDICT_SCHEMA })
+  return verdictFromRaw(raw, text, context)
+}
+
+/** Check the model's verdict and apply the rules on top of it. */
+export function verdictFromRaw(raw: unknown, text: string, context: ChatContext | null): ToneVerdict {
   return applyBanterRule(validateVerdict(raw, text), text, context)
 }
 
@@ -37,13 +38,14 @@ export function applyBanterRule(verdict: ToneVerdict, text: string, context: Cha
 }
 
 export async function adviseTone(
+  chat: ChatJSON,
   text: string,
   verdict: ToneVerdict,
   context: ChatContext | null,
   style: SuggestionStyle,
-  opts: ModelCallOptions,
+  opts: CallOptions = {},
   recent: ChatMessage[] = [],
 ): Promise<ToneAdvice> {
-  const raw = await chatJSON({ ...opts, messages: buildAdviceMessages(text, verdict, context, style, recent), format: ADVICE_SCHEMA })
+  const raw = await chat({ ...opts, messages: buildAdviceMessages(text, verdict, context, style, recent), format: ADVICE_SCHEMA })
   return validateAdvice(raw, text)
 }

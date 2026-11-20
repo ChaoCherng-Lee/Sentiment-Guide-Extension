@@ -1,5 +1,6 @@
 // Typed messages between content scripts / pages and the background worker.
 import { browser } from "#imports"
+import type { BackendId, BackendState } from "./analysis/backend"
 import type {
   ChatContext, ChatMessage, IncomingAnalysis, SuggestionStyle, ToneAdvice, ToneVerdict,
 } from "./analysis/types"
@@ -60,9 +61,12 @@ export type ModelResponse<T> =
   | { ok: false; reason: CheckFailure }
 
 export interface AIStatus {
-  /** ready = loaded; idle = installed but not in memory yet (first check is slow) */
-  state: "ready" | "idle" | "offline" | "no-model"
+  /** Where checks run */
+  backend: BackendId
+  /** ready = loaded; idle = installed but not in memory yet (first check is slow); see BackendState */
+  state: BackendState
   model: string | null
+  detail?: string
 }
 
 export interface Responses {
