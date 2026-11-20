@@ -173,6 +173,44 @@ export async function fakeModel(worker: Worker) {
   })
 }
 
+/**
+ * Switch to Chrome's built-in AI, with a stand-in `LanguageModel` in the
+ * background worker (Playwright's Chromium has no Gemini Nano). It answers
+ * like the stand-in Ollama above, and counts its prompts in
+ * `__builtinPrompts`. `availability` is what Chrome would say.
+ */
+export async function useBuiltinAI(worker: Worker, availability = "available") {
+  await worker.evaluate(async (availability) => {
+    const g = globalThis as unknown as {
+      chrome: typeof import("wxt/browser").browser
+      LanguageModel?: unknown
+      __builtinPrompts: number
+    }
+    g.__builtinPrompts = 0
+    type Turn = { role: string; content: string }
+    const session = (initial: Turn[]) => ({
+      async prompt(input: string, o?: { responseConstraint?: object; signal?: AbortSignal }) {
+        g.__builtinPrompts++
+        // Ask the stand-in model the same question (it lives on fetch)
+        const res = await fetch("http://127.0.0.1:11434/api/chat", {
+          method: "POST",
+          body: JSON.stringify({ messages: [...initial, { role: "user", content: input }], format: o?.responseConstraint }),
+          signal: o?.signal,
+        })
+        return (await res.json()).message.content as string
+      },
+      async clone() { return session(initial) },
+      destroy() {},
+    })
+    g.LanguageModel = {
+      availability: async () => availability,
+      create: async (o: { initialPrompts?: Turn[] } = {}) => session(o.initialPrompts ?? []),
+    }
+    const { settings } = await g.chrome.storage.sync.get("settings") as { settings?: object }
+    await g.chrome.storage.sync.set({ settings: { ...settings, backend: "builtin" } })
+  }, availability)
+}
+
 /** With the stand-in model: pretend the model hasn't been downloaded. */
 export async function setNoModel(worker: Worker, missing: boolean) {
   await worker.evaluate(m => { (globalThis as unknown as { __noModel?: boolean }).__noModel = m }, missing)

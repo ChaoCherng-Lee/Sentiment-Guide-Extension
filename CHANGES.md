@@ -105,8 +105,16 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | Step | New for users |
 |---|---|
 | 8.1 | **One way in for every AI (no change for users).** Checks no longer call Ollama directly. They go through one `ToneBackend` interface (`src/analysis/backend.ts`), and Ollama is its first backend. A `backend` setting says which one to use (Ollama for everyone so far). The queue, the engine and `npm run eval` (now `--backend`) work with any backend, so Chrome's built-in AI and the cloud check can be added next to it. Chat context still only goes to a backend on this computer |
+| 8.2 | **Chrome's built-in AI as a backend.** Checks can run on Gemini Nano, the model built into Chrome (Prompt API), on computers that meet Chrome's requirements (a GPU with more than 4 GB, or 16 GB of RAM and 4+ cores, and about 22 GB free). Like Ollama it runs on this computer, so chat context may use it, but there's nothing to install. Each check reuses a ready session for its prompt, so only the message itself is new work. If the background worker can't use the Prompt API, a hidden extension page runs the model instead (new `offscreen` permission). Until Chrome has downloaded its model, the badge says so and opens setup rather than checking. Nobody is switched over yet; setup offers it in 8.4 |
 
 ## Changed behaviour worth knowing
+
+- **8.2:** tested with a stand-in for Chrome's `LanguageModel` (unit and
+  end-to-end), not on real Gemini Nano: the test laptop is below Chrome's
+  requirements, and `npm run eval` runs in Node, where the Prompt API
+  doesn't exist. Before offering it by default, score it on a supported
+  computer and check that the offscreen page works there. Chrome's model
+  understands English, Spanish, German, French and Japanese.
 
 - **7.2 baseline (round 2 starts here):** the current prompt on `gemma3:4b`,
   all 400 messages. False red on fine messages **0.9%** ✓ (target ≤ 2%);

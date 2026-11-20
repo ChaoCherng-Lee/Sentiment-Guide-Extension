@@ -69,6 +69,21 @@ export interface AIStatus {
   detail?: string
 }
 
+/**
+ * What the badge should say when the AI can't check yet, or null when it can:
+ * "offline" (can't be reached, or not possible here) or "no-model" (the
+ * model needs installing or downloading). Both open the setup page.
+ */
+export function setupNeeded(state: BackendState): "offline" | "no-model" | null {
+  switch (state) {
+    case "ready":
+    case "idle":        return null
+    case "offline":
+    case "unsupported": return "offline"
+    default:            return "no-model"
+  }
+}
+
 export interface Responses {
   CHECK_TONE: ModelResponse<{ verdict: ToneVerdict }>
   GET_ADVICE: ModelResponse<{ advice: ToneAdvice }>

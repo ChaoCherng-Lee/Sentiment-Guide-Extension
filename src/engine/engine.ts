@@ -6,7 +6,7 @@
 
 import { prepareRecent, RECENT_LIMIT } from "../analysis/chat-context"
 import type { ChatContext, SuggestionStyle } from "../analysis/types"
-import { sendMessage } from "../messaging"
+import { sendMessage, setupNeeded } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
 import {
   DEFAULT_SETTINGS, getChatData, getSettings, isActive, isConversationDisabled, isSiteDisabled, pauseUntil,
@@ -211,8 +211,9 @@ export function startEngine(adapter: PlatformAdapter) {
   async function prepareModel() {
     const status = await sendMessage({ type: "AI_STATUS" })
     if (!status || !active()) return
-    if (status.state === "offline" || status.state === "no-model") {
-      setPage({ kind: status.state })
+    const setup = setupNeeded(status.state)
+    if (setup) {
+      setPage({ kind: setup })
       return
     }
     if (status.state === "idle") {
@@ -221,7 +222,8 @@ export function startEngine(adapter: PlatformAdapter) {
       await sendMessage({ type: "WARM_UP" })
       const after = await sendMessage({ type: "AI_STATUS" })
       if (page.kind !== "loading") return   // something newer was reported meanwhile
-      setPage(after?.state === "offline" || after?.state === "no-model" ? { kind: after.state } : { kind: "ok" })
+      const setupAfter = after ? setupNeeded(after.state) : null
+      setPage(setupAfter ? { kind: setupAfter } : { kind: "ok" })
     }
   }
 

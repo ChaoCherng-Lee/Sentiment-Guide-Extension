@@ -11,7 +11,8 @@ export default defineConfig({
     // declarativeNetRequest strips the Origin header from our own requests to
     // Ollama, which otherwise rejects chrome-extension:// origins.
     // scripting registers the content scripts of optional sites once allowed.
-    permissions: ["storage", "alarms", "declarativeNetRequestWithHostAccess", "scripting"],
+    // offscreen runs Chrome's built-in AI where the worker can't (offscreen-host.ts).
+    permissions: ["storage", "alarms", "declarativeNetRequestWithHostAccess", "scripting", "offscreen"],
     host_permissions: [
       "http://127.0.0.1:11434/*",
       "http://localhost:11434/*",
