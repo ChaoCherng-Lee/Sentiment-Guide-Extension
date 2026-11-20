@@ -31,6 +31,8 @@ export type Message =
       /** Site the message was written on — the only thing about it a parent may see */
       platform: "whatsapp" | "instagram" | "gmail" | "web"
       sessionId: string
+      /** The setup page's "try it" box: not counted in the week, never shared */
+      trial?: boolean
     }
   /** Opt-in: how a received message probably reads. Low priority; never logged. */
   | { type: "READ_INCOMING"; text: string; key: string }
@@ -43,8 +45,8 @@ export type Message =
   | { type: "SHARING_STATUS" }
   /** Delete this child's shared data on the server and unlink from the parent. */
   | { type: "UNLINK_AND_DELETE" }
-  /** Ask whether the local model is reachable and loaded. */
-  | { type: "AI_STATUS" }
+  /** Whether the AI is ready: the chosen backend's, or another one's (setup and Settings compare them). */
+  | { type: "AI_STATUS"; backend?: BackendId }
   /** A supported site opened — load the model so the first check is fast. */
   | { type: "WARM_UP" }
   /** Open an extension page from a content script (they can't open tabs themselves). */

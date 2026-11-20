@@ -6,8 +6,9 @@
 // covers Instagram and Gmail too, so those two can also be switched off by
 // name (settings.disabledSites) while all websites stays on.
 import { browser } from "#imports"
+import { BACKEND_IDS, type BackendId } from "../../src/analysis/backend"
 import type { SuggestionStyle } from "../../src/analysis/types"
-import { sendMessage } from "../../src/messaging"
+import { type AIStatus, sendMessage } from "../../src/messaging"
 import { OPTIONAL_SITES, type OptionalSite } from "../../src/platforms/sites"
 import {
   getSettings, isSiteDisabled, setSiteDisabled, type Settings, subscribeSettings, updateSettings,
@@ -188,16 +189,53 @@ renderSharing()
 
 // ── The AI ──────────────────────────────────────────────────────────────────
 
+const BACKEND_NAMES: Record<BackendId, string> = {
+  builtin: "Chrome's built-in AI",
+  cloud:   "the private cloud check",
+  ollama:  "Ollama",
+}
+
+/** One line about a backend's state, in words. */
+function describeStatus(s: AIStatus | undefined): string {
+  if (!s) return "Can't tell right now"
+  switch (s.state) {
+    case "ready":        return s.model ? `Ready · ${s.model}` : "Ready"
+    case "idle":         return `Ready · ${s.model} loads on the first check`
+    case "no-model":     return "Ollama is running, but the AI model isn't installed yet"
+    case "downloadable": return "Chrome needs to download its AI model once — open setup"
+    case "downloading":  return "Chrome is downloading its AI model…"
+    case "unsupported":  return s.detail ?? "Not available here"
+    case "offline":      return s.backend === "ollama" ? "Ollama isn't running" : (s.detail ?? "Can't be reached")
+  }
+}
+
 async function showStatus() {
   const s   = await sendMessage({ type: "AI_STATUS" })
   const ok  = s?.state === "ready" || s?.state === "idle"
   $("statusDot").className = "status-dot " + (ok ? "green" : "red")
-  $("statusText").textContent =
-      s?.state === "ready"    ? `Ready · ${s.model}`
-    : s?.state === "idle"     ? `Ollama is running · ${s.model} loads on the first check`
-    : s?.state === "no-model" ? "Ollama is running, but the AI model isn't installed yet"
-    :                           "Ollama isn't running"
+  $("statusText").textContent = s
+    ? `${ok ? "Checking with" : "Chosen:"} ${BACKEND_NAMES[s.backend]} — ${describeStatus(s)}`
+    : "Can't tell right now"
   $("setupBtn").textContent = ok ? "Open setup" : "Set it up"
+
+  // Every backend, so they can be compared and switched (never switched without asking)
+  for (const id of BACKEND_IDS) {
+    const other = id === s?.backend ? s : await sendMessage({ type: "AI_STATUS", backend: id })
+    $(`status-${id}`).textContent = describeStatus(other)
+    const unavailable = other?.state === "unsupported"
+    $(`row-${id}`).classList.toggle("unavailable", unavailable)
+    const radio = $<HTMLInputElement>(`backend-${id}`)
+    radio.disabled = unavailable && id !== s?.backend
+    radio.checked  = id === s?.backend
+  }
+}
+
+for (const id of BACKEND_IDS) {
+  $<HTMLInputElement>(`backend-${id}`).addEventListener("change", async e => {
+    if (!(e.target as HTMLInputElement).checked) return
+    await updateSettings({ backend: id })
+    showStatus()
+  })
 }
 
 $("setupBtn").addEventListener("click", () => sendMessage({ type: "OPEN_PAGE", page: "setup" }))

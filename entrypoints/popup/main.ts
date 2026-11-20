@@ -74,8 +74,14 @@ async function showStatus() {
   $("statusDot").classList.add(ok ? "green" : "red")
   $("statusText").textContent = ok ? "The AI is ready"
     : status?.state === "no-model" ? "The AI model isn't installed yet"
+    : status?.state === "downloadable" || status?.state === "downloading" ? "Chrome's AI model isn't downloaded yet"
+    : status?.state === "unsupported" ? "This AI isn't available here"
+    : status?.backend === "cloud" ? "Can't reach the cloud check"
     : "The AI isn't running"
-  $("statusText").title = ok ? `${status!.model}, running on this computer` : ""
+  $("statusText").title = !ok || !status ? ""
+    : status.backend === "builtin" ? "Chrome's built-in AI, on this computer"
+    : status.backend === "cloud" ? "The private cloud check: messages are checked and forgotten"
+    : `${status.model}, running on this computer`
   $("setupBtn").hidden = ok
 }
 

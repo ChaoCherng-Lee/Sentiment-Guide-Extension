@@ -1,4 +1,4 @@
-import { expect, sitesReady, test } from "./fixtures"
+import { expect, setSettings, sitesReady, storedSettings, test, useCloud } from "./fixtures"
 import { OPTIONAL_SITES } from "../../src/platforms/sites"
 
 test("the toolbar popup keeps to the quick things and opens Settings", async ({ context, extensionId }) => {
@@ -49,4 +49,19 @@ test("The AI tab says whether it's ready", async ({ context, extensionId }) => {
   const options = await context.newPage()
   await options.goto(`chrome-extension://${extensionId}/options.html#ai`)
   await expect(options.locator("#statusText")).toContainText("gemma3:4b")
+  // Every backend is listed with how it stands, and the one in use is chosen
+  await expect(options.locator("#backend-ollama")).toBeChecked()
+  await expect(options.locator("#status-ollama")).toContainText("gemma3:4b")
+})
+
+test("The AI tab switches where checks happen, only when asked", async ({ context, worker, extensionId }) => {
+  await useCloud(worker)
+  await setSettings(worker, { backend: "ollama" })
+  const options = await context.newPage()
+  await options.goto(`chrome-extension://${extensionId}/options.html#ai`)
+  await expect(options.locator("#status-cloud")).toHaveText("Ready")
+  await expect(options.locator("#backend-ollama")).toBeChecked()
+  await options.locator("#backend-cloud").check()
+  await expect.poll(async () => (await storedSettings(worker)).backend).toBe("cloud")
+  await expect(options.locator("#statusText")).toContainText("private cloud check")
 })

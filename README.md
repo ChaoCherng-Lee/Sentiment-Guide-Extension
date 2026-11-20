@@ -14,7 +14,7 @@ A Chrome extension that analyses tone as you type — on WhatsApp Web, Instagram
 - **Your week** — the toolbar popup keeps a private tally and cheers you on ("This week: you took 6 suggestions 🎉"). It stays on your computer and isn't part of parent sharing
 - **Personalised suggestions** — an onboarding flow collects your role, age range, texting style, and goals so the model tailors its language to you
 - **Parent dashboard** *(optional)* — a separate web app (`dashboard/`) where a parent sees a weekly summary: suggestions taken, yellow and red flags per week, and which apps and kinds of message. Counts only, never message text. Try it with made-up data: `cd dashboard && npm install && npm run dev`, then open `/?demo`
-- **Private by default** — messages never leave your device; your profile stays on-device only. Sharing with a parent's dashboard is optional: it needs a Supabase project configured at build time *and* the child entering their parent's pairing code
+- **Private by default** — with Chrome's built-in AI or Ollama, messages never leave your device; with the cloud check, each message is checked and forgotten, and the chat around it stays on your device. Your profile stays on-device only. Sharing with a parent's dashboard is optional: it needs a Supabase project configured at build time *and* the child entering their parent's pairing code
 
 ## How It Works
 
@@ -48,11 +48,13 @@ loaded and reloads it on every change (from its own folder,
 
 A setup page opens when the extension is installed. No terminal is needed:
 
-1. **Install Ollama** — if it isn't running, the page links to [ollama.com/download](https://ollama.com/download) and notices by itself once Ollama is open
-2. **Get the AI model** — one button downloads `gemma3:4b` (3.3 GB) with a progress bar. A download that stops can be carried on where it left off
-3. **Your choices** — checking all websites (on by default; Chrome asks to allow it when you press Done) and whether to explain messages you receive
+1. **Where should checks happen?**
+   - **Recommended** (the default): Chrome's built-in AI if this computer can run it (one button lets Chrome download its model), otherwise the private cloud check. Nothing to install
+   - **Fully private (advanced)**: Ollama on this computer. The page links to [ollama.com/download](https://ollama.com/download), notices by itself once Ollama is open, then downloads `gemma3:4b` (3.3 GB) with one button and a progress bar (a download that stops can be carried on)
+2. **Your choices** — checking all websites (on by default; Chrome asks to allow it when you press Done) and whether to explain messages you receive
+3. **Try it** — check a sample message (or your own) to see what a flag looks like
 
-The setup page opens again whenever the AI isn't ready: from the amber badge in a message box, or **Set up** in the toolbar popup. Prefer a terminal? `ollama pull gemma3:4b` does the same as step 2.
+The setup page opens again whenever the AI isn't ready: from the amber badge in a message box, or **Set up** in the toolbar popup. **Settings → The AI** lists all three with how each one stands, and switches between them; Sentiment Guide never switches by itself. Prefer a terminal? `ollama pull gemma3:4b` does the same as the model download.
 
 ## Usage
 

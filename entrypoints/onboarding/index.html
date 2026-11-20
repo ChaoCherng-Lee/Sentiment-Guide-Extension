@@ -62,6 +62,18 @@
       .option input { margin-top: 3px; width: 16px; height: 16px; accent-color: #4f46e5; flex-shrink: 0; }
       .option strong { display: block; color: #111827; }
 
+      .choice-box { margin: 6px 0 4px 26px; }
+      .try-text {
+        width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db;
+        font: inherit; font-size: 14px; resize: vertical; color: #111827;
+      }
+      .try-text:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 1px; }
+      .try-result { margin-top: 10px; font-size: 13px; border-radius: 10px; padding: 10px 12px; background: #f9fafb; }
+      .try-result.red { background: #fef2f2; color: #7f1d1d; }
+      .try-result.yellow { background: #fffbeb; color: #78350f; }
+      .try-result.green { background: #f0fdf4; color: #166534; }
+      .try-result .rewrite { display: block; margin-top: 6px; font-style: italic; color: #374151; }
+
       .privacy {
         background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px;
         padding: 12px 16px; font-size: 13px; color: #166534; margin: 18px 0;
@@ -80,8 +92,33 @@
         <p class="lead">Like Grammarly, but for tone. It notices when a message might hurt, and suggests a kinder way to say it.</p>
       </header>
 
-      <section class="step" id="stepOllama" aria-labelledby="ollamaTitle">
+      <section class="step" id="stepWhere" aria-labelledby="whereTitle">
         <div class="num" aria-hidden="true">1</div>
+        <div class="body">
+          <h2 id="whereTitle">Where should checks happen?</h2>
+          <label class="option">
+            <input type="radio" name="where" id="choiceRecommended" value="recommended" checked />
+            <span><strong>Recommended</strong>
+            On this computer with Chrome's built-in AI if it can, otherwise our private cloud check. Nothing to install.</span>
+          </label>
+          <div class="choice-box" id="recommendedBox">
+            <p class="status" id="recommendedStatus" role="status"><span class="waiting-dot"></span>Checking what this computer can do…</p>
+            <div class="actions" id="builtinDownload" hidden>
+              <button class="btn" id="builtinBtn">Let Chrome download its AI model</button>
+            </div>
+            <div class="bar" id="builtinBar" hidden><span id="builtinFill"></span></div>
+          </div>
+          <label class="option">
+            <input type="radio" name="where" id="choiceOllama" value="ollama" />
+            <span><strong>Fully private (advanced)</strong>
+            Ollama, a free app that runs an AI model on this computer. A 3.3 GB download, and a fairly fast computer helps.</span>
+          </label>
+        </div>
+      </section>
+
+      <div id="ollamaSteps" hidden>
+      <section class="step" id="stepOllama" aria-labelledby="ollamaTitle">
+        <div class="num" aria-hidden="true">2</div>
         <div class="body">
           <h2 id="ollamaTitle">Install Ollama</h2>
           <p class="status" id="ollamaStatus" role="status"><span class="waiting-dot"></span>Looking for Ollama…</p>
@@ -96,7 +133,7 @@
       </section>
 
       <section class="step waiting" id="stepModel" aria-labelledby="modelTitle">
-        <div class="num" aria-hidden="true">2</div>
+        <div class="num" aria-hidden="true">3</div>
         <div class="body">
           <h2 id="modelTitle">Get the AI model</h2>
           <p class="status" id="modelStatus" role="status">After Ollama is running.</p>
@@ -109,9 +146,10 @@
           </div>
         </div>
       </section>
+      </div>
 
       <section class="step" id="stepChoices" aria-labelledby="choicesTitle">
-        <div class="num" aria-hidden="true">3</div>
+        <div class="num" aria-hidden="true" id="choicesNum">2</div>
         <div class="body">
           <h2 id="choicesTitle">Your choices</h2>
           <p class="status">You can change these any time in Settings.</p>
@@ -128,7 +166,19 @@
         </div>
       </section>
 
-      <div class="privacy">🔒 <strong>Private by design.</strong> The AI runs on this computer. Your messages are never sent to any server, and no account is needed.</div>
+      <section class="step" id="stepTry" aria-labelledby="tryTitle">
+        <div class="num" aria-hidden="true">✎</div>
+        <div class="body">
+          <h2 id="tryTitle">Try it</h2>
+          <p class="status">See what Sentiment Guide does with a message like this. Change it if you like.</p>
+          <label for="tryText" class="hint" style="display:block">Message to check</label>
+          <textarea class="try-text" id="tryText" rows="2">honestly you're so useless, I'm done with you</textarea>
+          <div class="actions"><button class="btn secondary" id="tryBtn">Check it</button></div>
+          <div class="try-result" id="tryResult" role="status" hidden></div>
+        </div>
+      </section>
+
+      <div class="privacy" id="privacyNote">🔒 <strong>Private by design.</strong> <span id="privacyText">Your messages are checked and forgotten. No account is needed.</span></div>
 
       <div class="finish">
         <button class="btn" id="btnStart">Done</button>

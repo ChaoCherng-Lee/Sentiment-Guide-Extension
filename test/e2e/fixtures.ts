@@ -248,6 +248,23 @@ export async function useCloud(worker: Worker, opts: { limited?: boolean } = {})
   }, opts.limited ?? false)
 }
 
+/** Change settings directly, as if from the Settings page. */
+export async function setSettings(worker: Worker, patch: Record<string, unknown>) {
+  await worker.evaluate(async (patch) => {
+    const g = globalThis as unknown as { chrome: typeof import("wxt/browser").browser }
+    const { settings } = await g.chrome.storage.sync.get("settings") as { settings?: object }
+    await g.chrome.storage.sync.set({ settings: { ...settings, ...patch } })
+  }, patch)
+}
+
+/** The settings as stored. */
+export async function storedSettings(worker: Worker): Promise<Record<string, unknown>> {
+  return worker.evaluate(async () => {
+    const g = globalThis as unknown as { chrome: typeof import("wxt/browser").browser }
+    return ((await g.chrome.storage.sync.get("settings")).settings ?? {}) as Record<string, unknown>
+  })
+}
+
 /** With the stand-in model: pretend the model hasn't been downloaded. */
 export async function setNoModel(worker: Worker, missing: boolean) {
   await worker.evaluate(m => { (globalThis as unknown as { __noModel?: boolean }).__noModel = m }, missing)

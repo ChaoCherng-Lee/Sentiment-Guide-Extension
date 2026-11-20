@@ -87,6 +87,11 @@
       .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
       .status-dot.green { background: #10b981; }
       .status-dot.red { background: #ef4444; }
+      .backend { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; cursor: pointer; }
+      .backend + .backend { border-top: 1px solid #f3f4f6; }
+      .backend input { margin-top: 3px; width: 16px; height: 16px; accent-color: #4f46e5; flex-shrink: 0; }
+      .backend strong { display: block; font-size: 13px; }
+      .backend.unavailable { cursor: default; opacity: 0.6; }
       kbd { font: inherit; font-size: 11px; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0 4px; }
       @media (prefers-color-scheme: dark) {
         body { background: #0f1117; color: #e5e7eb; }
@@ -214,8 +219,30 @@
       <section class="panel" id="ai" role="tabpanel" aria-labelledby="tab-ai" hidden>
         <div class="card">
           <div class="status-row"><span class="status-dot" id="statusDot"></span><span id="statusText">Checking…</span></div>
-          <p class="sub" style="margin-top:8px">Sentiment Guide uses Ollama, a free app that runs an AI model on this computer. Nothing you write is sent anywhere else, and there's nothing to pay.</p>
           <button class="btn" id="setupBtn" style="margin-top:12px">Open setup</button>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <h3>Where checks happen</h3>
+          <div role="radiogroup" aria-label="Where checks happen" style="margin-top:4px">
+            <label class="backend" id="row-builtin">
+              <input type="radio" name="backend" value="builtin" id="backend-builtin" />
+              <span><strong>Chrome's built-in AI</strong>
+              <span class="sub">On this computer, inside Chrome. Nothing to install.</span>
+              <span class="sub" id="status-builtin">Checking…</span></span>
+            </label>
+            <label class="backend" id="row-cloud">
+              <input type="radio" name="backend" value="cloud" id="backend-cloud" />
+              <span><strong>Private cloud check</strong>
+              <span class="sub">For computers that can't run an AI. Each message is checked and forgotten; the chat around it never leaves this computer.</span>
+              <span class="sub" id="status-cloud">Checking…</span></span>
+            </label>
+            <label class="backend" id="row-ollama">
+              <input type="radio" name="backend" value="ollama" id="backend-ollama" />
+              <span><strong>Ollama — fully private (advanced)</strong>
+              <span class="sub">A free app that runs an AI model on this computer.</span>
+              <span class="sub" id="status-ollama">Checking…</span></span>
+            </label>
+          </div>
         </div>
       </section>
     </main>

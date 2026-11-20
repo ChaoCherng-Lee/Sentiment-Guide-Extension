@@ -3,7 +3,7 @@
 // worker only.
 
 import type { BackendId, ToneBackend } from "./backend"
-import { builtinBackend } from "./builtin"
+import { builtinBackend, type LanguageModelAPI, type LanguageModelHost, languageModelHere } from "./builtin"
 import { cloudBackend } from "./cloud"
 import { ollamaBackend } from "./ollama"
 import { backgroundHost } from "./offscreen-host"
@@ -11,9 +11,16 @@ import { browser } from "#imports"
 import { getSettings } from "../settings/store"
 
 const ollama  = ollamaBackend(async () => (await getSettings()).model)
-// One host for the worker's lifetime, so its sessions are reused between checks
-let host: ReturnType<typeof backgroundHost> | null = null
-const builtin = builtinBackend(async () => (host ??= backgroundHost()))
+// One host per LanguageModel, so its sessions are reused between checks. Looked
+// up on every call: the worker may only gain the API after the first status
+// question (an origin trial or flag turning on), and the host chosen without
+// it, the offscreen page, would otherwise stick for the worker's lifetime.
+let host: { lm: LanguageModelAPI | undefined; host: LanguageModelHost } | null = null
+const builtin = builtinBackend(async () => {
+  const lm = languageModelHere()
+  if (!host || host.lm !== lm) host = { lm, host: backgroundHost() }
+  return host.host
+})
 
 // The cloud check lives in the same Supabase project as parent sharing
 const SUPABASE_URL      = (import.meta.env.WXT_SUPABASE_URL as string | undefined) ?? ""

@@ -6,7 +6,7 @@
 // =============================================================================
 
 import { browser, defineBackground } from "#imports"
-import { BackendError, type ToneBackend } from "../src/analysis/backend"
+import { BackendError, type BackendId, type ToneBackend } from "../src/analysis/backend"
 import { backendFor } from "../src/analysis/backends"
 import { OLLAMA_HOSTS } from "../src/analysis/ollama"
 import { CancelledError, type Priority, RequestQueue } from "../src/analysis/queue"
@@ -59,7 +59,7 @@ export default defineBackground(() => {
         explainIncoming(msg).then(sendResponse)
         return true
       case "AI_STATUS":
-        getStatus().then(sendResponse)
+        getStatus(msg.backend).then(sendResponse)
         return true
       case "WARM_UP":
         getSettings()
@@ -176,8 +176,8 @@ export default defineBackground(() => {
     return backendFor((await getSettings()).backend)
   }
 
-  async function getStatus(): Promise<AIStatus> {
-    const backend = await currentBackend()
+  async function getStatus(id?: BackendId): Promise<AIStatus> {
+    const backend = id ? backendFor(id) : await currentBackend()
     return { backend: backend.id, ...(await backend.status()) }
   }
 
@@ -238,7 +238,7 @@ export default defineBackground(() => {
     if (!res.ok) return res
 
     const { verdict } = msg
-    if (verdict.tone !== "green") {
+    if (verdict.tone !== "green" && !msg.trial) {
       recordWeek("flagged", msg.eventId)
       // What a parent may see: no text, no contact (Plan 5.2)
       logEvent({
