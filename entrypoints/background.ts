@@ -8,6 +8,7 @@
 import { browser, defineBackground } from "#imports"
 import { BackendError, type BackendId, type ToneBackend } from "../src/analysis/backend"
 import { backendFor } from "../src/analysis/backends"
+import { unsupportedLanguage } from "../src/analysis/language"
 import { OLLAMA_HOSTS } from "../src/analysis/ollama"
 import { CancelledError, type Priority, RequestQueue } from "../src/analysis/queue"
 import {
@@ -225,7 +226,15 @@ export default defineBackground(() => {
     return (await getSettings()).chatContext ? recent : []
   }
 
+  /** "Not checked: language" for a message the AI in use isn't tested on (Plan 9.2). */
+  async function languageSkip(text: string): Promise<{ ok: false; reason: "language"; language: string } | null> {
+    const language = unsupportedLanguage(text, (await getSettings()).backend)
+    return language ? { ok: false, reason: "language", language } : null
+  }
+
   async function checkTone(msg: MessageOf<"CHECK_TONE">): Promise<Responses["CHECK_TONE"]> {
+    const skip = await languageSkip(msg.text)
+    if (skip) return skip
     const { sensitivity } = await getSettings()
     const res = await runModelCall("outgoing:" + msg.sessionId, async (backend, signal, timeoutMs) =>
       backend.judge(msg.text, msg.context, await allowedRecent(msg.recent, backend), { signal, timeoutMs, sensitivity }))
@@ -256,6 +265,8 @@ export default defineBackground(() => {
   /** Opt-in reading of a received message. Never logged or uploaded. */
   async function explainIncoming(msg: MessageOf<"READ_INCOMING">): Promise<Responses["READ_INCOMING"]> {
     if (!(await getSettings()).incomingAnalysis) return { ok: false, reason: "paused" }
+    const skip = await languageSkip(msg.text)
+    if (skip) return skip
     const res = await runModelCall("incoming:" + msg.key, (backend, signal, timeoutMs) =>
       backend.readIncoming(msg.text, { signal, timeoutMs }), CHECK_TIMEOUT_MS, "low")
     return res.ok ? { ok: true, analysis: res.value } : res

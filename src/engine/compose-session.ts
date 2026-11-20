@@ -193,6 +193,12 @@ export class ComposeSession {
     // Step 1: fast verdict
     const res = await sendMessage({ type: "CHECK_TONE", text, context: conv.context, recent, sessionId: this.id })
     this.inFlight = false
+    if (res && !res.ok && res.reason === "language" && this.checkText === text) {
+      // Said on the badge; the same text isn't sent again (lastText stays)
+      this.clearUI()
+      this.badge.setBox({ kind: "language", language: res.language ?? "unknown" })
+      return
+    }
     if (!res || !res.ok) {
       if (res && res.reason !== "cancelled") this.deps.onCheckDone(res)
       // Not checked — let the next keystroke try again

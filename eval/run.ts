@@ -11,6 +11,7 @@
 //   npm run eval -- --advice --style formal
 //   npm run eval -- --category context --no-recent   # same cases without the chat
 //   npm run eval -- --sensitivity gentle  # gentle | balanced (default) | strict
+//   npm run eval -- --no-language-check   # also judge languages the backend isn't approved for
 //   npm run eval -- --compare             # also show the change from the last saved run
 //   npm run eval -- --check               # exit 1 if a Spec target (NFR-1) is missed
 //
@@ -19,6 +20,8 @@
 // and after an argument, which should come out differently.
 //
 // Accuracy comes from step 1 (the verdict), which decides what gets flagged.
+// Messages the language check skips (Plan 9.2) are listed as "not checked"
+// and left out of the accuracy numbers, as in the extension.
 //
 // Run it before and after every prompt change and put the summary line in
 // the commit message. Results are also written to eval/results/.
@@ -31,6 +34,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import path from "node:path"
 import { parseArgs } from "node:util"
 import { evalBackend } from "./backends"
+import { unsupportedLanguage } from "../src/analysis/language"
 import { type ChatContext, type ChatMessage, type Sensitivity, SENSITIVITIES, type SuggestionStyle, type Tone, type ToneVerdict } from "../src/analysis/types"
 
 interface Case {
@@ -49,6 +53,8 @@ interface Outcome {
   case: Case
   result: ToneVerdict | null
   error?: string
+  /** Not checked: the language check skipped it (the language code) */
+  skipped?: string
   /** Step 1 time */
   ms: number
   /** Step 2 time, with --advice, for flagged messages */
@@ -70,6 +76,7 @@ const { values: args } = parseArgs({
     style:    { type: "string", default: "casual" },
     sensitivity: { type: "string", default: "balanced" },
     "no-recent": { type: "boolean", default: false },
+    "no-language-check": { type: "boolean", default: false },
     compare:  { type: "boolean", default: false },
     check:    { type: "boolean", default: false },
   },
@@ -195,7 +202,9 @@ function report(outcomes: Outcome[], model: string) {
   const done = outcomes.filter(o => o.result)
   const predicted = (o: Outcome) => o.result!.tone
 
-  console.log(`\nModel: ${model} · ${done.length}/${outcomes.length} cases answered\n`)
+  const notChecked = outcomes.filter(o => o.skipped).length
+  console.log(`\nModel: ${model} · ${done.length}/${outcomes.length - notChecked} cases answered` +
+    (notChecked ? ` · ${notChecked} not checked (language)` : "") + "\n")
 
   // Confusion matrix
   console.log("expected \\ got   green  yellow    red")
@@ -264,7 +273,12 @@ function report(outcomes: Outcome[], model: string) {
       console.log(`  #${o.case.id} [${o.case.category}]${thread} expected ${o.case.expected}, got ${predicted(o)}: ${JSON.stringify(o.case.text)}`)
     }
   }
-  const errors = outcomes.filter(o => !o.result)
+  const skipped = outcomes.filter(o => o.skipped)
+  if (skipped.length) {
+    console.log(`\nnot checked (language): ${skipped.length}`)
+    for (const o of skipped) console.log(`  #${o.case.id} [${o.case.category}] ${o.skipped}, expected ${o.case.expected}: ${JSON.stringify(o.case.text)}`)
+  }
+  const errors = outcomes.filter(o => !o.result && !o.skipped)
   if (errors.length) {
     console.log("\nerrors:")
     for (const o of errors) console.log(`  #${o.case.id}: ${o.error}`)
@@ -294,6 +308,12 @@ async function main() {
   const outcomes: Outcome[] = []
   for (const [i, c] of cases.entries()) {
     const start = performance.now()
+    const skip = args["no-language-check"] ? null : unsupportedLanguage(c.text, backend.id)
+    if (skip) {
+      outcomes.push({ case: c, result: null, skipped: skip, ms: 0 })
+      process.stdout.write(`\r${i + 1}/${cases.length}`)
+      continue
+    }
     try {
       const ctx    = fullContext(c.context)
       const result = await backend.judge(c.text, ctx, recentOf(c), { timeoutMs: 120_000, sensitivity })

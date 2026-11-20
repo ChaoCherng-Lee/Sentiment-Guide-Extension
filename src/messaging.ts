@@ -55,13 +55,14 @@ export type Message =
 /**
  * Why a check produced no result. "cancelled" means a newer check replaced
  * it; "paused" means the extension is off or paused; "limit" means the
- * cloud check's hourly limit was reached.
+ * cloud check's hourly limit was reached; "language" means the message is
+ * in a language the AI in use isn't tested on, so it wasn't checked.
  */
-export type CheckFailure = "offline" | "no-model" | "timeout" | "limit" | "cancelled" | "paused" | "error"
+export type CheckFailure = "offline" | "no-model" | "timeout" | "limit" | "cancelled" | "paused" | "error" | "language"
 
 export type ModelResponse<T> =
   | ({ ok: true } & T)
-  | { ok: false; reason: CheckFailure }
+  | { ok: false; reason: CheckFailure; /** With "language": ISO 639-1 code, or "unknown" */ language?: string }
 
 export interface AIStatus {
   /** Where checks run */

@@ -29,6 +29,8 @@ export type BoxState =
   | { kind: "checking" }
   | { kind: "fine" }
   | { kind: "flagged"; tone: Exclude<Tone, "green"> }
+  /** Not checked: the AI in use isn't tested on this language (ISO 639-1 code or "unknown") */
+  | { kind: "language"; language: string }
 
 /** What the badge's buttons do. Supplied by the engine (page actions) and the session (open the card). */
 export interface BadgeActions {
@@ -62,6 +64,7 @@ function describe(s: Shown, scope: "chat" | "site"): string {
     case "checking": return "Checking your message…"
     case "fine":     return "Sounds fine"
     case "flagged":  return s.tone === "red" ? "This could hurt — click to see why" : "Might come across badly — click to see why"
+    case "language": return `Not checked: ${languageName(s.language)} isn't supported yet`
     case "loading":  return "Loading the AI — the first check can take a minute"
     case "offline":  return "The AI isn't running — click to set it up"
     case "no-model": return "The AI model isn't installed — click to set it up"
@@ -69,6 +72,16 @@ function describe(s: Shown, scope: "chat" | "site"): string {
     case "limit":    return "You've reached this hour's limit for cloud checks — they start again within the hour"
     case "paused":   return `Paused until ${formatUntil(s.until)}`
     case "chat-off": return `Not checking this ${scope}`
+  }
+}
+
+/** "Spanish" for "es"; "this language" when it can't say. */
+export function languageName(code: string): string {
+  if (code === "unknown") return "this language"
+  try {
+    return new Intl.DisplayNames(["en"], { type: "language" }).of(code) ?? "this language"
+  } catch {
+    return "this language"
   }
 }
 
@@ -93,6 +106,7 @@ function icon(s: Shown): string {
     case "slow":
     case "limit":    return ICONS.alert
     case "paused":   return ICONS.pause
+    case "language":
     case "chat-off": return ICONS.off
   }
 }
@@ -119,7 +133,7 @@ const STYLES = `
   .badge[data-state="offline"], .badge[data-state="no-model"], .badge[data-state="slow"], .badge[data-state="limit"] {
     background: #fffbeb; border-color: #f59e0b; color: #b45309;
   }
-  .badge[data-state="paused"], .badge[data-state="chat-off"] { background: #f3f4f6; border-color: #d1d5db; color: #6b7280; }
+  .badge[data-state="paused"], .badge[data-state="chat-off"], .badge[data-state="language"] { background: #f3f4f6; border-color: #d1d5db; color: #6b7280; }
   .spin {
     width: 12px; height: 12px; border-radius: 50%;
     border: 2px solid #c7d2fe; border-top-color: #4f46e5; animation: spin 0.8s linear infinite;

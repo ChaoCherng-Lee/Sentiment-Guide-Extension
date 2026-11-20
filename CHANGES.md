@@ -114,8 +114,11 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | Step | New for users |
 |---|---|
 | 9.1 | **Sensitivity.** Settings → General has **How much to flag**: **Gentle** (only what would clearly hurt; blunt is fine), **Balanced** (the default) or **Strict** (also cold or curt messages). It applies from the next message, on every backend: Gentle and Strict add a line to the check, and Gentle also lets through a yellow the AI isn't sure about. `npm run eval -- --sensitivity gentle` scores each one |
+| 9.2 | **Language check.** Checks are tested in English, so a message clearly in another language isn't guessed at: its badge says **Not checked: Spanish isn't supported yet** (or *this language* when it can't tell which), and nothing is sent to the AI. Messages you receive are treated the same way. Short or mixed messages ("can lah, see you at 7", "ok boomer") are always checked: a skipped English message would be a hurtful one missed, so it only skips on a strong signal. Uses the small offline detector tinyld plus a list of common English and chat words; each backend has a list of approved languages to widen as the eval shows they work. `npm run eval` applies the same check and lists what it skipped |
 
 ## Changed behaviour worth knowing
+
+- **9.2:** on the test set the language check skips 26 of the 27 foreign-language messages (one Malay message is checked) and none of the 373 English or mixed ones. The plan suggested Chrome's `LanguageDetector`; tinyld was used instead so the extension and the eval (which runs in Node) skip exactly the same messages. It adds about 70 KB to the background worker only
 
 - **9.1:** the three levels on the blunt-but-fine and passive-aggressive cases (60 messages, gemma3:4b): fine messages flagged — Gentle 3%, Balanced 60%, Strict 90%; passive-aggressive caught — Gentle 10%, Balanced 87%, Strict 93%. Balanced doesn't meet the Spec targets yet; that's 9.3
 
