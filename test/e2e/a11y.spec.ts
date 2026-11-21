@@ -32,7 +32,7 @@ for (const name of ["options.html#general", "options.html#ai", "popup.html", "on
   })
 }
 
-for (const name of ["popup", "onboarding"]) {
+for (const name of ["popup", "onboarding", "policy"]) {
   test(`the ${name} page: no accessibility problems`, async ({ context, extensionId }) => {
     const page = await context.newPage()
     await page.goto(`chrome-extension://${extensionId}/${name}.html`)

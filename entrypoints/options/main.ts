@@ -7,6 +7,7 @@
 // name (settings.disabledSites) while all websites stays on.
 import { browser } from "#imports"
 import { FAMILY } from "../../src/edition"
+import { releaseFor } from "../../src/whats-new"
 import { BACKEND_IDS, type BackendId } from "../../src/analysis/backend"
 import type { Sensitivity, SuggestionStyle } from "../../src/analysis/types"
 import { type AIStatus, sendMessage } from "../../src/messaging"
@@ -267,6 +268,25 @@ for (const id of BACKEND_IDS) {
 }
 
 $("setupBtn").addEventListener("click", () => sendMessage({ type: "OPEN_PAGE", page: "setup" }))
+
+// ── What's new (Plan 12.4) ──────────────────────────────────────────────────
+
+async function showWhatsNew() {
+  const version = browser.runtime.getManifest().version
+  const release = releaseFor(version)
+  $("whatsNewVersion").textContent = release.version
+  $("whatsNewList").replaceChildren(...release.items.map(text => Object.assign(document.createElement("li"), { textContent: text })))
+  // Open, marked New, after an update, until it's closed
+  const unseen = (await browser.storage.local.get("whatsNewUnseen")).whatsNewUnseen === version
+  $<HTMLDetailsElement>("whatsNew").open = unseen
+  $("whatsNewTag").hidden = !unseen
+  $("whatsNew").addEventListener("toggle", () => {
+    if ($<HTMLDetailsElement>("whatsNew").open) return
+    $("whatsNewTag").hidden = true
+    browser.storage.local.remove("whatsNewUnseen")
+  })
+}
+showWhatsNew()
 
 // ── Privacy ─────────────────────────────────────────────────────────────────
 

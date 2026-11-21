@@ -144,6 +144,10 @@ The prompt code in `supabase/functions/_shared/analysis` is a copy of
 `src/analysis`. After changing a prompt, run `npm run sync:function` and
 deploy again; a unit test fails while the copy is out of date.
 
+### Publishing
+
+`store/listing.md` has the store text, the permission justifications and the data disclosures. The privacy policy is `entrypoints/policy/index.html` (built into the extension as `policy.html`, linked from Settings → Privacy); publish the same file and give its address in the listing. `npm run screenshots` takes the four 1280 × 800 screenshots into `store/screenshots/`. Settings shows **What's new** from `src/whats-new.ts`, opened after an update until read; add an entry whenever the version goes up (a unit test checks).
+
 ## Privacy
 
 - Your messages are never stored or logged by this extension

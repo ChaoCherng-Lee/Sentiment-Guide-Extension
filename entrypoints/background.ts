@@ -55,6 +55,10 @@ export default defineBackground(() => {
     if (details.reason === "install") {
       browser.tabs.create({ url: browser.runtime.getURL("/onboarding.html") })
     }
+    // Settings opens What's new for this version until it's read (Plan 12.4)
+    if (details.reason === "update") {
+      browser.storage.local.set({ whatsNewUnseen: browser.runtime.getManifest().version })
+    }
   })
 
   browser.runtime.onMessage.addListener((msg: Message, sender, sendResponse) => {

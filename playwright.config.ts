@@ -18,5 +18,7 @@ export default defineConfig({
   projects: [
     { name: "app", grepInvert: REAL },
     { name: "real-model", grep: REAL, workers: 1, dependencies: ["app"] },
+    // Store screenshots (Plan 12.4): only with `npm run screenshots`
+    { name: "store", testDir: "test/store" },
   ],
 })

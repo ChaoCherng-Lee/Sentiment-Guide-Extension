@@ -2,7 +2,7 @@
   "name": "sentiment-guide",
   "description": "Tone analysis for kinder texting â€” like Grammarly for sentiment",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -14,6 +14,7 @@
     "test:e2e": "wxt build --mode e2e && playwright test",
     "eval": "tsx eval/run.ts",
     "check:editions": "node scripts/check-editions.mjs",
+    "screenshots": "wxt build --mode e2e && playwright test --project=store",
     "sync:function": "node scripts/sync-function.mjs"
   },
   "devDependencies": {

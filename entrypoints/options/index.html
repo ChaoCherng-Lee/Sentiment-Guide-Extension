@@ -108,6 +108,10 @@
         :root .lead, :root .site p, :root .always, :root .note, :root header span, :root .sub, :root .hint { color: #9ca3af; }
         :root kbd { background: #232734; border-color: #343a4a; color: #e5e7eb; }
       }
+      .whats-new summary { cursor: pointer; }
+      .whats-new ul { margin: 10px 0 0 20px; font-size: 13px; }
+      .whats-new li + li { margin-top: 4px; }
+      .new-tag { font-size: 11px; font-weight: 700; color: #fff; background: #4f46e5; border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
       [hidden] { display: none !important; }
     </style>
   </head>
@@ -123,6 +127,10 @@
       </nav>
 
       <section class="panel" id="general" role="tabpanel" aria-labelledby="tab-general" hidden>
+        <details class="card whats-new" id="whatsNew" style="margin-bottom:12px">
+          <summary><h3 style="display:inline">What's new in <span id="whatsNewVersion"></span></h3> <span class="new-tag" id="whatsNewTag" hidden>New</span></summary>
+          <ul id="whatsNewList"></ul>
+        </details>
         <div class="card">
           <h3>How much to flag</h3>
           <p class="sub">Change it any time: it applies from the next message.</p>
@@ -242,6 +250,7 @@
         <div class="card">
           <h3>What leaves this computer</h3>
           <p class="sub" id="privacyWhere" style="margin-top:6px">Checking…</p>
+          <p class="sub" style="margin-top:6px"><a href="policy.html" target="_blank" id="policyLink">Read the privacy policy</a></p>
           <p class="sub" style="margin-top:6px">Kept on this computer only: your settings, the weekly tally, what "It's fine" taught it, and your answers about each chat. Never your messages' text in a log.</p>
         </div>
         <div class="card" style="margin-top:12px">

@@ -20,7 +20,8 @@ export default defineConfig({
   }),
   manifest: ({ mode }) => ({
     name: "Sentiment Guide",
-    description: "Tone analysis for kinder texting — like Grammarly for sentiment",
+    // The store summary (store/listing.md), 132 characters at most
+    description: "Check how your message comes across before you send it — kinder rewrites in your own voice, privately, on the sites you chat on.",
     // declarativeNetRequest strips the Origin header from our own requests to
     // Ollama, which otherwise rejects chrome-extension:// origins.
     // scripting registers the content scripts of optional sites once allowed.
