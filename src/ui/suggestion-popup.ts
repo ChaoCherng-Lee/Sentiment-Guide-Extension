@@ -24,7 +24,8 @@ const EDIT_STATE_LABELS: Record<EditState, string> = {
 }
 
 export interface PopupHandlers {
-  onAccept(): void
+  /** Use rewrite `index`: 0 is the first, then the alternatives */
+  onAccept(index: number): void
   /** Apply advice.edits[index] only. */
   onApplyEdit(index: number): void
   /** "It's fine": leave this message alone (the card then asks why, see askWhyFine). */
@@ -189,6 +190,14 @@ const STYLES = `
   .style-chip[aria-pressed="true"] { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
   .suggestion-label { font-size: 11px; font-weight: 500; color: #888; }
   .suggestion-text { font-size: 12px; font-style: italic; color: #333; line-height: 1.5; }
+  .rewrites { display: flex; flex-direction: column; gap: 4px; }
+  .rewrite-choice {
+    text-align: left; font: italic 12px/1.5 inherit; font-family: inherit; color: #333;
+    background: white; border: 1px solid #e5e7eb; border-radius: 6px; padding: 4px 8px; cursor: pointer;
+  }
+  .rewrite-choice:hover { border-color: #c7d2fe; }
+  .rewrite-choice[aria-checked="true"] { border-color: #6366f1; background: #eef2ff; }
+  .rewrite-choice:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 1px; }
 
   .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
@@ -275,6 +284,7 @@ const TEMPLATE = `
         </div>
       </div>
       <div class="suggestion-text" id="suggestion"></div>
+      <div class="rewrites" id="rewrites" role="radiogroup" aria-label="Rewrites to choose from"></div>
     </div>
     <div class="actions">
       <button class="btn-accept" id="accept">${ACCEPT_LABEL}</button>
@@ -317,7 +327,7 @@ export class SuggestionPopup {
       this.$(id).addEventListener("click", (e) => { e.stopPropagation(); fn() })
     on("close",         () => this.handlers?.onClose())
     on("dismiss",       () => this.handlers?.onDismiss())
-    on("accept",        () => this.handlers?.onAccept())
+    on("accept",        () => this.handlers?.onAccept(this.chosen))
     on("more",          () => this.toggleMore())
     on("edit-context",  () => { this.toggleMore(false); this.handlers?.onEditContext() })
     on("disable-chat",  () => { this.toggleMore(false); this.handlers?.onDisableChat() })
@@ -431,7 +441,10 @@ export class SuggestionPopup {
 
     // Always overwrite the suggestion text so a stale one can never be accepted
     const suggestion = advice?.suggestion ?? ""
+    const rewrites   = suggestion ? [suggestion, ...(advice?.alternatives ?? [])] : []
+    this.renderRewrites(rewrites)
     this.$("suggestion").textContent       = suggestion
+    this.$("suggestion").hidden            = rewrites.length > 1
     this.$("suggestion-box").style.display = suggestion ? "block" : "none"
     this.$("accept").style.display         = suggestion ? "inline-block" : "none"
     this.renderEdits(advice?.edits ?? [])
@@ -450,6 +463,30 @@ export class SuggestionPopup {
       return row
     }))
     list.style.display = notes.length ? "flex" : "none"
+  }
+
+  /** Which rewrite "Use this" takes; the first until another is picked */
+  private chosen = 0
+
+  /** 2–3 rewrites as choices (Plan 10.2); one is shown as plain text instead. */
+  private renderRewrites(rewrites: string[]) {
+    this.chosen = 0
+    const list = this.$("rewrites")
+    list.hidden = rewrites.length < 2
+    list.replaceChildren(...(rewrites.length < 2 ? [] : rewrites.map((text, i) => {
+      const b = document.createElement("button")
+      b.type = "button"
+      b.className = "rewrite-choice"
+      b.setAttribute("role", "radio")
+      b.setAttribute("aria-checked", String(i === 0))
+      b.dataset.index = String(i)
+      b.textContent = text
+      b.addEventListener("click", () => {
+        this.chosen = i
+        list.querySelectorAll(".rewrite-choice").forEach(c => c.setAttribute("aria-checked", String(c === b)))
+      })
+      return b
+    })))
   }
 
   private renderEdits(edits: ToneAdvice["edits"]) {

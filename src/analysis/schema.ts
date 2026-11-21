@@ -21,6 +21,9 @@ export const VERDICT_SCHEMA = {
   required: ["tone", "confidence", "flagged_phrase"],
 } as const
 
+/** More rewrites besides the first (Plan 10.2: 2–3 in all) */
+export const MAX_ALTERNATIVES = 2
+
 export const ADVICE_SCHEMA = {
   type: "object",
   properties: {
@@ -28,6 +31,7 @@ export const ADVICE_SCHEMA = {
     category:    { type: "string", enum: FLAG_CATEGORIES },
     explanation: { type: "string" },
     suggestion:  { type: "string" },
+    alternatives: { type: "array", maxItems: MAX_ALTERNATIVES, items: { type: "string" } },
     edits: {
       type: "array",
       maxItems: MAX_EDITS,
@@ -105,9 +109,25 @@ export function validateAdvice(raw: unknown, message: string): ToneAdvice {
     category:    FLAG_CATEGORIES.includes(r.category as FlagCategory) ? (r.category as FlagCategory) : "other",
     explanation: str(r.explanation, 300),
     suggestion,
+    alternatives: validateAlternatives(r.alternatives, message, suggestion),
     edits:       validateEdits(r.edits, message),
     emoji_notes: validateEmojiNotes(r.emoji_notes, message),
   }
+}
+
+/** Other rewrites: real text, not the message or the first rewrite again, no repeats. */
+export function validateAlternatives(raw: unknown, message: string, suggestion: string): string[] {
+  if (!Array.isArray(raw) || !suggestion) return []
+  const seen = new Set([message.trim().toLowerCase(), suggestion.toLowerCase()])
+  const out: string[] = []
+  for (const item of raw) {
+    const text = str(item, 400)
+    if (!text || seen.has(text.toLowerCase())) continue
+    seen.add(text.toLowerCase())
+    out.push(text)
+    if (out.length === MAX_ALTERNATIVES) break
+  }
+  return out
 }
 
 /** Keep notes about emoji that are really in the message, one per emoji. */

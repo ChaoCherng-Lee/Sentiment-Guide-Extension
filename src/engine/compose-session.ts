@@ -107,9 +107,10 @@ export class ComposeSession {
 
     const onInput = () => this.onInput()
     const onKeydown = (e: KeyboardEvent) => {
-      if (e.key === "Tab" && this.popupOpen && this.flag?.advice?.suggestion) {
+      // Tab takes the first rewrite, like accepting an autocomplete
+      if (e.key === "Tab" && !e.shiftKey && this.popupOpen && this.flag?.advice?.suggestion) {
         e.preventDefault()
-        this.accept()
+        this.accept(0)
       }
     }
     // Resting the pointer on, or clicking, a flagged phrase opens its card
@@ -278,7 +279,7 @@ export class ComposeSession {
     if (!res.ok) {
       if (res.reason === "cancelled" || res.reason === "paused") return
       this.deps.onCheckDone(res)
-      flag.advice = { label: "", category: "other", explanation: "Couldn't come up with a suggestion this time.", suggestion: "", edits: [], emoji_notes: [] }
+      flag.advice = { label: "", category: "other", explanation: "Couldn't come up with a suggestion this time.", suggestion: "", alternatives: [], edits: [], emoji_notes: [] }
     } else {
       flag.advice = res.advice
     }
@@ -362,7 +363,7 @@ export class ComposeSession {
     const anchor = phraseRects(this.box, verdict.flagged_phrase)?.[0] ?? this.box.getBoundingClientRect()
     const scope  = this.deps.badge.scope
     this.deps.popup.show(this, verdict, advice, style, anchor, {
-      onAccept:       () => this.accept(),
+      onAccept:       (i) => this.accept(i),
       onApplyEdit:    (i) => this.applyEdit(i),
       onDismiss:      () => this.dismiss(),
       onClose:        () => this.deps.popup.hide(),
@@ -488,9 +489,11 @@ export class ComposeSession {
     }
   }
 
-  async accept() {
+  /** Use rewrite `index` (0 = the first, then the alternatives). */
+  async accept(index = 0) {
     const flag       = this.flag
-    const suggestion = flag?.advice?.suggestion
+    const advice     = flag?.advice
+    const suggestion = advice ? [advice.suggestion, ...advice.alternatives][index] || advice.suggestion : ""
     if (!flag || !suggestion) return
     const popup = this.deps.popup
 

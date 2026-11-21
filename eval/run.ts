@@ -34,7 +34,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import path from "node:path"
 import { parseArgs } from "node:util"
 import { evalBackend } from "./backends"
-import { unsupportedLanguage } from "../src/analysis/language"
+import { guessLanguage, unsupportedLanguage } from "../src/analysis/language"
 import { type ChatContext, type ChatMessage, type Sensitivity, SENSITIVITIES, type SuggestionStyle, type Tone, type ToneVerdict } from "../src/analysis/types"
 
 interface Case {
@@ -60,6 +60,8 @@ interface Outcome {
   /** Step 2 time, with --advice, for flagged messages */
   adviceMs?: number
   suggestion?: string
+  /** All rewrites, with --advice (Plan 10.2) */
+  rewrites?: string[]
 }
 
 const TONES: Tone[] = ["green", "yellow", "red"]
@@ -276,6 +278,17 @@ function report(outcomes: Outcome[], model: string) {
       console.log(`  #${o.case.id} [${o.case.category}]${thread} expected ${o.case.expected}, got ${predicted(o)}: ${JSON.stringify(o.case.text)}`)
     }
   }
+  // Voice checks (Plan 10.2): every rewrite within ±30% of the length, in the same language
+  const rewritten = outcomes.filter(o => o.rewrites?.length)
+  if (rewritten.length) {
+    const all = rewritten.flatMap(o => o.rewrites!.map(r => ({ o, r })))
+    const lengthOk = all.filter(({ o, r }) => Math.abs(r.length - o.case.text.length) <= 0.3 * o.case.text.length).length
+    const langOk = all.filter(({ o, r }) => sameLanguage(o.case.text, r)).length
+    const avg = all.length / rewritten.length
+    console.log(`
+voice: ${avg.toFixed(1)} rewrites per flag · length within ±30% ${pct(lengthOk, all.length).trim()} · same language ${pct(langOk, all.length).trim()}`)
+  }
+
   const skipped = outcomes.filter(o => o.skipped)
   if (skipped.length) {
     console.log(`\nnot checked (language): ${skipped.length}`)
@@ -323,7 +336,9 @@ async function main() {
       const outcome: Outcome = { case: c, result, ms: performance.now() - start }
       if (args.advice && result.tone !== "green") {
         const adviceStart = performance.now()
-        outcome.suggestion = (await backend.advise(c.text, result, ctx, args.style as SuggestionStyle, recentOf(c), { timeoutMs: 120_000 })).suggestion
+        const advice = await backend.advise(c.text, result, ctx, args.style as SuggestionStyle, recentOf(c), { timeoutMs: 120_000 })
+        outcome.suggestion = advice.suggestion
+        outcome.rewrites   = [advice.suggestion, ...advice.alternatives].filter(Boolean)
         outcome.adviceMs   = performance.now() - adviceStart
       }
       outcomes.push(outcome)
@@ -354,3 +369,9 @@ main().catch(err => {
   console.error(err.message)
   process.exit(1)
 })
+
+/** Same language, as far as the detector can tell (unsure counts as a match). */
+function sameLanguage(a: string, b: string) {
+  const x = guessLanguage(a), y = guessLanguage(b)
+  return !x.sure || !y.sure || x.language === y.language || !x.language || !y.language
+}

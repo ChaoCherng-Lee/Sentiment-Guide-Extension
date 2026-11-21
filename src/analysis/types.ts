@@ -26,6 +26,8 @@ export interface ToneAdvice {
   explanation: string
   /** Kinder rewrite of the whole message; "" if none */
   suggestion: string
+  /** 0–2 more rewrites, worded differently, in the same voice (Plan 10.2) */
+  alternatives: string[]
   /** Phrase-level fixes the user can apply one at a time (at most 3) */
   edits: ToneEdit[]
   /** How emoji in the message may come across (at most 3) */

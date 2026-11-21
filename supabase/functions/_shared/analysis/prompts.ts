@@ -70,6 +70,7 @@ A tone checker flagged the message you are given. Reply with JSON only, with the
 - category: the kind of problem — "insult", "mean_joke", "sarcasm", "dismissive", "harsh_tone", "threat", "exclusion" (leaving someone out) or "other"
 - explanation: 1-2 warm, plain sentences on how the message might land for the reader
 - suggestion: a kinder rewrite of the ENTIRE message that keeps the same meaning and the writer's voice
+- alternatives: 1 or 2 more rewrites of the entire message, worded differently from suggestion and each other
 - edits: 1 to 3 small fixes, each swapping one hurtful phrase for a kinder one:
   - original: words or emoji copied EXACTLY from the message (same spelling, no paraphrasing)
   - replacement: what to write instead; it must fit the sentence it replaces into. To remove an emoji, use ""
@@ -78,6 +79,7 @@ A tone checker flagged the message you are given. Reply with JSON only, with the
 
 Rules:
 - suggestion must be a complete rewritten message, not just the flagged words.
+- Every rewrite sounds like the writer: the same language, about the same length (within a third), and their slang, abbreviations and friendly emoji. Not more formal than the style asks.
 - Each edit changes only the problem words; leave the rest of the message alone, including emoji that aren't a problem.
 - Never lecture or moralise. Sound like a thoughtful friend, not a teacher.
 - If the recent conversation is given, make the rewrite fit as the next reply in it. Never rewrite or comment on the earlier messages.

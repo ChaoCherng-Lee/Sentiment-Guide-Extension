@@ -41,6 +41,7 @@ describe("validateAdvice", () => {
   it("keeps well-formed advice", () => {
     const advice = {
       label: "A little sharp", category: "dismissive", explanation: "Might sting.", suggestion: "I need some space right now",
+      alternatives: ["can I have a minute?"],
       edits: [{ original: "leave me alone", replacement: "give me some space", reason: "sounds cold" }],
       emoji_notes: [],
     }
@@ -48,7 +49,7 @@ describe("validateAdvice", () => {
   })
 
   it("returns empty fields for garbage", () => {
-    expect(validateAdvice(null, MSG)).toEqual({ label: "", category: "other", explanation: "", suggestion: "", edits: [], emoji_notes: [] })
+    expect(validateAdvice(null, MSG)).toEqual({ label: "", category: "other", explanation: "", suggestion: "", alternatives: [], edits: [], emoji_notes: [] })
   })
 
   it("only allows categories from the fixed list, so no free text can reach a parent", () => {
@@ -134,5 +135,14 @@ describe("validateEmojiNotes", () => {
     ]
     expect(validateEmojiNotes(notes, msg)).toEqual([{ emoji: "🙂", reading: "cold" }])
     expect(validateEmojiNotes("nope", msg)).toEqual([])
+  })
+})
+
+describe("validateAlternatives (10.2)", () => {
+  it("keeps up to 2 real, different rewrites", async () => {
+    const { validateAlternatives } = await import("../../src/analysis/schema")
+    expect(validateAlternatives(["b", "B", "a", "msg", "", 3, "c", "d"], "msg", "a")).toEqual(["b", "c"])
+    expect(validateAlternatives(["b"], "msg", "")).toEqual([])
+    expect(validateAlternatives("b", "msg", "a")).toEqual([])
   })
 })

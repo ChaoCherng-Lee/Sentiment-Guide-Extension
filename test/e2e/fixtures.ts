@@ -161,6 +161,7 @@ export async function fakeModel(worker: Worker) {
           label: "Insult", category: "insult",
           explanation: "Calling someone names can really hurt, even when you're upset.",
           suggestion: REWRITES[style] ?? REWRITES.casual,
+          alternatives: ["I'm really annoyed right now, give me a minute", "ok I need a break from this convo"],
           edits: found.map(f => ({ original: f, replacement: SOFTER[f], reason: "Says how you feel without the insult." })),
           emoji_notes: text.includes("🙄") ? [{ emoji: "🙄", reading: "Can read as an eye-roll." }] : [],
         }

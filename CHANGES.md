@@ -123,6 +123,7 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | Step | New for users |
 |---|---|
 | 10.1 | **Pause before sending hurtful messages.** On WhatsApp, Instagram and forms on other websites, pressing **Send** (Enter or the button) on a **red** message shows the card first, with **Send anyway** — one click, or `Ctrl+Enter`. Yellow messages are never held. If the check is still running, Send waits half a second at most, then lets the message go. On other websites only form posts are held (Enter there may be a new line). Settings → General has a switch, on by default. Gmail keeps its own check of the whole email on Send |
+| 10.2 | **Rewrites in your voice.** The card now offers 2–3 rewrites to choose from instead of one; **Use this** takes the one picked and `Tab` takes the first. They're asked to keep your language, roughly your length, and your slang and friendly emoji. Casual / Formal / Direct still change how they sound. `npm run eval -- --advice` reports how many rewrites each flag gets and how many keep the length (±30%) and language |
 
 ## Changed behaviour worth knowing
 
