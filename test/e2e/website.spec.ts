@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test"
-import { expect, sitesReady, test } from "./fixtures"
+import { expect, setSettings, sitesReady, test } from "./fixtures"
 
 const comment = (page: Page) => page.locator("#comment-box")
 const post    = (page: Page) => page.locator("#post-box")
@@ -48,9 +48,10 @@ test("a plain textarea on any website is checked, and an edit swaps just the wor
   await page.bringToFront()
   await comment(page).focus()
 
-  // Posting the form starts afresh (yellow: only red is held on send, see send-pause.spec)
+  // Posting the form starts afresh (with the red pause off: holding is send-pause.spec)
+  await setSettings(worker, { pauseRedSends: false })
   await comment(page).press("Control+a")
-  await comment(page).pressSequentially("you're so lazy")
+  await comment(page).pressSequentially("you clown")
   await expect(badges(page)).toHaveAttribute("data-state", "flagged")
   await popup(page).locator("#close").click()
   await page.getByRole("button", { name: "Post" }).click()

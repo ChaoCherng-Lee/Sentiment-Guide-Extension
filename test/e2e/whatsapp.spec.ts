@@ -1,4 +1,4 @@
-import { HARSH, expect, openWhatsApp, test } from "./fixtures"
+import { HARSH, expect, openWhatsApp, setSettings, test } from "./fixtures"
 
 test.beforeEach(async ({ page, extensionId }) => {
   expect(extensionId).toBeTruthy()
@@ -29,9 +29,10 @@ test.describe("with the real model", () => {
   })
 })
 
-test("sending with the send button clears the popup", async ({ page }) => {
-  // Yellow: a red message is held on send instead (send-pause.spec)
-  await page.locator("footer [contenteditable]").pressSequentially("you're so lazy")
+test("sending with the send button clears the popup", async ({ page, worker }) => {
+  // With the red pause off: holding a red send is send-pause.spec
+  await setSettings(worker, { pauseRedSends: false })
+  await page.locator("footer [contenteditable]").pressSequentially(HARSH)
   const popup = page.locator("#sg-popup-host .popup")
   await expect(popup).toBeVisible()
 
