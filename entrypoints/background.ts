@@ -20,6 +20,7 @@ import {
 } from "../src/backend/supabase"
 import type { AIStatus, CheckFailure, Message, MessageOf, Responses } from "../src/messaging"
 import { OPTIONAL_SITES } from "../src/platforms/sites"
+import { updateSelectors } from "../src/platforms/remote-selectors"
 import type { ScriptPublicPath } from "wxt/utils/inject-script"
 import { getSettings, isActive, setEnabled, subscribeSettings, type Settings, updateSettings } from "../src/settings/store"
 import { recordFine } from "../src/settings/feedback"
@@ -30,6 +31,10 @@ const RESUME_ALARM          = "resume"
 const UPLOAD_ALARM          = "upload-retry"
 /** Send yesterday's diagnostics, if on (Plan 12.2) */
 const DIAG_ALARM            = "diagnostics"
+/** Fetch the signed site selectors (Plan 12.3) */
+const SELECTORS_ALARM       = "selectors"
+const SELECTORS_URL         = (import.meta.env.WXT_SELECTORS_URL as string | undefined) ?? ""
+const SELECTORS_PUBLIC_KEY  = (import.meta.env.WXT_SELECTORS_PUBLIC_KEY as string | undefined) ?? ""
 const CHECK_TIMEOUT_MS      = 30_000
 /** Advice writes an explanation, a rewrite and phrase edits — much more text */
 const ADVICE_TIMEOUT_MS     = 60_000
@@ -122,9 +127,13 @@ export default defineBackground(() => {
       if (alarm.name === RESUME_ALARM) updateSettings({ pausedUntil: null })
       if (FAMILY && alarm.name === UPLOAD_ALARM) getSettings().then(s => flushUploads(isActive(s)))
       if (alarm.name === DIAG_ALARM) sendDiagnostics()
+      if (alarm.name === SELECTORS_ALARM) fetchSelectors()
     })
     if (FAMILY) browser.alarms.create(UPLOAD_ALARM, { periodInMinutes: 15 })
     browser.alarms.create(DIAG_ALARM, { periodInMinutes: 6 * 60 })
+    if (SELECTORS_URL && SELECTORS_PUBLIC_KEY) {
+      browser.alarms.create(SELECTORS_ALARM, { periodInMinutes: 24 * 60, delayInMinutes: 1 })
+    }
 
     browser.commands.onCommand.addListener(async command => {
       if (command !== "toggle-enabled") return
@@ -156,6 +165,14 @@ export default defineBackground(() => {
   async function sendDiagnostics() {
     if (!(await getSettings()).diagnostics) return
     await flushDiag(day => sendDiagDay(day, EDITION))
+  }
+
+  /** The signed selectors file: kept only if the signature checks out and it's newer */
+  async function fetchSelectors() {
+    let key: JsonWebKey
+    try { key = JSON.parse(SELECTORS_PUBLIC_KEY) } catch { return }
+    const result = await updateSelectors(SELECTORS_URL, key)
+    console.log("Sentiment Guide bg: site selectors", result)
   }
 
   async function applyPowerState(s: Settings) {

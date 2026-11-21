@@ -10,6 +10,7 @@
 // - "recent messages" are the emails in the open thread when replying
 // =============================================================================
 
+import { selectorsFor } from "./remote-selectors"
 import { readText } from "../ui/dom-range"
 import { hashString } from "../util/hash"
 import { observeLatest, pollConversation, replaceInBox } from "./shared"
@@ -20,6 +21,8 @@ const BODY_SELECTORS = [
   'div[g_editable="true"][contenteditable="true"][role="textbox"]',
 ]
 const SEND_BUTTON = 'div[role="button"][data-tooltip^="Send"], div[role="button"][aria-label^="Send"]'
+/** The send button: the remote selectors (Plan 12.3), then the built-in one */
+const sendButtonSelector = () => selectorsFor("gmail", "sendButton", [SEND_BUTTON]).join(", ")
 const RECIPIENT   = "[email], [data-hovercard-id]"
 /** Quoted replies and signatures aren't the user's new words — don't check them */
 const NOT_WRITTEN = ".gmail_quote, .gmail_signature, .gmail_extra, blockquote"
@@ -35,13 +38,13 @@ const EMAIL = /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/
 export function composeRoot(box: HTMLElement): HTMLElement {
   let el: HTMLElement | null = box.parentElement
   for (let i = 0; el && i < 20; i++, el = el.parentElement) {
-    if (el.querySelector(SEND_BUTTON)) return el
+    if (el.querySelector(sendButtonSelector())) return el
   }
   return box.parentElement ?? box
 }
 
 function sendButton(box: HTMLElement): HTMLElement | null {
-  return composeRoot(box).querySelector<HTMLElement>(SEND_BUTTON)
+  return composeRoot(box).querySelector<HTMLElement>(sendButtonSelector())
 }
 
 /** Recipient addresses of one compose window, sorted. */
@@ -116,7 +119,7 @@ export const gmail: PlatformAdapter = {
 
   findComposeBoxes() {
     const boxes = new Set<HTMLElement>()
-    for (const sel of BODY_SELECTORS) document.querySelectorAll<HTMLElement>(sel).forEach(b => boxes.add(b))
+    for (const sel of selectorsFor("gmail", "compose", BODY_SELECTORS)) document.querySelectorAll<HTMLElement>(sel).forEach(b => boxes.add(b))
     for (const box of boxes) {
       if (!box.dataset.sgWatched) {
         box.dataset.sgWatched = "1"
@@ -171,7 +174,7 @@ export const gmail: PlatformAdapter = {
   onSend(box, cb) {
     // Runs only for sends the guard lets through (it stops the others first)
     const onClick = (e: MouseEvent) => {
-      const btn = (e.target as Element | null)?.closest?.(SEND_BUTTON)
+      const btn = (e.target as Element | null)?.closest?.(sendButtonSelector())
       if (btn && btn === sendButton(box)) cb()
     }
     const onKey = (e: KeyboardEvent) => {
@@ -204,7 +207,7 @@ export const gmail: PlatformAdapter = {
     }
     // Gmail's buttons react to mousedown/mouseup as well as click: hold all three
     const onPointer = (e: MouseEvent) => {
-      const btn = (e.target as Element | null)?.closest?.(SEND_BUTTON)
+      const btn = (e.target as Element | null)?.closest?.(sendButtonSelector())
       if (btn && btn === sendButton(box)) hold(e)
     }
     const onKey = (e: KeyboardEvent) => {

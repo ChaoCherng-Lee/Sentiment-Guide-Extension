@@ -2,6 +2,7 @@
 // WhatsApp Web adapter — every WhatsApp selector lives in this file.
 // =============================================================================
 
+import { selectorsFor } from "./remote-selectors"
 import { guardChatSend, sendChatNow } from "./send-guard"
 import { readText } from "../ui/dom-range"
 import { hashString } from "../util/hash"
@@ -21,8 +22,10 @@ const TITLE_SELECTORS = [
   '#main header ._amig span',
 ]
 
-const sendTarget = { sendButton: () => document.querySelector<HTMLElement>(SEND_BUTTON) }
+const sendTarget = { sendButton: () => document.querySelector<HTMLElement>(sendButtonSelector()) }
 const SEND_BUTTON = '[data-testid="send"], [data-icon="send"], button[aria-label="Send"]'
+/** The send button: the remote selectors (Plan 12.3), then the built-in one */
+const sendButtonSelector = () => selectorsFor("whatsapp", "sendButton", [SEND_BUTTON]).join(", ")
 
 // Message bubbles in the open chat, and the element holding just their text
 // (not the time, ticks or a quoted message)
@@ -49,7 +52,7 @@ function readIncomingBubble(bubble: HTMLElement): IncomingMessage | null {
 }
 
 function getTitle(): string | null {
-  for (const sel of TITLE_SELECTORS) {
+  for (const sel of selectorsFor("whatsapp", "title", TITLE_SELECTORS)) {
     const el = document.querySelector(sel)
     if (!el) continue
     const name = el.getAttribute("title") || el.textContent?.trim()
@@ -63,7 +66,7 @@ export const whatsapp: PlatformAdapter = {
 
   findComposeBoxes() {
     // No "any contenteditable" fallback — it can latch onto the search bar
-    for (const sel of COMPOSE_SELECTORS) {
+    for (const sel of selectorsFor("whatsapp", "compose", COMPOSE_SELECTORS)) {
       const el = document.querySelector<HTMLElement>(sel)
       if (el && !el.closest("#side")) return [el]
     }
@@ -102,7 +105,7 @@ export const whatsapp: PlatformAdapter = {
   replaceText: replaceInBox,
 
   onSend(box, cb) {
-    return onEnterOrClick(box, SEND_BUTTON, cb)
+    return onEnterOrClick(box, sendButtonSelector(), cb)
   },
 
   guardSend(box, check) {

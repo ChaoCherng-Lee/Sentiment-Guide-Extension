@@ -131,6 +131,13 @@ extension's own questions and keeps nothing. To run it:
    It uses Anthropic's Claude Haiku by default; `TONE_PROVIDER=openai-compatible` with `TONE_BASE_URL` and `TONE_MODEL` uses another provider. Turn on the provider's zero-data-retention setting if it has one
 3. `supabase functions deploy tone-check --no-verify-jwt` (the function checks its own install tokens; Supabase's newer `sb_publishable_` keys aren't JWTs)
 
+### Sending out new site selectors
+
+When WhatsApp, Instagram or Gmail change their pages, new selectors can reach everyone without a store update (Plan 12.3). The extension fetches a signed JSON file once a day, keeps it only if its signature matches the public key it was built with and its version is higher, and tries its selectors before the built-in ones. It holds selectors only, never code.
+
+1. Once: `node scripts/selectors.mjs keygen ~/sg-selectors-key.jwk`. Keep the private key out of the repository. Put the printed `WXT_SELECTORS_PUBLIC_KEY` and the file's address `WXT_SELECTORS_URL` in `.env`, then build. The host must allow other origins (`Access-Control-Allow-Origin: *`), as GitHub raw files do
+2. Each update: write `{ "version": <last + 1>, "selectors": { "whatsapp": { "compose": ["…"], "title": ["…"], "sendButton": ["…"] } } }` (sites: whatsapp, instagram, gmail), run `node scripts/selectors.mjs sign in.json ~/sg-selectors-key.jwk out.json`, and publish `out.json` at that address
+
 Diagnostics (opt-in) go to the `diagnostics` table: run `supabase/migrations/20261122000000_diagnostics.sql`. Anyone with the anon key can add a day of counts; nobody can read them back through the API, so read them in the dashboard.
 
 The prompt code in `supabase/functions/_shared/analysis` is a copy of

@@ -12,6 +12,7 @@
 // when Instagram changes, save a fresh page there and fix what breaks.
 // =============================================================================
 
+import { selectorsFor } from "./remote-selectors"
 import { guardChatSend, sendChatNow } from "./send-guard"
 import { readText } from "../ui/dom-range"
 import { hashString } from "../util/hash"
@@ -35,8 +36,10 @@ const TITLE_SELECTORS = [
   '[role="main"] [role="button"] h2',
 ]
 
-const sendTarget = { sendButton: () => document.querySelector<HTMLElement>(SEND_BUTTON) }
+const sendTarget = { sendButton: () => document.querySelector<HTMLElement>(sendButtonSelector()) }
 const SEND_BUTTON = '[role="button"][aria-label="Send"], div[role="button"]:has(> svg[aria-label="Send"])'
+/** The send button: the remote selectors (Plan 12.3), then the built-in one */
+const sendButtonSelector = () => selectorsFor("instagram", "sendButton", [SEND_BUTTON]).join(", ")
 
 const threadId = () => location.pathname.match(THREAD_PATH)?.[1] ?? null
 
@@ -77,7 +80,7 @@ function rows(): HTMLElement[] {
 }
 
 function getTitle(): string | null {
-  for (const sel of TITLE_SELECTORS) {
+  for (const sel of selectorsFor("instagram", "title", TITLE_SELECTORS)) {
     const name = document.querySelector(sel)?.textContent?.trim()
     if (name) return name
   }
@@ -90,7 +93,7 @@ export const instagram: PlatformAdapter = {
   findComposeBoxes() {
     // Only inside a DM thread — never the search or comment boxes
     if (!threadId()) return []
-    for (const sel of COMPOSE_SELECTORS) {
+    for (const sel of selectorsFor("instagram", "compose", COMPOSE_SELECTORS)) {
       const el = document.querySelector<HTMLElement>(sel)
       if (el) return [el]
     }
@@ -138,7 +141,7 @@ export const instagram: PlatformAdapter = {
   replaceText: replaceInBox,
 
   onSend(box, cb) {
-    return onEnterOrClick(box, SEND_BUTTON, cb)
+    return onEnterOrClick(box, sendButtonSelector(), cb)
   },
 
   guardSend(box, check) {

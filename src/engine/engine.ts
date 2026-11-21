@@ -4,6 +4,7 @@
 // on / off / pause settings. Each content script just calls startEngine().
 // =============================================================================
 
+import { loadRemoteSelectors } from "../platforms/remote-selectors"
 import { withFallback } from "../platforms/health"
 import { web } from "../platforms/web"
 import { prepareRecent, RECENT_LIMIT, scrub, truncate } from "../analysis/chat-context"
@@ -34,6 +35,9 @@ export function startEngine(siteAdapter: PlatformAdapter) {
   g.sentimentGuideStarted = true
 
   // A site adapter that stops finding the message box falls back to the generic one (Plan 12.2)
+  // Selectors sent out after a site changed its page (Plan 12.3)
+  if (siteAdapter.id !== "web") loadRemoteSelectors(() => queueScan())
+
   let brokenReported = false
   const adapter = siteAdapter.id === "web" ? siteAdapter : withFallback(siteAdapter, web, broken => {
     queueScan()
