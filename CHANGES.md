@@ -136,6 +136,12 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | 11.4 | **Accessible.** An automated check (axe, WCAG 2.1 A and AA) runs on every Settings tab, the toolbar popup, setup, and the card and badge on a page; what it found is fixed — grey text too faint to read (shortcut keys, the "It's fine" button, struck-out words, notes), and shortcut keys that ignored dark mode in the popup. The check runs in the dark theme too, which found grey notes too faint on the dark cards (now lighter there). **Keyboard:** Alt+↓ moves from the message box into the card, the rewrites are a real radio group (arrow keys choose, one Tab stop), Tab goes on to the accept button, Escape goes back to the message box. A newly flagged message was already announced politely to screen readers; now a test checks it |
 | 11.5 | **A performance budget, enforced by a test.** Typing 300 characters into a page: the page's script time per character must stay under 4 ms (measured: 0.16 ms), checks must be debounced, not one per keystroke (2 model calls), and the page's whole memory with the card open must stay under 15 MB (2.1 MB). A page only read makes no AI calls, and an idle tab uses no measurable CPU (about 1 ms of script in 5 s) |
 
+### Phase 12: Ship
+
+| Step | New for users |
+|---|---|
+| 12.1 | **CI on GitHub Actions** (`.github/workflows/ci.yml`). Every push and pull request: type-check, unit and database tests, both editions built and checked, then the end-to-end tests with the stand-in model (results kept when they fail). When prompts, backends, the cloud function or the eval change, the eval runs against the cloud check, given the repository secrets `CLOUD_URL` and `CLOUD_ANON_KEY`. Not run yet: the branch hasn't been pushed |
+
 ## Changed behaviour worth knowing
 
 - **11.1:** `npm run build` now makes the **consumer** edition, without parent sharing. Anyone relying on sharing (the parent dashboard) needs `BUILD_EDITION=family npm run build`

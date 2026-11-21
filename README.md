@@ -111,6 +111,13 @@ Run `npm run eval` before and after any prompt change and include the
 summary line in the commit message. `npm run eval -- --backend cloud`
 scores the deployed cloud check instead.
 
+**CI** (`.github/workflows/ci.yml`, GitHub Actions) runs on every push: the
+type-check, unit and database tests, `check:editions`, and the end-to-end
+tests with the stand-in model. When `src/analysis`, the cloud function or
+the eval change, it also runs the eval against the cloud check, if the
+repository has the secrets `CLOUD_URL` (the deployed `tone-check` URL) and
+`CLOUD_ANON_KEY`; the report is kept as a build artifact.
+
 ### The private cloud check (for whoever runs the Supabase project)
 
 The cloud check is a Supabase Edge Function in the same project as parent
