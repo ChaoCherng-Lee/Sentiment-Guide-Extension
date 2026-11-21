@@ -14,6 +14,8 @@ A Chrome extension that analyses tone as you type — on WhatsApp Web, Instagram
 - **Your week** — the toolbar popup keeps a private tally and cheers you on ("This week: you took 6 suggestions 🎉"). It stays on your computer and isn't part of parent sharing
 - **Personalised suggestions** — an onboarding flow collects your role, age range, texting style, and goals so the model tailors its language to you
 - **Parent dashboard** *(optional)* — a separate web app (`dashboard/`) where a parent sees a weekly summary: suggestions taken, yellow and red flags per week, and which apps and kinds of message. Counts only, never message text. Try it with made-up data: `cd dashboard && npm install && npm run dev`, then open `/?demo`
+- **Keeps working when a site changes** — if WhatsApp, Instagram or Gmail change their pages so a chat is open but its message box isn't recognised, the box you write in is checked the generic way instead
+- **Opt-in diagnostics** *(off by default; Settings → Privacy)* — anonymous daily counts (checks, flags, how long checks took, which AI, the kind of site) and "a site stopped working" reports. Never what you write, never which sites
 - **Works from the keyboard** — **Alt+↓** in the message box moves into the card, the arrow keys pick a rewrite, **Tab** goes on to use it, and **Escape** goes back to writing. A newly flagged message is announced to screen readers
 - **Privacy tab** — says, for the AI you use, what leaves this computer (nothing on this computer; just the message being checked with the cloud check), and **Delete everything** clears all it keeps here: settings, the weekly tally, what "It's fine" taught it and your answers about chats
 - **Stays out of sensitive places** — password, card, one-time-code and address fields, and anything in a login form, are never checked. Banking, health and government websites are off until you turn them on from the badge's menu
@@ -128,6 +130,8 @@ extension's own questions and keeps nothing. To run it:
 2. Set its secrets: `supabase secrets set TONE_TOKEN_SECRET=<40+ random characters> TONE_API_KEY=<model provider key>`.
    It uses Anthropic's Claude Haiku by default; `TONE_PROVIDER=openai-compatible` with `TONE_BASE_URL` and `TONE_MODEL` uses another provider. Turn on the provider's zero-data-retention setting if it has one
 3. `supabase functions deploy tone-check --no-verify-jwt` (the function checks its own install tokens; Supabase's newer `sb_publishable_` keys aren't JWTs)
+
+Diagnostics (opt-in) go to the `diagnostics` table: run `supabase/migrations/20261122000000_diagnostics.sql`. Anyone with the anon key can add a day of counts; nobody can read them back through the API, so read them in the dashboard.
 
 The prompt code in `supabase/functions/_shared/analysis` is a copy of
 `src/analysis`. After changing a prompt, run `npm run sync:function` and

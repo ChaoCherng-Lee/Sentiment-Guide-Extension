@@ -55,6 +55,8 @@ export type Message =
   | { type: "AI_STATUS"; backend?: BackendId }
   /** A supported site opened — load the model so the first check is fast. */
   | { type: "WARM_UP" }
+  /** From a page: a site adapter found no message box (Plan 12.2). Counted only with diagnostics on. */
+  | { type: "ADAPTER_BROKEN"; adapter: string }
   /** Settings → Privacy: delete everything Sentiment Guide keeps on this computer (Plan 11.3). */
   | { type: "DELETE_EVERYTHING" }
   /** Open an extension page from a content script (they can't open tabs themselves). */
@@ -107,6 +109,7 @@ export interface Responses {
   UNLINK_AND_DELETE: boolean
   AI_STATUS: AIStatus
   WARM_UP: void
+  ADAPTER_BROKEN: void
   OPEN_PAGE: void
   DELETE_EVERYTHING: boolean
 }

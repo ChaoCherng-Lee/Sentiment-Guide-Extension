@@ -59,4 +59,9 @@ export interface PlatformAdapter {
   checkWholeOnSend?: boolean
   /** Send now, past the guard ("Send anyway"). */
   sendNow?(box: HTMLElement): void
+  /**
+   * Whether this page should have a message box (Plan 12.2, adapter health).
+   * Without it: when a conversation is open (getConversationId() isn't null).
+   */
+  expectsBox?(): boolean
 }

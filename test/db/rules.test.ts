@@ -230,3 +230,26 @@ describe("cloud check rate limit (8.3)", () => {
     await expect(as(null, "select * from cloud_rate")).rejects.toThrow(/permission denied/)
   })
 })
+
+// Plan 12.2: opt-in diagnostics — anyone can add a day of counts, nobody can read them back
+describe("diagnostics", () => {
+  const add = (user: string | null, counts: unknown, day = "now()::date") =>
+    as(user, `insert into diagnostics (day, edition, version, counts) values (${day}, 'consumer', '1.1.0', $1::jsonb)`, [JSON.stringify(counts)])
+
+  it("anyone can add counts, signed in or not, but not read them", async () => {
+    await add(null, { "check.cloud": 12, "flag.red.chat": 1 })
+    await add(CHILD, { accepted: 2 })
+    await expect(as(null, "select * from diagnostics")).rejects.toThrow(/permission denied/)
+    await expect(as(CHILD, "select * from diagnostics")).rejects.toThrow(/permission denied/)
+    await expect(as(null, "delete from diagnostics")).rejects.toThrow(/permission denied/)
+    expect((await db.query("select count(*)::int as n from diagnostics")).rows).toEqual([{ n: 2 }])
+  })
+
+  it("takes only short count names and whole numbers, never text", async () => {
+    await expect(add(null, { "check.cloud": "you are so stupid" })).rejects.toThrow(/diagnostics_counts_valid/)
+    await expect(add(null, { "you are so stupid": 1 })).rejects.toThrow(/diagnostics_counts_valid/)
+    await expect(add(null, { "check.cloud": 1.5 })).rejects.toThrow(/diagnostics_counts_valid/)
+    await expect(add(null, ["check.cloud"])).rejects.toThrow(/diagnostics_counts_valid/)
+    await expect(add(null, { "check.cloud": 1 }, "'2020-01-01'")).rejects.toThrow(/diagnostics_day_recent/)
+  })
+})

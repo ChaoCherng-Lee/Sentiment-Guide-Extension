@@ -5,7 +5,8 @@
 // status, and does optional Supabase logging.
 // =============================================================================
 
-import { FAMILY } from "../src/edition"
+import { EDITION, FAMILY } from "../src/edition"
+import { type DiagEvent, flushDiag, recordDiag, sendDiagDay, siteKind } from "../src/diagnostics"
 import { browser, defineBackground } from "#imports"
 import { BackendError, type BackendId, type ToneBackend } from "../src/analysis/backend"
 import { backendFor } from "../src/analysis/backends"
@@ -27,6 +28,8 @@ import { recordWeek } from "../src/settings/week"
 const RESUME_ALARM          = "resume"
 /** Retry uploads that failed (offline, server down) */
 const UPLOAD_ALARM          = "upload-retry"
+/** Send yesterday's diagnostics, if on (Plan 12.2) */
+const DIAG_ALARM            = "diagnostics"
 const CHECK_TIMEOUT_MS      = 30_000
 /** Advice writes an explanation, a rewrite and phrase edits — much more text */
 const ADVICE_TIMEOUT_MS     = 60_000
@@ -70,13 +73,17 @@ export default defineBackground(() => {
           .then(s => isActive(s) ? warm() : undefined)
           .then(() => sendResponse(), () => sendResponse())
         return true
+      case "ADAPTER_BROKEN":
+        diag({ kind: "adapter-broken", adapter: msg.adapter })
+        return false
       case "UPDATE_ACCEPTANCE":
-        if (msg.accepted) recordWeek("accepted", msg.eventId)
+        if (msg.accepted) { recordWeek("accepted", msg.eventId); diag({ kind: "accepted" }) }
         if (FAMILY) getSettings().then(s => logAcceptance(msg.eventId, msg.accepted, isActive(s)))
         return false
       case "FINE_FEEDBACK":
         recordWeek("fine", msg.eventId)
         recordFine(msg.tone, msg.reason)
+        diag({ kind: "fine", reason: msg.reason })
         if (msg.snippet && msg.scope) rememberFine(msg.scope, msg.snippet)
         return false
       case "UNLINK_AND_DELETE":
@@ -114,8 +121,10 @@ export default defineBackground(() => {
     browser.alarms.onAlarm.addListener(alarm => {
       if (alarm.name === RESUME_ALARM) updateSettings({ pausedUntil: null })
       if (FAMILY && alarm.name === UPLOAD_ALARM) getSettings().then(s => flushUploads(isActive(s)))
+      if (alarm.name === DIAG_ALARM) sendDiagnostics()
     })
     if (FAMILY) browser.alarms.create(UPLOAD_ALARM, { periodInMinutes: 15 })
+    browser.alarms.create(DIAG_ALARM, { periodInMinutes: 6 * 60 })
 
     browser.commands.onCommand.addListener(async command => {
       if (command !== "toggle-enabled") return
@@ -136,6 +145,17 @@ export default defineBackground(() => {
     await browser.storage.sync.clear()
     // Setup has been done: don't reopen it, just start from the defaults
     await browser.storage.local.set({ onboardingDone: true })
+  }
+
+  /** Counts one event, only when the person turned diagnostics on */
+  function diag(e: DiagEvent) {
+    getSettings().then(s => { if (s.diagnostics) return recordDiag(e) }).catch(() => {})
+  }
+
+  /** Finished days go to the diagnostics table; with diagnostics off, nothing is sent */
+  async function sendDiagnostics() {
+    if (!(await getSettings()).diagnostics) return
+    await flushDiag(day => sendDiagDay(day, EDITION))
   }
 
   async function applyPowerState(s: Settings) {
@@ -236,6 +256,7 @@ export default defineBackground(() => {
     } catch (err) {
       const reason = failureReason(err)
       if (reason !== "cancelled") console.log("Sentiment Guide bg: model call failed —", reason, (err as Error).message)
+      if (reason !== "cancelled" && reason !== "paused") diag({ kind: "failure", reason })
       return { ok: false, reason }
     }
   }
@@ -262,6 +283,7 @@ export default defineBackground(() => {
     const { sensitivity } = await getSettings()
     // Messages like this one the user said were fine here (stored on this computer)
     const similar = msg.scope ? similarExamples(await examplesFor(msg.scope), msg.text) : []
+    const started = Date.now()
     const res = await runModelCall("outgoing:" + msg.sessionId, async (backend, signal, timeoutMs) => {
       const verdict = await backend.judge(msg.text, msg.context, await allowedRecent(msg.recent, backend), {
         signal, timeoutMs, sensitivity,
@@ -270,6 +292,7 @@ export default defineBackground(() => {
       })
       return applyLearned(verdict, similar.length)
     })
+    if (res.ok) diag({ kind: "check", backend: (await getSettings()).backend, ms: Date.now() - started })
     return res.ok ? { ok: true, verdict: res.value } : res
   }
 
@@ -282,6 +305,7 @@ export default defineBackground(() => {
     const { verdict } = msg
     if (verdict.tone !== "green" && !msg.trial) {
       recordWeek("flagged", msg.eventId)
+      diag({ kind: "flag", tone: verdict.tone, site: siteKind(msg.platform) })
       // What a parent may see: no text, no contact (Plan 5.2). Family edition only.
       if (FAMILY) logEvent({
         id:         msg.eventId,

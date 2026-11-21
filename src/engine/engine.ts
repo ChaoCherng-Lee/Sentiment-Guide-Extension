@@ -4,6 +4,8 @@
 // on / off / pause settings. Each content script just calls startEngine().
 // =============================================================================
 
+import { withFallback } from "../platforms/health"
+import { web } from "../platforms/web"
 import { prepareRecent, RECENT_LIMIT, scrub, truncate } from "../analysis/chat-context"
 import { FINE_EXAMPLE_MAX_CHARS } from "../settings/fine-examples"
 import type { ChatContext, SuggestionStyle } from "../analysis/types"
@@ -25,11 +27,19 @@ const SCAN_THROTTLE_MS = 500
 const FORM_SETTLE_MS   = 800
 const HOUR_MS          = 60 * 60 * 1000
 
-export function startEngine(adapter: PlatformAdapter) {
+export function startEngine(siteAdapter: PlatformAdapter) {
   // A script added to a tab that already had it (e.g. a site allowed again) does nothing
   const g = globalThis as { sentimentGuideStarted?: boolean }
   if (g.sentimentGuideStarted) return
   g.sentimentGuideStarted = true
+
+  // A site adapter that stops finding the message box falls back to the generic one (Plan 12.2)
+  let brokenReported = false
+  const adapter = siteAdapter.id === "web" ? siteAdapter : withFallback(siteAdapter, web, broken => {
+    queueScan()
+    if (!brokenReported) sendMessage({ type: "ADAPTER_BROKEN", adapter: broken })
+    brokenReported = true
+  })
   console.log("Sentiment Guide: loaded on", location.hostname)
 
   const popup    = new SuggestionPopup()

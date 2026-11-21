@@ -29,6 +29,8 @@ export interface Settings {
   sensitivity: Sensitivity
   /** Hold a red message when Send is pressed on chat sites (Plan 10.1) */
   pauseRedSends: boolean
+  /** Opt-in anonymous counts and error reports, no text and no site names (Plan 12.2). Off by default. */
+  diagnostics: boolean
   /**
    * Where checks run (Spec FR-4). Installs from before round 2 set up Ollama,
    * so that's the default; setup picks for new installs (Plan 8.4).
@@ -53,6 +55,7 @@ export const DEFAULT_SETTINGS: Settings = {
   suggestionStyle: "casual",
   sensitivity: "balanced",
   pauseRedSends: true,
+  diagnostics: false,
   backend: "ollama",
   model: null,
   chatContext: false,

@@ -245,6 +245,18 @@
           <p class="sub" style="margin-top:6px">Kept on this computer only: your settings, the weekly tally, what "It's fine" taught it, and your answers about each chat. Never your messages' text in a log.</p>
         </div>
         <div class="card" style="margin-top:12px">
+          <div class="row">
+            <div>
+              <h3 id="diagnosticsLabel">Help improve Sentiment Guide</h3>
+              <p class="sub" id="diagnosticsSub">Sends anonymous counts once a day: how many checks and flags, how long checks took, which AI, the kind of site (chat, email or other), and when a site stops working. Never what you write, never which sites. Off unless you turn it on.</p>
+            </div>
+            <label class="switch" title="Send anonymous counts, never text or sites">
+              <input type="checkbox" id="diagnostics" aria-labelledby="diagnosticsLabel" aria-describedby="diagnosticsSub" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="card" style="margin-top:12px">
           <h3>Delete everything on this computer</h3>
           <p class="sub">Settings, the weekly tally, what "It's fine" taught it and your answers about chats. It can't be undone.</p>
           <button class="btn" id="deleteEverything" style="margin-top:10px">Delete everything</button>

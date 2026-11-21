@@ -69,6 +69,7 @@ function renderGeneral(s: Settings) {
     : "Off — only your own message is checked"
 
   $<HTMLInputElement>("pauseRedSends").checked = s.pauseRedSends
+  $<HTMLInputElement>("diagnostics").checked = s.diagnostics
   $("pauseRedSub").textContent = s.pauseRedSends
     ? "On — pressing Send on a red message shows the card first. Send anyway is one click, or Ctrl+Enter"
     : "Off — messages always send straight away"
@@ -89,6 +90,8 @@ $<HTMLInputElement>("chatContext").addEventListener("change", e => updateSetting
   chatContext: (e.target as HTMLInputElement).checked,
   chatContextOffered: true,
 }))
+$<HTMLInputElement>("diagnostics").addEventListener("change", e =>
+  updateSettings({ diagnostics: (e.target as HTMLInputElement).checked }))
 $<HTMLInputElement>("pauseRedSends").addEventListener("change", e =>
   updateSettings({ pauseRedSends: (e.target as HTMLInputElement).checked }))
 $<HTMLInputElement>("incomingAnalysis").addEventListener("change", e =>

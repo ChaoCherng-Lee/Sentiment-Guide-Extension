@@ -186,6 +186,8 @@ export const gmail: PlatformAdapter = {
   },
 
   checkWholeOnSend: true,
+  // Gmail puts compose=… in the address while a compose window is open
+  expectsBox: () => /[?&]compose=/.test(location.hash) || /[?&]compose=/.test(location.search),
 
   guardSend(box, check) {
     let letThrough = false

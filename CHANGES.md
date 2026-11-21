@@ -141,8 +141,11 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | Step | New for users |
 |---|---|
 | 12.1 | **CI on GitHub Actions** (`.github/workflows/ci.yml`). Every push and pull request: type-check, unit and database tests, both editions built and checked, then the end-to-end tests with the stand-in model (results kept when they fail). When prompts, backends, the cloud function or the eval change, the eval runs against the cloud check, given the repository secrets `CLOUD_URL` and `CLOUD_ANON_KEY`. Not run yet: the branch hasn't been pushed |
+| 12.2 | **Opt-in diagnostics and adapter health.** A new switch in Settings → Privacy, off by default: once a day it sends anonymous counts (checks by AI, how long they took in buckets, flags by tone and kind of site — chat, email or other — accepted, "It's fine" by reason, failures by kind) and "adapter broken" reports. Never text, never site names; the database refuses anything but short fixed names with whole numbers, and nobody can read rows back through the API. **Adapter health:** when WhatsApp, Instagram or Gmail has a chat open but its adapter finds no message box, the box you write in is checked by the generic adapter, and (with diagnostics on) reported once |
 
 ## Changed behaviour worth knowing
+
+- **12.2:** run `supabase/migrations/20261122000000_diagnostics.sql` before turning diagnostics on in a build. Until then the counts wait on the computer (7 days at most) and nothing is lost
 
 - **11.1:** `npm run build` now makes the **consumer** edition, without parent sharing. Anyone relying on sharing (the parent dashboard) needs `BUILD_EDITION=family npm run build`
 
