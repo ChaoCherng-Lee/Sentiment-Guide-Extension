@@ -21,6 +21,17 @@ for (const tab of ["general", "sites", "sharing", "privacy", "ai"]) {
   })
 }
 
+// Contrast in both themes (Plan 11.4): the extension pages have a dark theme
+for (const name of ["options.html#general", "options.html#ai", "popup.html", "onboarding.html"]) {
+  test(`dark theme, ${name}: no accessibility problems`, async ({ context, extensionId }) => {
+    const page = await context.newPage()
+    await page.emulateMedia({ colorScheme: "dark" })
+    await page.goto(`chrome-extension://${extensionId}/${name}`)
+    await page.waitForLoadState("networkidle")
+    expect(await axe(page)).toEqual([])
+  })
+}
+
 for (const name of ["popup", "onboarding"]) {
   test(`the ${name} page: no accessibility problems`, async ({ context, extensionId }) => {
     const page = await context.newPage()
