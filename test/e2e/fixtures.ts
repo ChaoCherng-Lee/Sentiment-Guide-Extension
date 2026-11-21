@@ -13,6 +13,7 @@ const SITES: Record<string, string> = {
   "https://mail.google.com/**": "gmail.html",
   // Any other website, with ordinary text boxes
   "https://example.org/**": "website.html",
+  "https://www.examplebank.com/**": "website.html",
   "https://discord.com/**": "discord.html",
   "https://www.messenger.com/**": "messenger.html",
   "https://web.telegram.org/**": "telegram.html",

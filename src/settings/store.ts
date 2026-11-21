@@ -8,6 +8,7 @@
 // =============================================================================
 
 import { browser } from "#imports"
+import { isSensitiveSite } from "../platforms/sensitive"
 import type { BackendId } from "../analysis/backend"
 import type { ChatContext, IncomingReading, Sensitivity, SuggestionStyle } from "../analysis/types"
 
@@ -20,6 +21,8 @@ export interface Settings {
   disabledConversations: string[]
   /** Sites (hostnames, e.g. "mail.google.com") the user switched checking off on. */
   disabledSites: string[]
+  /** Banking, health and government sites the user switched checking on for (off by default, Plan 11.2) */
+  enabledSites: string[]
   /** Default style for rewrites; chats can override it. */
   suggestionStyle: SuggestionStyle
   /** How readily messages are flagged (Spec FR-3.1). */
@@ -46,6 +49,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pausedUntil: null,
   disabledConversations: [],
   disabledSites: [],
+  enabledSites: [],
   suggestionStyle: "casual",
   sensitivity: "balanced",
   pauseRedSends: true,
@@ -77,15 +81,21 @@ export async function setConversationDisabled(conversationId: string, disabled: 
   })
 }
 
-/** Whether checking is off on one site (hostname). */
+/** Whether checking is off on one site (hostname): switched off, or a sensitive site not switched on. */
 export function isSiteDisabled(s: Settings, host: string): boolean {
-  return s.disabledSites.includes(host)
+  if (s.disabledSites.includes(host)) return true
+  return isSensitiveSite(host) && !(s.enabledSites ?? []).includes(host)
 }
 
 export async function setSiteDisabled(host: string, disabled: boolean) {
-  const { disabledSites } = await getSettings()
+  const { disabledSites, enabledSites = [] } = await getSettings()
   const rest = disabledSites.filter(h => h !== host)
-  await updateSettings({ disabledSites: disabled ? [...rest, host].slice(-MAX_DISABLED_CONVERSATIONS) : rest })
+  const on   = enabledSites.filter(h => h !== host)
+  await updateSettings({
+    disabledSites: disabled ? [...rest, host].slice(-MAX_DISABLED_CONVERSATIONS) : rest,
+    // A sensitive site stays on only while the user wants it on
+    enabledSites:  !disabled && isSensitiveSite(host) ? [...on, host].slice(-MAX_DISABLED_CONVERSATIONS) : on,
+  })
 }
 
 /** Pause until `until` (ms since epoch). Turns the extension on if it was off. */

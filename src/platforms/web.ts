@@ -7,6 +7,7 @@
 // =============================================================================
 
 import { guardChatSend, sendChatNow } from "./send-guard"
+import { isSensitiveField } from "./sensitive"
 import { boxText } from "../ui/box-text"
 import { replaceInBox } from "./shared"
 import type { PlatformAdapter } from "./types"
@@ -33,7 +34,7 @@ function writable(el: HTMLElement): boolean {
     // Only the outermost element of a rich editor is the box
     return false
   }
-  if (el.closest(SKIP)) return false
+  if (el.closest(SKIP) || isSensitiveField(el)) return false
   const r = el.getBoundingClientRect()
   return r.width >= MIN_WIDTH && r.height >= MIN_HEIGHT
 }

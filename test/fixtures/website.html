@@ -20,5 +20,14 @@
   <div class="editor" id="post-box" contenteditable="true"></div>
   <textarea id="code-box" data-gramm="false" placeholder="Code goes here"></textarea>
   <textarea id="hidden-box" class="hidden"></textarea>
+  <h2>Fields left alone (Plan 11.2)</h2>
+  <textarea class="sensitive" autocomplete="street-address" placeholder="Where should we deliver?"></textarea>
+  <textarea class="sensitive" autocomplete="one-time-code"></textarea>
+  <textarea class="sensitive" name="cardNumber"></textarea>
+  <div class="editor sensitive" contenteditable="true" aria-label="Billing address"></div>
+  <form id="login" onsubmit="event.preventDefault()">
+    <input type="password" name="pw">
+    <textarea class="sensitive" placeholder="Anything else?"></textarea>
+  </form>
 </body>
 </html>
