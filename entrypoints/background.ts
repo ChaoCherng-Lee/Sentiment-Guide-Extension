@@ -9,6 +9,8 @@ import { browser, defineBackground } from "#imports"
 import { BackendError, type BackendId, type ToneBackend } from "../src/analysis/backend"
 import { backendFor } from "../src/analysis/backends"
 import { unsupportedLanguage } from "../src/analysis/language"
+import { applyLearned } from "../src/analysis/tone"
+import { examplesFor, rememberFine, similarExamples } from "../src/settings/fine-examples"
 import { OLLAMA_HOSTS } from "../src/analysis/ollama"
 import { CancelledError, type Priority, RequestQueue } from "../src/analysis/queue"
 import {
@@ -74,6 +76,7 @@ export default defineBackground(() => {
       case "FINE_FEEDBACK":
         recordWeek("fine", msg.eventId)
         recordFine(msg.tone, msg.reason)
+        if (msg.snippet && msg.scope) rememberFine(msg.scope, msg.snippet)
         return false
       case "UNLINK_AND_DELETE":
         unlinkAndDelete().then(sendResponse)
@@ -236,8 +239,16 @@ export default defineBackground(() => {
     const skip = await languageSkip(msg.text)
     if (skip) return skip
     const { sensitivity } = await getSettings()
-    const res = await runModelCall("outgoing:" + msg.sessionId, async (backend, signal, timeoutMs) =>
-      backend.judge(msg.text, msg.context, await allowedRecent(msg.recent, backend), { signal, timeoutMs, sensitivity }))
+    // Messages like this one the user said were fine here (stored on this computer)
+    const similar = msg.scope ? similarExamples(await examplesFor(msg.scope), msg.text) : []
+    const res = await runModelCall("outgoing:" + msg.sessionId, async (backend, signal, timeoutMs) => {
+      const verdict = await backend.judge(msg.text, msg.context, await allowedRecent(msg.recent, backend), {
+        signal, timeoutMs, sensitivity,
+        // The examples are the user's own past messages: only to an AI on this computer
+        fineExamples: backend.local ? similar.map(s => s.text) : [],
+      })
+      return applyLearned(verdict, similar.length)
+    })
     return res.ok ? { ok: true, verdict: res.value } : res
   }
 

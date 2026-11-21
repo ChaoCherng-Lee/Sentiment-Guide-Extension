@@ -15,8 +15,9 @@ export async function judgeTone(
   opts: CallOptions = {},
   recent: ChatMessage[] = [],
   sensitivity: Sensitivity = "balanced",
+  fineExamples: string[] = [],
 ): Promise<ToneVerdict> {
-  const raw = await chat({ ...opts, messages: buildVerdictMessages(text, context, recent, sensitivity), format: VERDICT_SCHEMA })
+  const raw = await chat({ ...opts, messages: buildVerdictMessages(text, context, recent, sensitivity, fineExamples), format: VERDICT_SCHEMA })
   return verdictFromRaw(raw, text, context, sensitivity)
 }
 
@@ -27,6 +28,14 @@ export function verdictFromRaw(raw: unknown, text: string, context: ChatContext 
 
 /** Gentle: a yellow the model isn't sure about isn't flagged. */
 export const GENTLE_MIN_YELLOW_CONFIDENCE = 0.85
+
+/** "It's fine" was said to a message like this one in this chat: a yellow below this isn't flagged (Plan 9.4). */
+export const LEARNED_MIN_YELLOW_CONFIDENCE = 0.9
+
+export function applyLearned(verdict: ToneVerdict, similarFine: number): ToneVerdict {
+  if (!similarFine || verdict.tone !== "yellow" || verdict.confidence >= LEARNED_MIN_YELLOW_CONFIDENCE) return verdict
+  return { ...verdict, tone: "green", flagged_phrase: "" }
+}
 
 export function applySensitivity(verdict: ToneVerdict, sensitivity: Sensitivity): ToneVerdict {
   if (sensitivity !== "gentle" || verdict.tone !== "yellow" || verdict.confidence >= GENTLE_MIN_YELLOW_CONFIDENCE) return verdict

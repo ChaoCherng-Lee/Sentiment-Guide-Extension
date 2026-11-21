@@ -98,7 +98,8 @@ export function cloudBackend(cfg: CloudConfig | null): ToneBackend {
     isCold: async () => false,
     warm:   async () => {},
     async judge(text, context, _recent, opts = {}) {
-      const { sensitivity = "balanced", ...callOpts } = opts
+      // fineExamples never go to the cloud: they're the user's own past messages
+      const { sensitivity = "balanced", fineExamples: _fine, ...callOpts } = opts
       const raw = await call("verdict", { text, sensitivity, context: contextAnswers(context) }, callOpts)
       return verdictFromRaw(raw, text, context, sensitivity)
     },

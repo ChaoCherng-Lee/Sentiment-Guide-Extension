@@ -23,8 +23,8 @@ export function promptBackend(parts: PromptBackendParts): ToneBackend {
     isCold: () => parts.isCold(),
     warm:   () => parts.warm(),
     judge:  (text, context, recent, opts = {}) => {
-      const { sensitivity, ...call } = opts
-      return judgeTone(chat, text, context, call, recent, sensitivity)
+      const { sensitivity, fineExamples, ...call } = opts
+      return judgeTone(chat, text, context, call, recent, sensitivity, fineExamples)
     },
     advise: (text, verdict, context, style, recent, opts) => adviseTone(chat, text, verdict, context, style, opts, recent),
     readIncoming: (text, opts) => readIncoming(chat, text, opts),

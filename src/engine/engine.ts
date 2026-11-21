@@ -4,7 +4,8 @@
 // on / off / pause settings. Each content script just calls startEngine().
 // =============================================================================
 
-import { prepareRecent, RECENT_LIMIT } from "../analysis/chat-context"
+import { prepareRecent, RECENT_LIMIT, scrub, truncate } from "../analysis/chat-context"
+import { FINE_EXAMPLE_MAX_CHARS } from "../settings/fine-examples"
 import type { ChatContext, SuggestionStyle } from "../analysis/types"
 import { sendMessage, setupNeeded } from "../messaging"
 import type { PlatformAdapter } from "../platforms/types"
@@ -137,6 +138,11 @@ export function startEngine(adapter: PlatformAdapter) {
     updateSettings(patch)
   }
 
+  const learning = {
+    scope: () => conversation.id ?? `site:${location.hostname}`,
+    scrub: (text: string) => truncate(scrub(text, [adapter.getConversationTitle()].filter((n): n is string => !!n)), FINE_EXAMPLE_MAX_CHARS),
+  }
+
   const chatContext = {
     // Read from the page at check time and scrubbed here, before it leaves the page
     // Never read for the cloud check, which mustn't see other people's messages
@@ -184,6 +190,7 @@ export function startEngine(adapter: PlatformAdapter) {
         },
         badge: badgeActions,
         chatContext,
+        learning,
       })
       session.setPageState(page)
       session.setHidden(!settings.enabled)

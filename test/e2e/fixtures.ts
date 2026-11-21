@@ -143,7 +143,9 @@ export async function fakeModel(worker: Worker) {
 
       const text  = judged(body.messages)
       const lower = text.toLowerCase()
-      const found = FLAGS.filter(f => lower.includes(f))
+      // Like a real model, it follows "the writer said messages like these were fine" (Plan 9.4)
+      const learned = body.messages.some(m => m.role === "user" && m.content.includes("were fine in this chat"))
+      const found = learned ? [] : FLAGS.filter(f => lower.includes(f))
       const props = body.format?.properties ?? {}
       let reply: unknown
       if ("tone" in props) {

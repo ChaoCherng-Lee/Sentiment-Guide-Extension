@@ -18,6 +18,8 @@ export type Message =
       recent: ChatMessage[]
       /** Compose box that asked — a newer request from it supersedes older ones. */
       sessionId: string
+      /** The chat (hashed id) or "site:" + hostname, for what "It's fine" taught (Plan 9.4) */
+      scope?: string
     }
   /** Step 2, for yellow/red verdicts: explanation and kinder rewrite. */
   | {
@@ -38,7 +40,11 @@ export type Message =
   | { type: "READ_INCOMING"; text: string; key: string }
   | { type: "UPDATE_ACCEPTANCE"; eventId: string; accepted: boolean }
   /** "It's fine" on a flagged message, with the reason if one was picked. Kept on this computer. */
-  | { type: "FINE_FEEDBACK"; eventId: string; tone: "yellow" | "red"; reason: FineReason | null }
+  | {
+      type: "FINE_FEEDBACK"; eventId: string; tone: "yellow" | "red"; reason: FineReason | null
+      /** The message, scrubbed in the page, and where it was written: kept on this computer to learn from (Plan 9.4) */
+      snippet?: string; scope?: string
+    }
   /** Link this browser to a parent with their 6-digit pairing code. */
   | { type: "PAIR"; code: string }
   /** Whether sharing with a parent is set up in this build, and paired. */

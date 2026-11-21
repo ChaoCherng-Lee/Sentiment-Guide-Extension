@@ -51,6 +51,12 @@ export interface SessionDeps {
   onCheckDone(outcome: { ok: true } | { ok: false; reason: CheckFailure }): void
   /** Page-level actions for this box's badge (pause, settings, …). */
   badge: Omit<BadgeActions, "openCard">
+  /** What "It's fine" teaches (Plan 9.4): where, and the message without names, emails or numbers. */
+  learning: {
+    /** The chat's hashed id, or "site:" + hostname */
+    scope(): string
+    scrub(text: string): string
+  }
   /** Chat context (opt-in): recent messages as context for the model. */
   chatContext: {
     /** The last few messages, scrubbed; [] while chat context is off. */
@@ -191,7 +197,7 @@ export class ComposeSession {
     if (this.badge.boxKind !== "flagged") this.badge.setBox({ kind: "checking" })
 
     // Step 1: fast verdict
-    const res = await sendMessage({ type: "CHECK_TONE", text, context: conv.context, recent, sessionId: this.id })
+    const res = await sendMessage({ type: "CHECK_TONE", text, context: conv.context, recent, sessionId: this.id, scope: this.deps.learning.scope() })
     this.inFlight = false
     if (res && !res.ok && res.reason === "language" && this.checkText === text) {
       // Said on the badge; the same text isn't sent again (lastText stays)
@@ -388,8 +394,9 @@ export class ComposeSession {
     }
     if (!flag) return
     const tone = flag.verdict.tone === "red" ? "red" : "yellow"
+    const learn = text ? { snippet: this.deps.learning.scrub(text), scope: this.deps.learning.scope() } : {}
     const report = (reason: FineReason | null) =>
-      sendMessage({ type: "FINE_FEEDBACK", eventId, tone, reason })
+      sendMessage({ type: "FINE_FEEDBACK", eventId, tone, reason, ...learn })
     if (asking) this.deps.popup.askWhyFine(report)
     else report(null)
   }

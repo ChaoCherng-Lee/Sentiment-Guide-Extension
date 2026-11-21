@@ -59,6 +59,8 @@ export interface CallOptions {
 export interface JudgeOptions extends CallOptions {
   /** How readily to flag (Settings → General); balanced if not given */
   sensitivity?: Sensitivity
+  /** Similar messages the user said were fine in this chat (Plan 9.4). Local backends only. */
+  fineExamples?: string[]
 }
 
 export interface ToneBackend {

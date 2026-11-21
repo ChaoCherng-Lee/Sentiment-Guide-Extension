@@ -74,3 +74,14 @@ describe("sensitivity", () => {
     expect(verdictFromRaw(raw, "fine, whatever", null).tone).toBe("yellow")
   })
 })
+
+describe("learned from It's fine", () => {
+  it("lets an unsure yellow through only when a similar message was said to be fine", async () => {
+    const { applyLearned } = await import("../../src/analysis/tone")
+    const y = { tone: "yellow" as const, confidence: 0.8, flagged_phrase: "clown" }
+    expect(applyLearned(y, 1).tone).toBe("green")
+    expect(applyLearned(y, 0).tone).toBe("yellow")
+    expect(applyLearned({ ...y, confidence: 0.95 }, 2).tone).toBe("yellow")
+    expect(applyLearned({ tone: "red", confidence: 0.5, flagged_phrase: "x" }, 3).tone).toBe("red")
+  })
+})

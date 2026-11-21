@@ -12,7 +12,7 @@ interface Stored {
 const stored = (worker: Worker) => worker.evaluate(() =>
   (globalThis as unknown as { chrome: typeof import("wxt/browser").browser }).chrome.storage.local.get(["fineFeedback", "weekStats"])) as Promise<Stored>
 
-test("'It's fine' leaves the message alone and asks why, without keeping any text", async ({ page, worker }) => {
+test("'It's fine' leaves the message alone and asks why; its counts keep no text", async ({ page, worker }) => {
   await openWhatsApp(page)
   await box(page).pressSequentially(HARSH)
   await expect(popup(page)).toBeVisible()
