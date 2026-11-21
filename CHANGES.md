@@ -132,6 +132,7 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 |---|---|
 | 11.1 | **A consumer build and a family build.** The default build is now the consumer edition, for adults: no parent pairing, no sharing, no upload queue — the code isn't even in it (`npm run check:editions` checks). Settings shows a new **Privacy** tab instead of Parent sharing. `BUILD_EDITION=family` builds the edition with parent sharing, which is what the end-to-end tests use |
 | 11.2 | **Stays out of sensitive places.** Password, card, one-time-code and address fields, and any box in a login or sign-up form, are never checked (no badge at all). Banking, payment, health and government websites (`.gov`, `.gouv.fr`, "bank" or "health" in the name, PayPal, the NHS…) start switched off; the badge says *Not checking this site* and **Turn on for this site** switches it on |
+| 11.3 | **A Privacy tab.** It says in plain words what leaves this computer for the AI in use: nothing with Chrome's built-in AI or Ollama; with the cloud check, only the message being checked, not stored and not used for training (and, in the family edition when paired, counts with no text). **Delete everything** wipes all it keeps on this computer (settings, weekly tally, "It's fine" counts and examples, answers about chats) without reopening setup |
 
 ## Changed behaviour worth knowing
 

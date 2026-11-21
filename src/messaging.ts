@@ -55,6 +55,8 @@ export type Message =
   | { type: "AI_STATUS"; backend?: BackendId }
   /** A supported site opened — load the model so the first check is fast. */
   | { type: "WARM_UP" }
+  /** Settings → Privacy: delete everything Sentiment Guide keeps on this computer (Plan 11.3). */
+  | { type: "DELETE_EVERYTHING" }
   /** Open an extension page from a content script (they can't open tabs themselves). */
   | { type: "OPEN_PAGE"; page: "setup" | "settings" }
 
@@ -106,6 +108,7 @@ export interface Responses {
   AI_STATUS: AIStatus
   WARM_UP: void
   OPEN_PAGE: void
+  DELETE_EVERYTHING: boolean
 }
 
 export type MessageOf<T extends Message["type"]> = Extract<Message, { type: T }>

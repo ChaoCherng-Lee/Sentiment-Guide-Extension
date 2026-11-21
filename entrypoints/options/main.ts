@@ -1,4 +1,4 @@
-// Settings — four tabs (General, Sites, Parent sharing, The AI), picked by
+// Settings — tabs (General, Sites, Parent sharing in the family edition, Privacy, The AI), picked by
 // the address's #hash so other pages can link straight to one.
 //
 // Sites: each optional site is an optional host permission; the background
@@ -32,6 +32,7 @@ function showTab() {
     $("tab-" + id).setAttribute("aria-selected", String(id === current))
   }
   if (current === "ai") showStatus()
+  if (current === "privacy") showPrivacy()
 }
 
 window.addEventListener("hashchange", showTab)
@@ -263,6 +264,34 @@ for (const id of BACKEND_IDS) {
 }
 
 $("setupBtn").addEventListener("click", () => sendMessage({ type: "OPEN_PAGE", page: "setup" }))
+
+// ── Privacy ─────────────────────────────────────────────────────────────────
+
+// A function, not a constant: showTab() can run before this part of the file
+function whereText(backend: BackendId): string {
+  return ({
+  builtin: "Nothing you write. Checks run on this computer, with Chrome's built-in AI.",
+  ollama:  "Nothing you write. Checks run on this computer, with Ollama.",
+  cloud:   "Each message you write is sent to the private cloud check, checked, and forgotten: not stored, not used to train AI. The chat around it, your answers about the chat and what \"It's fine\" taught it stay here.",
+  } satisfies Record<BackendId, string>)[backend]
+}
+
+async function showPrivacy() {
+  const s = await getSettings()
+  let text = whereText(s.backend)
+  if (FAMILY) {
+    const sharing = await sendMessage({ type: "SHARING_STATUS" })
+    if (sharing?.paired) text += " Counts of flagged messages (no text) are shared with your parent."
+  }
+  $("privacyWhere").textContent = text
+}
+
+$("deleteEverything").addEventListener("click", async () => {
+  if (!confirm("Delete everything Sentiment Guide keeps on this computer? This can't be undone.")) return
+  const ok = await sendMessage({ type: "DELETE_EVERYTHING" })
+  $("deleteDone").hidden = !ok
+  if (!ok) alert("Couldn't delete everything — please try again.")
+})
 
 // ── Start ───────────────────────────────────────────────────────────────────
 

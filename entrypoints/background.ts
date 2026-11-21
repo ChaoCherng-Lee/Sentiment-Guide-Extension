@@ -91,6 +91,9 @@ export default defineBackground(() => {
         if (!FAMILY) { sendResponse({ configured: false, paired: false }); return false }
         isPaired().then(paired => sendResponse({ configured: supabaseConfigured(), paired }))
         return true
+      case "DELETE_EVERYTHING":
+        deleteEverything().then(() => sendResponse(true), () => sendResponse(false))
+        return true
       case "OPEN_PAGE":
         if (msg.page === "settings") browser.runtime.openOptionsPage()
         else browser.tabs.create({ url: browser.runtime.getURL("/onboarding.html") })
@@ -119,6 +122,20 @@ export default defineBackground(() => {
       const s = await getSettings()
       setEnabled(!isActive(s))
     })
+  }
+
+  /**
+   * Plan 11.3: settings, the weekly tally, "It's fine" counts and what it
+   * taught, per-chat answers, the cloud check's install token and queued
+   * uploads. Nothing on any server is touched here (parent sharing has its
+   * own "Unlink and delete").
+   */
+  async function deleteEverything() {
+    queue.cancelAll("paused")
+    await browser.storage.local.clear()
+    await browser.storage.sync.clear()
+    // Setup has been done: don't reopen it, just start from the defaults
+    await browser.storage.local.set({ onboardingDone: true })
   }
 
   async function applyPowerState(s: Settings) {
