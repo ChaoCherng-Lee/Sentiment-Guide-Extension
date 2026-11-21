@@ -279,7 +279,7 @@ const TEMPLATE = `
     <div class="actions">
       <button class="btn-accept" id="accept">${ACCEPT_LABEL}</button>
       <button class="btn-dismiss" id="dismiss">It's fine</button>
-      <button class="btn-dismiss" id="send-anyway">Send anyway</button>
+      <button class="btn-dismiss" id="send-anyway" title="Send anyway (Ctrl+Enter)">Send anyway</button>
     </div>
     <div class="offer" id="offer" role="group" aria-label="Use the chat as context">
       <div id="offer-ask">

@@ -2,6 +2,7 @@
 // WhatsApp Web adapter — every WhatsApp selector lives in this file.
 // =============================================================================
 
+import { guardChatSend, sendChatNow } from "./send-guard"
 import { readText } from "../ui/dom-range"
 import { hashString } from "../util/hash"
 import { observeLatest, onEnterOrClick, pollConversation, replaceInBox } from "./shared"
@@ -20,6 +21,7 @@ const TITLE_SELECTORS = [
   '#main header ._amig span',
 ]
 
+const sendTarget = { sendButton: () => document.querySelector<HTMLElement>(SEND_BUTTON) }
 const SEND_BUTTON = '[data-testid="send"], [data-icon="send"], button[aria-label="Send"]'
 
 // Message bubbles in the open chat, and the element holding just their text
@@ -101,6 +103,14 @@ export const whatsapp: PlatformAdapter = {
 
   onSend(box, cb) {
     return onEnterOrClick(box, SEND_BUTTON, cb)
+  },
+
+  guardSend(box, check) {
+    return guardChatSend(box, sendTarget, check)
+  },
+
+  sendNow(box) {
+    sendChatNow(box, sendTarget)
   },
 
   onConversationChange(cb) {

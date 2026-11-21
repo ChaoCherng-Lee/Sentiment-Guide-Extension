@@ -50,10 +50,13 @@ export interface PlatformAdapter {
    */
   scope?: "chat" | "site"
   /**
-   * Hold sending until `check` resolves: true lets the message go, false
-   * keeps it (Gmail checks the whole email when Send is pressed).
+   * Hold sending on `check`: true lets the message go, false keeps it, a
+   * promise holds it until it resolves. Chat sites pause red messages
+   * (Plan 10.1); Gmail checks the whole email when Send is pressed.
    */
-  guardSend?(box: HTMLElement, check: () => Promise<boolean>): () => void
+  guardSend?(box: HTMLElement, check: () => boolean | Promise<boolean>): () => void
+  /** Send checks the whole message, even if it was never checked while typing (email) */
+  checkWholeOnSend?: boolean
   /** Send now, past the guard ("Send anyway"). */
   sendNow?(box: HTMLElement): void
 }

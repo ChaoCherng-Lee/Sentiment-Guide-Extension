@@ -22,6 +22,8 @@ const PUNCT_DEBOUNCE_MS = 80
 const PAUSE_DEBOUNCE_MS = 700
 /** How long Send waits for the whole-email check before letting it go anyway */
 const SEND_CHECK_TIMEOUT_MS = 20_000
+/** How long Send waits for a check that's still running before letting the message go (Plan 10.1) */
+const SEND_WAIT_MS = 500
 /** How long the pointer rests on a flagged phrase before its card opens */
 const HOVER_OPEN_MS = 300
 export const MIN_TEXT_LEN = 3
@@ -49,6 +51,8 @@ export interface SessionDeps {
   onStyleChange(style: SuggestionStyle): void
   /** Every finished check reports here, so the engine can show AI status. */
   onCheckDone(outcome: { ok: true } | { ok: false; reason: CheckFailure }): void
+  /** Hold red messages when Send is pressed (Settings → General) */
+  pauseRedSends(): boolean
   /** Page-level actions for this box's badge (pause, settings, …). */
   badge: Omit<BadgeActions, "openCard">
   /** What "It's fine" teaches (Plan 9.4): where, and the message without names, emails or numbers. */
@@ -126,7 +130,10 @@ export class ComposeSession {
       () => box.removeEventListener("click", onPointer),
       deps.adapter.onSend(box, () => this.reset()),
     )
-    if (deps.adapter.guardSend) this.cleanups.push(deps.adapter.guardSend(box, () => this.checkBeforeSend()))
+    if (deps.adapter.guardSend) {
+      this.cleanups.push(deps.adapter.guardSend(box, () =>
+        deps.adapter.checkWholeOnSend ? this.checkBeforeSend() : this.pauseIfRed()))
+    }
     // Text typed before this box was picked up (or a saved draft) is checked too
     if (this.text) this.onInput()
   }
@@ -308,6 +315,36 @@ export class ComposeSession {
     this.highlighter.show(res.verdict.flagged_phrase, res.verdict.tone)
     this.showPopup()
     this.fetchAdvice(this.flag, conv)
+    return false
+  }
+
+  /**
+   * Send was pressed in a chat (Plan 10.1): hold it only if the message is
+   * red. A check still running gets SEND_WAIT_MS; after that it goes.
+   */
+  private pauseIfRed(): boolean | Promise<boolean> {
+    if (!this.deps.isActive() || !this.deps.pauseRedSends()) return true
+    const text = this.text
+    if (!worthChecking(text) || this.ignored.has(text)) return true
+    if (this.flag?.text === text) return this.holdIfRed()
+    // Not checked yet (or still checking): start now and wait a moment
+    if (text !== this.lastText) { clearTimeout(this.timer); this.analyse(text) }
+    const deadline = Date.now() + SEND_WAIT_MS
+    return new Promise(resolve => {
+      const poll = () => {
+        if (this.flag?.text === text) return resolve(this.holdIfRed())
+        const done = this.lastText === text && !this.inFlight
+        if (done || Date.now() >= deadline || this.text !== text) return resolve(true)
+        setTimeout(poll, 25)
+      }
+      poll()
+    })
+  }
+
+  private holdIfRed(): boolean {
+    if (!this.flag || this.flag.verdict.tone !== "red") return true
+    this.flag.heldSend = true
+    this.showPopup()
     return false
   }
 

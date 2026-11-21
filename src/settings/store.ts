@@ -24,6 +24,8 @@ export interface Settings {
   suggestionStyle: SuggestionStyle
   /** How readily messages are flagged (Spec FR-3.1). */
   sensitivity: Sensitivity
+  /** Hold a red message when Send is pressed on chat sites (Plan 10.1) */
+  pauseRedSends: boolean
   /**
    * Where checks run (Spec FR-4). Installs from before round 2 set up Ollama,
    * so that's the default; setup picks for new installs (Plan 8.4).
@@ -46,6 +48,7 @@ export const DEFAULT_SETTINGS: Settings = {
   disabledSites: [],
   suggestionStyle: "casual",
   sensitivity: "balanced",
+  pauseRedSends: true,
   backend: "ollama",
   model: null,
   chatContext: false,

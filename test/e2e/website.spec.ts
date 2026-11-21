@@ -48,9 +48,9 @@ test("a plain textarea on any website is checked, and an edit swaps just the wor
   await page.bringToFront()
   await comment(page).focus()
 
-  // Posting the form starts afresh
+  // Posting the form starts afresh (yellow: only red is held on send, see send-pause.spec)
   await comment(page).press("Control+a")
-  await comment(page).pressSequentially("you clown")
+  await comment(page).pressSequentially("you're so lazy")
   await expect(badges(page)).toHaveAttribute("data-state", "flagged")
   await popup(page).locator("#close").click()
   await page.getByRole("button", { name: "Post" }).click()

@@ -6,6 +6,7 @@
 // received messages. "Don't check this …" switches off the whole site.
 // =============================================================================
 
+import { guardChatSend, sendChatNow } from "./send-guard"
 import { boxText } from "../ui/box-text"
 import { replaceInBox } from "./shared"
 import type { PlatformAdapter } from "./types"
@@ -74,4 +75,17 @@ export const web: PlatformAdapter = {
       box.removeEventListener("keydown", onKey)
     }
   },
+
+  // Forms only: on an unknown site Enter may just be a new line
+  guardSend(box, check) {
+    return guardChatSend(box, webTarget(box), check)
+  },
+
+  sendNow(box) {
+    sendChatNow(box, webTarget(box))
+  },
+}
+
+function webTarget(box: HTMLElement) {
+  return { form: () => box.closest("form"), enterSends: false }
 }

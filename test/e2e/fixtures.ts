@@ -137,7 +137,8 @@ export async function fakeModel(worker: Worker) {
       if (!body.messages?.length) return json({})   // warm-up
       // A short wait, so cancelling and queueing still happen as they would
       await new Promise<void>((resolve, reject) => {
-        const t = setTimeout(resolve, 200)
+        // A test can make it slow: (globalThis).__modelDelay = 3000
+        const t = setTimeout(resolve, (globalThis as unknown as { __modelDelay?: number }).__modelDelay ?? 200)
         init?.signal?.addEventListener("abort", () => { clearTimeout(t); reject(new DOMException("aborted", "AbortError")) })
       })
 

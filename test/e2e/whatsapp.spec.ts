@@ -30,7 +30,8 @@ test.describe("with the real model", () => {
 })
 
 test("sending with the send button clears the popup", async ({ page }) => {
-  await page.locator("footer [contenteditable]").pressSequentially(HARSH)
+  // Yellow: a red message is held on send instead (send-pause.spec)
+  await page.locator("footer [contenteditable]").pressSequentially("you're so lazy")
   const popup = page.locator("#sg-popup-host .popup")
   await expect(popup).toBeVisible()
 

@@ -12,6 +12,7 @@
 // when Instagram changes, save a fresh page there and fix what breaks.
 // =============================================================================
 
+import { guardChatSend, sendChatNow } from "./send-guard"
 import { readText } from "../ui/dom-range"
 import { hashString } from "../util/hash"
 import { observeLatest, onEnterOrClick, pollConversation, replaceInBox } from "./shared"
@@ -34,6 +35,7 @@ const TITLE_SELECTORS = [
   '[role="main"] [role="button"] h2',
 ]
 
+const sendTarget = { sendButton: () => document.querySelector<HTMLElement>(SEND_BUTTON) }
 const SEND_BUTTON = '[role="button"][aria-label="Send"], div[role="button"]:has(> svg[aria-label="Send"])'
 
 const threadId = () => location.pathname.match(THREAD_PATH)?.[1] ?? null
@@ -137,6 +139,14 @@ export const instagram: PlatformAdapter = {
 
   onSend(box, cb) {
     return onEnterOrClick(box, SEND_BUTTON, cb)
+  },
+
+  guardSend(box, check) {
+    return guardChatSend(box, sendTarget, check)
+  },
+
+  sendNow(box) {
+    sendChatNow(box, sendTarget)
   },
 
   onConversationChange(cb) {

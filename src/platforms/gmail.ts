@@ -185,6 +185,8 @@ export const gmail: PlatformAdapter = {
     }
   },
 
+  checkWholeOnSend: true,
+
   guardSend(box, check) {
     let letThrough = false
     let checking   = false
@@ -194,7 +196,7 @@ export const gmail: PlatformAdapter = {
       e.stopImmediatePropagation()
       if (checking || e.type !== "click" && e.type !== "keydown") return
       checking = true
-      check()
+      Promise.resolve(check())
         .then(ok => { if (ok) gmail.sendNow!(box) })
         .finally(() => { checking = false })
     }

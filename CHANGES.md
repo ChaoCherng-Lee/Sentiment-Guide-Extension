@@ -118,6 +118,12 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | 9.3 | **Fewer wrong flags on blunt, honest messages.** The check now asks one question: will the reader probably feel insulted, mocked, belittled or threatened? Saying no, setting a boundary, correcting a mistake, honest feedback, saying how you feel, swearing or sarcasm about a situation, and slang are fine; swearing and sarcasm only count when aimed at the reader. New examples for each, none taken from the test set (a unit test keeps it that way). Cards and explanations now speak to adults, not "a young person". `npm run eval -- --compare` compares with the last run over the same messages |
 | 9.4 | **Learns from "It's fine".** Saying a flagged message was fine now also keeps a short copy of it on this computer (names, emails and phone numbers taken out, at most 120 characters, the newest 50 per chat or per site). When you write something similar in that chat, the 3 closest are shown to the AI as "they said messages like these were fine", and a yellow the AI isn't sure about is let through. Only an AI on this computer sees the examples; the cloud check never does (it only gets the let-through rule). Never uploaded. "Delete everything" (11.3) will remove them |
 
+### Phase 10: The moment of sending
+
+| Step | New for users |
+|---|---|
+| 10.1 | **Pause before sending hurtful messages.** On WhatsApp, Instagram and forms on other websites, pressing **Send** (Enter or the button) on a **red** message shows the card first, with **Send anyway** — one click, or `Ctrl+Enter`. Yellow messages are never held. If the check is still running, Send waits half a second at most, then lets the message go. On other websites only form posts are held (Enter there may be a new line). Settings → General has a switch, on by default. Gmail keeps its own check of the whole email on Send |
+
 ## Changed behaviour worth knowing
 
 - **9.3:** not scored yet. The full eval run was stopped (the computer ran low on memory) and then skipped to keep development moving. Before relying on it, run `npm run eval -- --compare` and put the before/after table here; the baseline is 27.1% of fine messages flagged (target 8%), 93.4% of hurtful ones caught

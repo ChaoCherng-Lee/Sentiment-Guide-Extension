@@ -191,6 +191,7 @@ export function startEngine(adapter: PlatformAdapter) {
         badge: badgeActions,
         chatContext,
         learning,
+        pauseRedSends: () => settings.pauseRedSends,
       })
       session.setPageState(page)
       session.setHidden(!settings.enabled)
