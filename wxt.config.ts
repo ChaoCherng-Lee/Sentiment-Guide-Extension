@@ -1,10 +1,23 @@
 import { defineConfig } from "wxt"
 import { OPTIONAL_ORIGINS } from "./src/platforms/sites"
 
+/**
+ * Plan 11.1: BUILD_EDITION=consumer (default) or family. The end-to-end
+ * build is the family edition, so the sharing tests still run.
+ */
+function edition(mode: string): "consumer" | "family" {
+  const e = process.env.BUILD_EDITION ?? (mode === "e2e" ? "family" : "consumer")
+  if (e !== "consumer" && e !== "family") throw new Error(`BUILD_EDITION must be consumer or family, not ${e}`)
+  return e
+}
+
 // See https://wxt.dev/api/config.html
 export default defineConfig({
   // Explicit imports only — keeps modules readable and testable outside WXT
   imports: false,
+  vite: (env) => ({
+    define: { __EDITION__: JSON.stringify(edition(env.mode)) },
+  }),
   manifest: ({ mode }) => ({
     name: "Sentiment Guide",
     description: "Tone analysis for kinder texting — like Grammarly for sentiment",

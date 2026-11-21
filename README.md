@@ -40,6 +40,8 @@ npm run build      # production build → .output/chrome-mv3
 2. Enable **Developer mode** (top right)
 3. Click **Load unpacked** and select the `.output/chrome-mv3` folder
 
+There are two editions (Plan 11.1). The default **consumer** build is for adults and leaves out parent pairing and sharing entirely; `BUILD_EDITION=family npm run build` adds them back. `npm run check:editions` builds both and fails if any sharing code is in the consumer build. The end-to-end tests use the family build.
+
 For development, `npm run dev` opens a Chrome window with the extension
 loaded and reloads it on every change (from its own folder,
 `.output/chrome-mv3-dev`). `npm run zip` makes a store-ready zip.
@@ -68,7 +70,7 @@ The setup page opens again whenever the AI isn't ready: from the amber badge in 
 8. To take a break, use the ◆ toolbar popup: switch it off, **Pause 1 hour** or **Pause until tomorrow**. `Alt+Shift+G` turns it on or off. The popup also has an **on/off switch for the site you're on**; the badge's menu or the card's ⋯ menu has **Don't check this chat** (on WhatsApp, Instagram, Gmail) or **Don't check this site** (elsewhere). Sites you switched off are listed under **Settings → Sites**. The toolbar icon shows `OFF` or `II` while it isn't checking
 9. To get help reading messages you receive, switch on **Messages you receive** under **Settings → General** (or tick it during setup). Only the last 3 received messages are read when a chat opens, then new ones as they arrive. Your own checks always go first. **Was this helpful?** 👍/👎 is counted on your computer only
 
-The toolbar popup also says whether the AI is ready (with **Set up** when it isn't) and how your week is going. **Settings** has four tabs: General, Sites, Parent sharing and The AI.
+The toolbar popup also says whether the AI is ready (with **Set up** when it isn't) and how your week is going. **Settings** has tabs for General, Sites, Privacy and The AI, plus Parent sharing in the family edition.
 
 See [CHANGES.md](CHANGES.md) for what is new compared with the original extension.
 

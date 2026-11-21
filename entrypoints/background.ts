@@ -5,6 +5,7 @@
 // status, and does optional Supabase logging.
 // =============================================================================
 
+import { FAMILY } from "../src/edition"
 import { browser, defineBackground } from "#imports"
 import { BackendError, type BackendId, type ToneBackend } from "../src/analysis/backend"
 import { backendFor } from "../src/analysis/backends"
@@ -71,7 +72,7 @@ export default defineBackground(() => {
         return true
       case "UPDATE_ACCEPTANCE":
         if (msg.accepted) recordWeek("accepted", msg.eventId)
-        getSettings().then(s => logAcceptance(msg.eventId, msg.accepted, isActive(s)))
+        if (FAMILY) getSettings().then(s => logAcceptance(msg.eventId, msg.accepted, isActive(s)))
         return false
       case "FINE_FEEDBACK":
         recordWeek("fine", msg.eventId)
@@ -79,12 +80,15 @@ export default defineBackground(() => {
         if (msg.snippet && msg.scope) rememberFine(msg.scope, msg.snippet)
         return false
       case "UNLINK_AND_DELETE":
+        if (!FAMILY) { sendResponse(false); return false }
         unlinkAndDelete().then(sendResponse)
         return true
       case "PAIR":
+        if (!FAMILY) { sendResponse("not_configured"); return false }
         pairWithCode(msg.code).then(sendResponse)
         return true
       case "SHARING_STATUS":
+        if (!FAMILY) { sendResponse({ configured: false, paired: false }); return false }
         isPaired().then(paired => sendResponse({ configured: supabaseConfigured(), paired }))
         return true
       case "OPEN_PAGE":
@@ -106,9 +110,9 @@ export default defineBackground(() => {
 
     browser.alarms.onAlarm.addListener(alarm => {
       if (alarm.name === RESUME_ALARM) updateSettings({ pausedUntil: null })
-      if (alarm.name === UPLOAD_ALARM) getSettings().then(s => flushUploads(isActive(s)))
+      if (FAMILY && alarm.name === UPLOAD_ALARM) getSettings().then(s => flushUploads(isActive(s)))
     })
-    browser.alarms.create(UPLOAD_ALARM, { periodInMinutes: 15 })
+    if (FAMILY) browser.alarms.create(UPLOAD_ALARM, { periodInMinutes: 15 })
 
     browser.commands.onCommand.addListener(async command => {
       if (command !== "toggle-enabled") return
@@ -261,8 +265,8 @@ export default defineBackground(() => {
     const { verdict } = msg
     if (verdict.tone !== "green" && !msg.trial) {
       recordWeek("flagged", msg.eventId)
-      // What a parent may see: no text, no contact (Plan 5.2)
-      logEvent({
+      // What a parent may see: no text, no contact (Plan 5.2). Family edition only.
+      if (FAMILY) logEvent({
         id:         msg.eventId,
         tone:       verdict.tone,
         category:   res.value.category,

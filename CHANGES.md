@@ -126,7 +126,15 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 | 10.2 | **Rewrites in your voice.** The card now offers 2–3 rewrites to choose from instead of one; **Use this** takes the one picked and `Tab` takes the first. They're asked to keep your language, roughly your length, and your slang and friendly emoji. Casual / Formal / Direct still change how they sound. `npm run eval -- --advice` reports how many rewrites each flag gets and how many keep the length (±30%) and language |
 | 10.3 | **Checked on the sites people chat on.** Discord, Messenger, Telegram Web, X, Reddit, LinkedIn and Slack each have a test page built from that site's editor (Slate, Lexical, Draft.js, Quill, a plain box or a form) and a test that a harsh message is flagged and that sending starts afresh. One gap found and fixed: a Send or Post button outside any form (X) wasn't noticed as a send, so the flag stayed after the message went. Also new: **Escape** closes the card (the message stays flagged) |
 
+### Phase 11: Consumer edition
+
+| Step | New for users |
+|---|---|
+| 11.1 | **A consumer build and a family build.** The default build is now the consumer edition, for adults: no parent pairing, no sharing, no upload queue — the code isn't even in it (`npm run check:editions` checks). Settings shows a new **Privacy** tab instead of Parent sharing. `BUILD_EDITION=family` builds the edition with parent sharing, which is what the end-to-end tests use |
+
 ## Changed behaviour worth knowing
+
+- **11.1:** `npm run build` now makes the **consumer** edition, without parent sharing. Anyone relying on sharing (the parent dashboard) needs `BUILD_EDITION=family npm run build`
 
 - **10.3:** the test pages copy each site's editor markup, not the real sites, which change often and need logging in. Try each site for real before calling it supported. On Slack, check whether the message box has `data-gramm="false"`: the generic adapter skips such boxes (code editors use it), and the test page leaves it out
 

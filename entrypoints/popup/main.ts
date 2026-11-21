@@ -1,5 +1,6 @@
 // Toolbar popup — the quick things: on / off / pause, this site, whether the
 // AI is ready, and how the week is going. Everything else is in Settings.
+import { FAMILY } from "../../src/edition"
 import { browser } from "#imports"
 import { sendMessage } from "../../src/messaging"
 import { WHATSAPP_ORIGIN } from "../../src/platforms/sites"
@@ -100,7 +101,7 @@ $("openSettings").addEventListener("click", () => {
 })
 
 // The child can always see when sharing with a parent is on (Plan 5.2)
-sendMessage({ type: "SHARING_STATUS" }).then(s => { $("sharedLine").hidden = !s?.paired })
+if (FAMILY) sendMessage({ type: "SHARING_STATUS" }).then(s => { $("sharedLine").hidden = !s?.paired })
 
 function render(s: Settings) {
   renderPower(s)

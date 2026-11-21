@@ -6,6 +6,7 @@
 // covers Instagram and Gmail too, so those two can also be switched off by
 // name (settings.disabledSites) while all websites stays on.
 import { browser } from "#imports"
+import { FAMILY } from "../../src/edition"
 import { BACKEND_IDS, type BackendId } from "../../src/analysis/backend"
 import type { Sensitivity, SuggestionStyle } from "../../src/analysis/types"
 import { type AIStatus, sendMessage } from "../../src/messaging"
@@ -20,7 +21,9 @@ let settings: Settings | null = null
 
 // ── Tabs ────────────────────────────────────────────────────────────────────
 
-const TABS = ["general", "sites", "sharing", "ai"]
+// Parent sharing is only in the family edition (Plan 11.1)
+const TABS = ["general", "sites", ...(FAMILY ? ["sharing"] : []), "privacy", "ai"]
+if (!FAMILY) { $("tab-sharing").remove(); $("sharing").remove() }
 
 function showTab() {
   const current = TABS.includes(location.hash.slice(1)) ? location.hash.slice(1) : "general"
@@ -206,7 +209,7 @@ $("pairBtn").addEventListener("click", async () => {
   renderSharing()
 })
 
-renderSharing()
+if (FAMILY) renderSharing()
 
 // ── The AI ──────────────────────────────────────────────────────────────────
 
