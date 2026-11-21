@@ -58,3 +58,13 @@ describe("eval set", () => {
     expect(rows.filter(r => r.row.expected === "green").length).toBeGreaterThanOrEqual(150)
   })
 })
+
+describe("prompt examples", () => {
+  it("are never test-set messages, so the eval measures judgement, not memory", async () => {
+    const src = readFileSync("src/analysis/prompts.ts", "utf8")
+    const quoted = [...src.matchAll(/"([^"\n]{4,})"/g)].map(m => m[1].toLowerCase().trim())
+    const texts = new Set(readFileSync("eval/messages.jsonl", "utf8").split("\n").filter(Boolean)
+      .map(l => (JSON.parse(l) as { text: string }).text.toLowerCase().trim()))
+    expect(quoted.filter(q => texts.has(q))).toEqual([])
+  })
+})

@@ -166,13 +166,16 @@ function reportTargets(now: Metrics, before: { metrics: Metrics, file: string } 
 }
 
 /** The newest saved run before this one, with metrics worked out from its outcomes. */
-function previousRun(dir: string): { metrics: Metrics, file: string } | null {
+/** The latest saved run over the same cases (same ids), so subsets don't compare with full runs. */
+function previousRun(dir: string, cases: Case[]): { metrics: Metrics, file: string } | null {
   if (!existsSync(dir)) return null
-  const files = readdirSync(dir).filter(f => f.endsWith(".json")).sort()
-  const last = files.at(-1)
-  if (!last) return null
-  const saved = JSON.parse(readFileSync(path.join(dir, last), "utf8"))
-  return { metrics: saved.metrics ?? metrics(saved.outcomes), file: last }
+  const ids = cases.map(c => c.id).join(",")
+  for (const file of readdirSync(dir).filter(f => f.endsWith(".json")).sort().reverse()) {
+    const saved = JSON.parse(readFileSync(path.join(dir, file), "utf8"))
+    if ((saved.outcomes as Outcome[]).map(o => o.case.id).join(",") !== ids) continue
+    return { metrics: saved.metrics ?? metrics(saved.outcomes), file }
+  }
+  return null
 }
 
 const recentFor = (c: Case): ChatMessage[] => (args["no-recent"] ? [] : c.recent ?? [])
@@ -333,7 +336,7 @@ async function main() {
 
   const summary = report(outcomes, model)
   const outDir = path.join(DIR, "results")
-  const before = args.compare ? previousRun(outDir) : null
+  const before = args.compare ? previousRun(outDir, cases) : null
   const now = metrics(outcomes)
   const missed = reportTargets(now, before, backend.id === "ollama")
 
