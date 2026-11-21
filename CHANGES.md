@@ -124,8 +124,11 @@ only — no incoming message analysis"). It was built in step 3.1 (opt-in).
 |---|---|
 | 10.1 | **Pause before sending hurtful messages.** On WhatsApp, Instagram and forms on other websites, pressing **Send** (Enter or the button) on a **red** message shows the card first, with **Send anyway** — one click, or `Ctrl+Enter`. Yellow messages are never held. If the check is still running, Send waits half a second at most, then lets the message go. On other websites only form posts are held (Enter there may be a new line). Settings → General has a switch, on by default. Gmail keeps its own check of the whole email on Send |
 | 10.2 | **Rewrites in your voice.** The card now offers 2–3 rewrites to choose from instead of one; **Use this** takes the one picked and `Tab` takes the first. They're asked to keep your language, roughly your length, and your slang and friendly emoji. Casual / Formal / Direct still change how they sound. `npm run eval -- --advice` reports how many rewrites each flag gets and how many keep the length (±30%) and language |
+| 10.3 | **Checked on the sites people chat on.** Discord, Messenger, Telegram Web, X, Reddit, LinkedIn and Slack each have a test page built from that site's editor (Slate, Lexical, Draft.js, Quill, a plain box or a form) and a test that a harsh message is flagged and that sending starts afresh. One gap found and fixed: a Send or Post button outside any form (X) wasn't noticed as a send, so the flag stayed after the message went. Also new: **Escape** closes the card (the message stays flagged) |
 
 ## Changed behaviour worth knowing
+
+- **10.3:** the test pages copy each site's editor markup, not the real sites, which change often and need logging in. Try each site for real before calling it supported. On Slack, check whether the message box has `data-gramm="false"`: the generic adapter skips such boxes (code editors use it), and the test page leaves it out
 
 - **9.3:** not scored yet. The full eval run was stopped (the computer ran low on memory) and then skipped to keep development moving. Before relying on it, run `npm run eval -- --compare` and put the before/after table here; the baseline is 27.1% of fine messages flagged (target 8%), 93.4% of hurtful ones caught
 

@@ -61,18 +61,27 @@ export const web: PlatformAdapter = {
   replaceText: replaceInBox,
 
   onSend(box, cb) {
-    // A form posted, or a chat-style box that empties itself on Enter
+    // A form posted, or a box that empties itself on Enter or on a click
+    // elsewhere (a Post / Send button outside any form, as on X)
     const form = box.closest("form")
     const onSubmit = () => cb()
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "Enter" || e.shiftKey) return
+    const emptiedSoon = () => {
+      if (!boxText(box).trim()) return
       setTimeout(() => { if (!boxText(box).trim()) cb() }, SENT_CHECK_MS)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.shiftKey) emptiedSoon()
+    }
+    const onClick = (e: MouseEvent) => {
+      if (e.target instanceof Node && !box.contains(e.target)) emptiedSoon()
     }
     form?.addEventListener("submit", onSubmit)
     box.addEventListener("keydown", onKey)
+    document.addEventListener("click", onClick, true)
     return () => {
       form?.removeEventListener("submit", onSubmit)
       box.removeEventListener("keydown", onKey)
+      document.removeEventListener("click", onClick, true)
     }
   },
 

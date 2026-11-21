@@ -323,6 +323,11 @@ export class SuggestionPopup {
     this.root = this.host.attachShadow({ mode: "open" })
     this.root.innerHTML = TEMPLATE
 
+    // Escape inside the card closes it too
+    this.root.addEventListener("keydown", e => {
+      if ((e as KeyboardEvent).key === "Escape") { e.stopPropagation(); this.handlers?.onClose() }
+    })
+
     const on = (id: string, fn: () => void) =>
       this.$(id).addEventListener("click", (e) => { e.stopPropagation(); fn() })
     on("close",         () => this.handlers?.onClose())

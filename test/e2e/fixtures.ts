@@ -13,7 +13,17 @@ const SITES: Record<string, string> = {
   "https://mail.google.com/**": "gmail.html",
   // Any other website, with ordinary text boxes
   "https://example.org/**": "website.html",
+  "https://discord.com/**": "discord.html",
+  "https://www.messenger.com/**": "messenger.html",
+  "https://web.telegram.org/**": "telegram.html",
+  "https://x.com/**": "x.html",
+  "https://www.reddit.com/**": "reddit.html",
+  "https://www.linkedin.com/**": "linkedin.html",
+  "https://app.slack.com/**": "slack.html",
 }
+
+/** Sites checked by the generic adapter, each with a test page (Plan 10.3) */
+export const VERIFIED_SITES = [{"id": "discord", "url": "https://discord.com/", "name": "Discord", "sends": "enter"}, {"id": "messenger", "url": "https://www.messenger.com/", "name": "Messenger", "sends": "enter"}, {"id": "telegram", "url": "https://web.telegram.org/", "name": "Telegram Web", "sends": "enter"}, {"id": "x", "url": "https://x.com/", "name": "X", "sends": "button"}, {"id": "reddit", "url": "https://www.reddit.com/", "name": "Reddit", "sends": "form"}, {"id": "linkedin", "url": "https://www.linkedin.com/", "name": "LinkedIn", "sends": "form"}, {"id": "slack", "url": "https://app.slack.com/", "name": "Slack", "sends": "enter"}] as const
 
 export const HARSH = "you are so stupid, just shut up already"
 

@@ -107,6 +107,12 @@ export class ComposeSession {
 
     const onInput = () => this.onInput()
     const onKeydown = (e: KeyboardEvent) => {
+      // Escape closes the card; the message stays flagged and the badge reopens it
+      if (e.key === "Escape" && this.popupOpen) {
+        e.preventDefault()
+        this.deps.popup.hide()
+        return
+      }
       // Tab takes the first rewrite, like accepting an autocomplete
       if (e.key === "Tab" && !e.shiftKey && this.popupOpen && this.flag?.advice?.suggestion) {
         e.preventDefault()
