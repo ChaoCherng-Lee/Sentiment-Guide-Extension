@@ -39,7 +39,7 @@ const STYLES = `
   .tip.open { display: block; }
   .title { font-weight: 600; margin-bottom: 2px; }
   .expl { color: #4b5563; }
-  .who { font-size: 10px; color: #9ca3af; margin-top: 6px; }
+  .who { font-size: 10px; color: #6b7280; margin-top: 6px; }
   .fb { display: flex; align-items: center; gap: 4px; margin-top: 6px; font-size: 11px; color: #6b7280; }
   .fb button {
     border: 1px solid #e5e7eb; background: #f9fafb; border-radius: 6px; padding: 0 6px;

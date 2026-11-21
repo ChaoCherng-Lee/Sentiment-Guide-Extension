@@ -17,6 +17,7 @@
     "sync:function": "node scripts/sync-function.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.10.2",
     "@electric-sql/pglite": "0.5.8",
     "@playwright/test": "^1.64.0",
     "@types/node": "^26.6.5",

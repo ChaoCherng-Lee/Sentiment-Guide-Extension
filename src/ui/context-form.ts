@@ -52,13 +52,13 @@ const STYLES = `
 
   .form-subtitle {
     font-size: 12px;
-    color: #9ca3af;
+    color: #6b7280;
     margin-top: 3px;
   }
 
   .close-btn {
     background: none; border: none;
-    font-size: 22px; color: #9ca3af;
+    font-size: 22px; color: #6b7280;
     cursor: pointer; padding: 0 2px;
     font-family: inherit; line-height: 1;
     flex-shrink: 0;
@@ -75,7 +75,7 @@ const STYLES = `
   .platform-label {
     font-size: 11px;
     font-weight: 600;
-    color: #9ca3af;
+    color: #6b7280;
     text-transform: uppercase;
     letter-spacing: 0.05em;
   }
@@ -160,7 +160,7 @@ const STYLES = `
     padding: 9px 18px;
     border-radius: 99px;
     background: transparent;
-    color: #9ca3af;
+    color: #6b7280;
     border: 1px solid #e5e7eb;
     font-size: 13px;
     cursor: pointer;

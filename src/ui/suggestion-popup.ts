@@ -129,7 +129,7 @@ const STYLES = `
   .header-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
   .icon-btn {
     background: none; border: none; cursor: pointer; border-radius: 6px;
-    color: #9ca3af; font-size: 16px; padding: 0 6px; line-height: 22px;
+    color: #6b7280; font-size: 16px; padding: 0 6px; line-height: 22px;
     flex-shrink: 0; font-family: inherit;
   }
   .icon-btn:hover, .icon-btn[aria-expanded="true"] { color: #374151; background: #f3f4f6; }
@@ -147,10 +147,10 @@ const STYLES = `
   }
   .more-menu button:hover, .more-menu button:focus-visible { background: #f3f4f6; outline: none; }
 
-  .confidence-text { font-size: 11px; color: #9ca3af; font-style: italic; display: none; }
+  .confidence-text { font-size: 11px; color: #6b7280; font-style: italic; display: none; }
 
   .explanation { font-size: 12px; color: #555; margin-bottom: 10px; line-height: 1.6; }
-  .explanation.pending { color: #9ca3af; font-style: italic; animation: pulse 1.4s ease-in-out infinite; }
+  .explanation.pending { color: #6b7280; font-style: italic; animation: pulse 1.4s ease-in-out infinite; }
   @keyframes pulse { 50% { opacity: 0.45; } }
 
   .emoji-notes { margin: -4px 0 10px; display: flex; flex-direction: column; gap: 2px; }
@@ -164,10 +164,10 @@ const STYLES = `
     border: 1px solid #f0f0f0; border-radius: 8px; padding: 6px 8px;
   }
   .edit-body { flex: 1; min-width: 0; font-size: 12px; line-height: 1.45; }
-  .edit-from { color: #9ca3af; text-decoration: line-through; }
-  .edit-arrow { color: #9ca3af; margin: 0 3px; }
+  .edit-from { color: #6b7280; text-decoration: line-through; }
+  .edit-arrow { color: #6b7280; margin: 0 3px; }
   .edit-to { color: #065f46; font-weight: 500; }
-  .edit-reason { font-size: 11px; color: #9ca3af; }
+  .edit-reason { font-size: 11px; color: #6b7280; }
   .btn-apply {
     flex-shrink: 0; padding: 3px 10px; border-radius: 14px;
     background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0;
@@ -188,7 +188,7 @@ const STYLES = `
   }
   .style-chip:hover { background: #f3f4f6; }
   .style-chip[aria-pressed="true"] { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
-  .suggestion-label { font-size: 11px; font-weight: 500; color: #888; }
+  .suggestion-label { font-size: 11px; font-weight: 500; color: #6b7280; }
   .suggestion-text { font-size: 12px; font-style: italic; color: #333; line-height: 1.5; }
   .rewrites { display: flex; flex-direction: column; gap: 4px; }
   .rewrite-choice {
@@ -211,7 +211,7 @@ const STYLES = `
 
   .btn-dismiss {
     padding: 6px 14px; border-radius: 20px;
-    background: transparent; color: #888;
+    background: transparent; color: #6b7280;
     border: 1px solid #ddd; font-size: 12px;
     cursor: pointer; font-family: inherit;
   }
@@ -484,11 +484,25 @@ export class SuggestionPopup {
       b.className = "rewrite-choice"
       b.setAttribute("role", "radio")
       b.setAttribute("aria-checked", String(i === 0))
+      // A radio group is one Tab stop; the arrow keys move between the choices
+      b.tabIndex = i === 0 ? 0 : -1
       b.dataset.index = String(i)
       b.textContent = text
-      b.addEventListener("click", () => {
+      const choose = () => {
         this.chosen = i
-        list.querySelectorAll(".rewrite-choice").forEach(c => c.setAttribute("aria-checked", String(c === b)))
+        list.querySelectorAll<HTMLElement>(".rewrite-choice").forEach(c => {
+          c.setAttribute("aria-checked", String(c === b))
+          c.tabIndex = c === b ? 0 : -1
+        })
+      }
+      b.addEventListener("click", choose)
+      b.addEventListener("keydown", e => {
+        const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key]
+        if (!step) return
+        e.preventDefault()
+        const next = list.children[(i + step + rewrites.length) % rewrites.length] as HTMLElement
+        next.click()
+        next.focus()
       })
       return b
     })))
@@ -580,6 +594,21 @@ export class SuggestionPopup {
     this.handlers = null
     this.$("popup").style.display = "none"
     this.$("popup").classList.remove("thanks")
+  }
+
+  /** Keyboard users: focus the first thing to act on (a rewrite, else the first button). */
+  focusFirst() {
+    // In this order of preference (one selector list would pick by page order)
+    const visible = (el: HTMLElement) => el.offsetParent !== null
+    for (const sel of [".rewrite-choice", "#accept", ".edits button", "button"]) {
+      const el = [...this.root.querySelectorAll<HTMLElement>(sel)].find(visible)
+      if (el) return el.focus()
+    }
+  }
+
+  /** Whether focus is inside the card */
+  hasFocus(): boolean {
+    return this.root.activeElement !== null
   }
 
   /** Temporarily relabel the accept button (e.g. "✓ Replaced!"). */

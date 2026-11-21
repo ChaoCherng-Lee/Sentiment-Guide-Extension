@@ -113,6 +113,13 @@ export class ComposeSession {
         this.deps.popup.hide()
         return
       }
+      // Alt+↓ moves into the card (opening it if the message is flagged), for keyboard users
+      if (e.key === "ArrowDown" && e.altKey && this.flag) {
+        e.preventDefault()
+        if (!this.popupOpen) this.openCard()
+        this.deps.popup.focusFirst()
+        return
+      }
       // Tab takes the first rewrite, like accepting an autocomplete
       if (e.key === "Tab" && !e.shiftKey && this.popupOpen && this.flag?.advice?.suggestion) {
         e.preventDefault()
@@ -372,7 +379,12 @@ export class ComposeSession {
       onAccept:       (i) => this.accept(i),
       onApplyEdit:    (i) => this.applyEdit(i),
       onDismiss:      () => this.dismiss(),
-      onClose:        () => this.deps.popup.hide(),
+      onClose:        () => {
+        // Closed from inside the card (Escape, ×): back to writing
+        const inCard = this.deps.popup.hasFocus()
+        this.deps.popup.hide()
+        if (inCard) this.box.focus()
+      },
       onEditContext:  () => { this.deps.popup.hide(); this.deps.onEditContext() },
       onDisableChat:  () => this.deps.onDisableChat(),
       onOpenSettings: () => this.deps.badge.openSettings(),
