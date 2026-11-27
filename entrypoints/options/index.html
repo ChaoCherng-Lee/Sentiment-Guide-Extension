@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sentiment Guide — Settings</title>
+    <meta name="manifest.open_in_tab" content="true" />
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f7f7fb; color: #111827; font-size: 14px; line-height: 1.5;
+        padding: 40px 16px;
+      }
+      main { max-width: 560px; margin: 0 auto; }
+      h1 { font-size: 20px; margin-bottom: 4px; }
+      .lead { color: #6b7280; margin-bottom: 24px; }
+      .site {
+        background: white; border-radius: 12px; padding: 16px 18px; margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+        display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      }
+      .site h2 { font-size: 15px; }
+      .site p { font-size: 12px; color: #6b7280; }
+      .always { font-size: 12px; color: #6b7280; white-space: nowrap; }
+      .switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider { position: absolute; inset: 0; cursor: pointer; background: #d1d5db; border-radius: 99px; transition: background 0.15s; }
+      .slider::before {
+        content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
+        background: white; border-radius: 50%; transition: transform 0.15s; box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      }
+      .switch input:checked + .slider { background: #4f46e5; }
+      .switch input:checked + .slider::before { transform: translateX(16px); }
+      .switch input:focus-visible + .slider { outline: 2px solid #a5b4fc; outline-offset: 2px; }
+      .note { font-size: 12px; color: #6b7280; margin-top: 20px; }
+      .status { font-size: 12px; color: #b91c1c; min-height: 18px; margin-top: 8px; }
+      h2.section { font-size: 17px; margin: 36px 0 4px; }
+      .card { background: white; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(15,23,42,0.06); }
+      .pair-row { display: flex; gap: 8px; margin-top: 10px; }
+      .pair-row input {
+        width: 12ch; font: 600 18px/1 ui-monospace, monospace; letter-spacing: 0.15em;
+        padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 8px;
+      }
+      .btn {
+        padding: 8px 16px; border-radius: 8px; border: none; background: #4f46e5; color: white;
+        font-weight: 600; font-size: 13px; font-family: inherit; cursor: pointer;
+      }
+      .btn:hover { background: #4338ca; }
+      .shared-on { color: #166534; font-weight: 600; }
+      .consent h3 { font-size: 13px; margin: 12px 0 2px; }
+      .consent ul { margin: 0 0 0 18px; font-size: 13px; color: #374151; }
+      .consent li { margin: 2px 0; }
+      .agree { display: flex; gap: 8px; align-items: flex-start; margin-top: 14px; font-size: 13px; cursor: pointer; }
+      .agree input { margin-top: 3px; accent-color: #4f46e5; }
+      .btn:disabled { background: #c7c9d9; cursor: not-allowed; }
+      .btn.quiet { background: none; border: 1px solid #fca5a5; color: #b91c1c; margin-top: 10px; }
+      .btn.quiet:hover { background: #fef2f2; }
+      header { display: flex; align-items: baseline; gap: 10px; margin-bottom: 18px; }
+      header h1 { margin: 0; }
+      header span { color: #6b7280; font-size: 13px; }
+      .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin-bottom: 22px; overflow-x: auto; }
+      .tabs a {
+        padding: 9px 12px; color: #4b5563; text-decoration: none; font-weight: 500; white-space: nowrap;
+        border-bottom: 2px solid transparent; margin-bottom: -1px;
+      }
+      .tabs a:hover { color: #111827; }
+      .tabs a[aria-selected="true"] { color: #4338ca; border-bottom-color: #4f46e5; font-weight: 600; }
+      .tabs a:focus-visible { outline: 2px solid #a5b4fc; outline-offset: -2px; border-radius: 6px; }
+      .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+      .row + .row { margin-top: 14px; padding-top: 14px; border-top: 1px solid #f3f4f6; }
+      .card h3, .row h3 { font-size: 14px; }
+      .sub { font-size: 12px; color: #6b7280; }
+      .segmented { display: flex; gap: 4px; margin-top: 8px; }
+      .segmented button {
+        flex: 1; padding: 7px 4px; border-radius: 8px; border: 1px solid #e5e7eb; background: #f9fafb;
+        color: #374151; font-size: 13px; font-weight: 500; font-family: inherit; cursor: pointer;
+      }
+      .segmented button:hover { background: #f3f4f6; }
+      .segmented button[aria-checked="true"] { background: #eef2ff; border-color: #a5b4fc; color: #3730a3; }
+      .hint { font-size: 12px; color: #6b7280; margin-top: 6px; min-height: 18px; }
+      .off-list { list-style: none; }
+      .off-list li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+      .off-list li + li { border-top: 1px solid #f3f4f6; }
+      .btn.small { padding: 5px 10px; font-size: 12px; background: #f9fafb; color: #374151; border: 1px solid #e5e7eb; }
+      .btn.small:hover { background: #f3f4f6; }
+      .status-row { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+      .status-dot { width: 10px; height: 10px; border-radius: 50%; background: #d1d5db; flex-shrink: 0; }
+      .status-dot.green { background: #10b981; }
+      .status-dot.red { background: #ef4444; }
+      .backend { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; cursor: pointer; }
+      .backend + .backend { border-top: 1px solid #f3f4f6; }
+      .backend input { margin-top: 3px; width: 16px; height: 16px; accent-color: #4f46e5; flex-shrink: 0; }
+      .backend strong { display: block; font-size: 13px; }
+      .backend.unavailable { cursor: default; opacity: 0.6; }
+      kbd { font: inherit; font-size: 11px; color: #374151; background: #f3f4f6; border: 1px solid #e5e7eb; border-radius: 4px; padding: 0 4px; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #0f1117; color: #e5e7eb; }
+        .site, .card { background: #1a1d27; box-shadow: none; border: 1px solid #262a36; }
+        .tabs { border-bottom-color: #262a36; }
+        .tabs a { color: #9ca3af; }
+        .tabs a:hover { color: #e5e7eb; }
+        .tabs a[aria-selected="true"] { color: #a5b4fc; border-bottom-color: #818cf8; }
+        .row + .row, .off-list li + li { border-top-color: #262a36; }
+        .segmented button, .btn.small { background: #232734; border-color: #343a4a; color: #d1d5db; }
+        .segmented button[aria-checked="true"] { background: #312e81; border-color: #6366f1; color: #e0e7ff; }
+        .consent ul, .agree { color: #d1d5db; }
+        .pair-row input { background: #232734; color: #e5e7eb; border-color: #343a4a; }
+        :root .lead, :root .site p, :root .always, :root .note, :root header span, :root .sub, :root .hint { color: #9ca3af; }
+        :root kbd { background: #232734; border-color: #343a4a; color: #e5e7eb; }
+      }
+      .whats-new summary { cursor: pointer; }
+      .whats-new ul { margin: 10px 0 0 20px; font-size: 13px; }
+      .whats-new li + li { margin-top: 4px; }
+      .new-tag { font-size: 11px; font-weight: 700; color: #fff; background: #4f46e5; border-radius: 999px; padding: 1px 8px; margin-left: 6px; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header><h1>◆ Sentiment Guide</h1><span>Settings</span></header>
+      <nav class="tabs" role="tablist" aria-label="Settings">
+        <a href="#general" role="tab" id="tab-general" aria-controls="general">General</a>
+        <a href="#sites" role="tab" id="tab-sites" aria-controls="sites">Sites</a>
+        <a href="#sharing" role="tab" id="tab-sharing" aria-controls="sharing">Parent sharing</a>
+        <a href="#privacy" role="tab" id="tab-privacy" aria-controls="privacy">Privacy</a>
+        <a href="#ai" role="tab" id="tab-ai" aria-controls="ai">The AI</a>
+      </nav>
+
+      <section class="panel" id="general" role="tabpanel" aria-labelledby="tab-general" hidden>
+        <details class="card whats-new" id="whatsNew" style="margin-bottom:12px">
+          <summary><h3 style="display:inline">What's new in <span id="whatsNewVersion"></span></h3> <span class="new-tag" id="whatsNewTag" hidden>New</span></summary>
+          <ul id="whatsNewList"></ul>
+        </details>
+        <div class="card">
+          <h3>How much to flag</h3>
+          <p class="sub">Change it any time: it applies from the next message.</p>
+          <div class="segmented" id="sensitivity" role="radiogroup" aria-label="How much to flag">
+            <button role="radio" data-sensitivity="gentle" aria-checked="false">Gentle</button>
+            <button role="radio" data-sensitivity="balanced" aria-checked="false">Balanced</button>
+            <button role="radio" data-sensitivity="strict" aria-checked="false">Strict</button>
+          </div>
+          <div class="hint" id="sensitivityHint"></div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <h3>Suggestion style</h3>
+          <p class="sub">How rewrites sound. You can pick another style for one chat from its card.</p>
+          <div class="segmented" id="style" role="radiogroup" aria-label="Suggestion style">
+            <button role="radio" data-style="casual" aria-checked="false">Casual</button>
+            <button role="radio" data-style="formal" aria-checked="false">Formal</button>
+            <button role="radio" data-style="direct" aria-checked="false">Direct</button>
+          </div>
+          <div class="hint" id="styleHint"></div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <div class="row">
+            <div>
+              <h3>Pause before sending hurtful messages</h3>
+              <div class="sub" id="pauseRedSub">On — pressing Send on a red message shows the card first</div>
+            </div>
+            <label class="switch" title="Hold a red message when you press Send in a chat">
+              <input type="checkbox" id="pauseRedSends" aria-label="Pause before sending hurtful messages" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="row">
+            <div>
+              <h3>Chat context</h3>
+              <div class="sub" id="chatContextSub">Off — only your own message is checked</div>
+            </div>
+            <label class="switch" title="Let checks read the last few messages in the chat">
+              <input type="checkbox" id="chatContext" aria-label="Use recent chat messages as context" />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="row">
+            <div>
+              <h3>Messages you receive</h3>
+              <div class="sub" id="incomingSub">Off — received messages aren't read</div>
+            </div>
+            <label class="switch" title="Explain how received messages probably read">
+              <input type="checkbox" id="incomingAnalysis" aria-label="Explain messages you receive" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+        <p class="note">Turn everything on or off, or pause, from the ◆ button in Chrome's toolbar, or with <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd>.</p>
+      </section>
+
+      <section class="panel" id="sites" role="tabpanel" aria-labelledby="tab-sites" hidden>
+        <p class="lead">Choose where Sentiment Guide checks what you write. Chrome asks you to allow a site the first time.</p>
+        <div class="site">
+          <div>
+            <h2>WhatsApp Web</h2>
+            <p>Checks messages you write on web.whatsapp.com.</p>
+          </div>
+          <span class="always">Always on</span>
+        </div>
+        <div id="siteList"></div>
+        <p class="status" id="status" role="status"></p>
+        <h2 class="section">Sites you switched off</h2>
+        <div class="card">
+          <ul class="off-list" id="offList"></ul>
+          <p class="sub" id="offEmpty">None. To switch a site off, use the badge in one of its text boxes ("Don't check this site"), or the ◆ button in Chrome's toolbar.</p>
+        </div>
+        <p class="note">Whatever the site, what you write is only ever sent to the AI running on this computer.</p>
+      </section>
+
+      <section class="panel" id="sharing" role="tabpanel" aria-labelledby="tab-sharing" hidden>
+        <p class="lead" id="sharingNotSetUp" hidden>Sharing with a parent isn't set up in this version of the extension.</p>
+        <div id="sharingSetUp" hidden>
+        <div class="card">
+          <div id="sharingOff" class="consent">
+            <p>Only if you want to: a parent can see a summary of how you're doing on their dashboard. Here's exactly what that means.</p>
+            <h3>What your parent will see</h3>
+            <ul>
+              <li>How many of your messages were flagged each week, and whether yellow or red</li>
+              <li>What kind of problem it was, like "sarcasm" or "harsh tone"</li>
+              <li>How often you took a suggestion</li>
+              <li>Which app: WhatsApp, Instagram, Gmail or "other websites" (never which website)</li>
+            </ul>
+            <h3>What they won't see</h3>
+            <ul>
+              <li>Your messages, the flagged words or the suggested rewrites</li>
+              <li>Who you were talking to</li>
+              <li>Anything other people sent you</li>
+            </ul>
+            <h3>You stay in control</h3>
+            <ul>
+              <li>"Shared with parent: on" shows in the extension menu while it's on</li>
+              <li><strong>Unlink and delete my data</strong> (here) stops sharing and deletes everything shared</li>
+              <li>Anything shared is deleted after 90 days anyway</li>
+            </ul>
+            <label class="agree"><input type="checkbox" id="consent" /> <span>I understand, and I want to share this with my parent</span></label>
+            <div class="pair-row">
+              <input id="pairCode" inputmode="numeric" maxlength="6" autocomplete="off" aria-label="Pairing code from your parent" placeholder="000000" disabled />
+              <button class="btn" id="pairBtn" disabled>Link</button>
+            </div>
+            <p class="status" id="pairStatus" role="status"></p>
+          </div>
+          <div id="sharingOn" hidden>
+            <p><span class="shared-on">Shared with parent: on.</span> Your parent sees counts and categories only — never your messages.</p>
+            <button class="btn quiet" id="unlinkBtn">Unlink and delete my data</button>
+            <p class="status" id="unlinkStatus" role="status"></p>
+          </div>
+        </div>
+        </div>
+      </section>
+
+      <section class="panel" id="privacy" role="tabpanel" aria-labelledby="tab-privacy" hidden>
+        <div class="card">
+          <h3>What leaves this computer</h3>
+          <p class="sub" id="privacyWhere" style="margin-top:6px">Checking…</p>
+          <p class="sub" style="margin-top:6px"><a href="policy.html" target="_blank" id="policyLink">Read the privacy policy</a></p>
+          <p class="sub" style="margin-top:6px">Kept on this computer only: your settings, the weekly tally, what "It's fine" taught it, and your answers about each chat. Never your messages' text in a log.</p>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <div class="row">
+            <div>
+              <h3 id="diagnosticsLabel">Help improve Sentiment Guide</h3>
+              <p class="sub" id="diagnosticsSub">Sends anonymous counts once a day: how many checks and flags, how long checks took, which AI, the kind of site (chat, email or other), and when a site stops working. Never what you write, never which sites. Off unless you turn it on.</p>
+            </div>
+            <label class="switch" title="Send anonymous counts, never text or sites">
+              <input type="checkbox" id="diagnostics" aria-labelledby="diagnosticsLabel" aria-describedby="diagnosticsSub" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <h3>Delete everything on this computer</h3>
+          <p class="sub">Settings, the weekly tally, what "It's fine" taught it and your answers about chats. It can't be undone.</p>
+          <button class="btn" id="deleteEverything" style="margin-top:10px">Delete everything</button>
+          <p class="sub" id="deleteDone" role="status" hidden style="margin-top:8px">Done — everything is back to how it was when installed.</p>
+        </div>
+      </section>
+
+      <section class="panel" id="ai" role="tabpanel" aria-labelledby="tab-ai" hidden>
+        <div class="card">
+          <div class="status-row"><span class="status-dot" id="statusDot"></span><span id="statusText">Checking…</span></div>
+          <button class="btn" id="setupBtn" style="margin-top:12px">Open setup</button>
+        </div>
+        <div class="card" style="margin-top:12px">
+          <h3>Where checks happen</h3>
+          <div role="radiogroup" aria-label="Where checks happen" style="margin-top:4px">
+            <label class="backend" id="row-builtin">
+              <input type="radio" name="backend" value="builtin" id="backend-builtin" />
+              <span><strong>Chrome's built-in AI</strong>
+              <span class="sub">On this computer, inside Chrome. Nothing to install.</span>
+              <span class="sub" id="status-builtin">Checking…</span></span>
+            </label>
+            <label class="backend" id="row-cloud">
+              <input type="radio" name="backend" value="cloud" id="backend-cloud" />
+              <span><strong>Private cloud check</strong>
+              <span class="sub">For computers that can't run an AI. Each message is checked and forgotten; the chat around it never leaves this computer.</span>
+              <span class="sub" id="status-cloud">Checking…</span></span>
+            </label>
+            <label class="backend" id="row-ollama">
+              <input type="radio" name="backend" value="ollama" id="backend-ollama" />
+              <span><strong>Ollama — fully private (advanced)</strong>
+              <span class="sub">A free app that runs an AI model on this computer.</span>
+              <span class="sub" id="status-ollama">Checking…</span></span>
+            </label>
+          </div>
+        </div>
+      </section>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

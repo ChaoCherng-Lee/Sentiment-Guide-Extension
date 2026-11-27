@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sentiment Guide</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+
+      body {
+        width: 300px;
+        padding: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        font-size: 13px;
+        line-height: 1.5;
+        background: #f7f7fb;
+        color: #111827;
+      }
+
+      h1 {
+        font-size: 15px;
+        font-weight: 700;
+        margin-bottom: 3px;
+      }
+
+      .subtitle {
+        font-size: 11px;
+        color: #6b7280;
+        margin-bottom: 14px;
+      }
+
+      .section {
+        background: white;
+        border-radius: 10px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+      }
+
+      .section-title {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: #6b7280;
+        margin-bottom: 8px;
+      }
+
+      .status-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .status-dot {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        flex-shrink: 0;
+        background: #d1d5db;
+      }
+      .status-dot.green { background: #10b981; }
+      .status-dot.red   { background: #ef4444; }
+
+      .status-text {
+        font-size: 13px;
+        font-weight: 500;
+        color: #111827;
+      }
+
+
+      .power-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+      }
+
+      .power-state { font-size: 13px; font-weight: 600; }
+      .power-sub   { font-size: 11px; color: #6b7280; }
+
+      /* Toggle switch */
+      .switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
+      .switch input { opacity: 0; width: 0; height: 0; }
+      .slider {
+        position: absolute; inset: 0; cursor: pointer;
+        background: #d1d5db; border-radius: 99px; transition: background 0.15s;
+      }
+      .slider::before {
+        content: ""; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px;
+        background: white; border-radius: 50%; transition: transform 0.15s;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+      }
+      .switch input:checked + .slider { background: #4f46e5; }
+      .switch input:checked + .slider::before { transform: translateX(16px); }
+      .switch input:focus-visible + .slider { outline: 2px solid #a5b4fc; outline-offset: 2px; }
+
+      .pause-row { display: flex; gap: 6px; margin-top: 10px; }
+      .btn {
+        flex: 1; padding: 6px 8px; border-radius: 8px;
+        border: 1px solid #e5e7eb; background: #f9fafb; color: #374151;
+        font-size: 12px; font-weight: 500; font-family: inherit; cursor: pointer;
+      }
+      .btn:hover { background: #f3f4f6; }
+      .btn.primary { background: #4f46e5; border-color: #4f46e5; color: white; }
+      .btn.primary:hover { background: #4338ca; }
+      [hidden] { display: none !important; }
+      .site-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 190px; }
+      .week { font-size: 12px; color: #374151; text-align: center; margin: 4px 0 10px; }
+      .ai-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+      .ai-row .btn { flex: 0 0 auto; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #0f1117; color: #e5e7eb; }
+        .section { background: #1a1d27; box-shadow: none; border: 1px solid #262a36; }
+        .status-text { color: #e5e7eb; }
+        .btn { background: #232734; border-color: #343a4a; color: #d1d5db; }
+        .btn:hover { background: #2b3040; }
+        .week { color: #d1d5db; }
+        :root .subtitle, :root .section-title, :root .power-sub, :root .shortcut { color: #9ca3af; }
+        :root kbd { background: #232734; border-color: #343a4a; color: #e5e7eb; }
+      }
+
+      .shared { font-size: 11px; color: #166534; font-weight: 600; margin-top: 8px; }
+
+      .shortcut { font-size: 11px; color: #6b7280; margin-top: 8px; }
+      kbd {
+        font-family: inherit; font-size: 10px; color: #374151; background: #f3f4f6;
+        border: 1px solid #e5e7eb; border-radius: 4px; padding: 0 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>◆ Sentiment Guide</h1>
+    <p class="subtitle">Kinder messages, checked on your own computer</p>
+
+    <div class="section">
+      <div class="power-row">
+        <div>
+          <div class="power-state" id="powerState">On</div>
+          <div class="power-sub" id="powerSub">Checking what you write</div>
+        </div>
+        <label class="switch" title="Turn Sentiment Guide on or off">
+          <input type="checkbox" id="enabled" aria-label="Sentiment Guide on" checked />
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="pause-row" id="pauseRow">
+        <button class="btn" id="pause1h">Pause 1 hour</button>
+        <button class="btn" id="pauseTomorrow">Pause until tomorrow</button>
+      </div>
+      <div class="pause-row" id="resumeRow" hidden>
+        <button class="btn primary" id="resume">Resume now</button>
+      </div>
+      <div class="shared" id="sharedLine" hidden>Shared with parent: on</div>
+      <div class="shortcut">Shortcut: <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd> turns it on or off</div>
+    </div>
+
+    <div class="section" id="siteSection" hidden>
+      <div class="power-row">
+        <div>
+          <div class="site-name" id="siteName"></div>
+          <div class="power-sub" id="siteSub">Checking this site</div>
+        </div>
+        <label class="switch" title="Check what you write on this site">
+          <input type="checkbox" id="siteEnabled" aria-label="Check this site" />
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="ai-row">
+        <div class="status-row">
+          <span class="status-dot" id="statusDot"></span>
+          <span class="status-text" id="statusText">Checking the AI…</span>
+        </div>
+        <button class="btn primary" id="setupBtn" hidden>Set up</button>
+      </div>
+    </div>
+
+    <p class="week" id="weekLine"></p>
+
+    <button class="btn" id="openSettings" style="width:100%">Settings</button>
+
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

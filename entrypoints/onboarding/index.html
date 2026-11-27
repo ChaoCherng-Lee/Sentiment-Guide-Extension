@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Set up Sentiment Guide</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f0f4ff; color: #111827; font-size: 14px; line-height: 1.55;
+        min-height: 100vh; padding: 40px 16px;
+      }
+      main { max-width: 580px; margin: 0 auto; }
+      header { text-align: center; margin-bottom: 24px; }
+      .logo {
+        width: 48px; height: 48px; border-radius: 14px; background: #4f46e5; color: white;
+        display: inline-flex; align-items: center; justify-content: center; font-size: 22px; margin-bottom: 12px;
+      }
+      h1 { font-size: 24px; font-weight: 800; margin-bottom: 6px; }
+      .lead { color: #4b5563; font-size: 15px; }
+
+      .step {
+        background: white; border-radius: 16px; padding: 18px 20px; margin-bottom: 12px;
+        box-shadow: 0 4px 24px rgba(79,70,229,0.08); display: flex; gap: 14px;
+      }
+      .num {
+        width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+        background: #eef2ff; color: #4338ca; font-weight: 700; font-size: 13px;
+        display: flex; align-items: center; justify-content: center;
+      }
+      .step.done .num { background: #10b981; color: white; }
+      .step.waiting { opacity: 0.55; }
+      .body { flex: 1; min-width: 0; }
+      .step h2 { font-size: 15px; margin-bottom: 2px; }
+      .status { color: #4b5563; font-size: 13px; }
+      .status.warn { color: #b45309; }
+      .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+      .btn {
+        padding: 9px 18px; border-radius: 999px; border: none; background: #4f46e5; color: white;
+        font: 600 13px/1.2 inherit; font-family: inherit; cursor: pointer; text-decoration: none; display: inline-block;
+      }
+      .btn:hover { background: #4338ca; }
+      .btn:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 2px; }
+      .btn.secondary { background: white; color: #374151; border: 1px solid #d1d5db; }
+      .btn.secondary:hover { background: #f9fafb; }
+      .btn:disabled { background: #c7c9d9; cursor: default; }
+      .hint { font-size: 12px; color: #6b7280; margin-top: 8px; }
+      .waiting-dot {
+        display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #6366f1;
+        margin-right: 6px; vertical-align: 1px; animation: pulse 1.2s ease-in-out infinite;
+      }
+      @keyframes pulse { 50% { opacity: 0.25; } }
+
+      .bar { margin-top: 10px; height: 8px; background: #eef2ff; border-radius: 99px; overflow: hidden; }
+      .bar span { display: block; height: 100%; width: 0; background: #4f46e5; border-radius: 99px; transition: width 0.3s; }
+
+      .option {
+        display: flex; gap: 10px; align-items: flex-start; margin-top: 10px;
+        font-size: 13px; color: #374151; cursor: pointer;
+      }
+      .option input { margin-top: 3px; width: 16px; height: 16px; accent-color: #4f46e5; flex-shrink: 0; }
+      .option strong { display: block; color: #111827; }
+
+      .choice-box { margin: 6px 0 4px 26px; }
+      .try-text {
+        width: 100%; margin-top: 10px; padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db;
+        font: inherit; font-size: 14px; resize: vertical; color: #111827;
+      }
+      .try-text:focus-visible { outline: 2px solid #a5b4fc; outline-offset: 1px; }
+      .try-result { margin-top: 10px; font-size: 13px; border-radius: 10px; padding: 10px 12px; background: #f9fafb; }
+      .try-result.red { background: #fef2f2; color: #7f1d1d; }
+      .try-result.yellow { background: #fffbeb; color: #78350f; }
+      .try-result.green { background: #f0fdf4; color: #166534; }
+      .try-result .rewrite { display: block; margin-top: 6px; font-style: italic; color: #374151; }
+
+      .privacy {
+        background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px;
+        padding: 12px 16px; font-size: 13px; color: #166534; margin: 18px 0;
+      }
+      .finish { text-align: center; }
+      .finish .btn { padding: 12px 40px; font-size: 15px; }
+      .ready { text-align: center; color: #166534; font-weight: 600; margin-top: 10px; }
+      [hidden] { display: none !important; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="logo" aria-hidden="true">◆</div>
+        <h1>Set up Sentiment Guide</h1>
+        <p class="lead">Like Grammarly, but for tone. It notices when a message might hurt, and suggests a kinder way to say it.</p>
+      </header>
+
+      <section class="step" id="stepWhere" aria-labelledby="whereTitle">
+        <div class="num" aria-hidden="true">1</div>
+        <div class="body">
+          <h2 id="whereTitle">Where should checks happen?</h2>
+          <label class="option">
+            <input type="radio" name="where" id="choiceRecommended" value="recommended" checked />
+            <span><strong>Recommended</strong>
+            On this computer with Chrome's built-in AI if it can, otherwise our private cloud check. Nothing to install.</span>
+          </label>
+          <div class="choice-box" id="recommendedBox">
+            <p class="status" id="recommendedStatus" role="status"><span class="waiting-dot"></span>Checking what this computer can do…</p>
+            <div class="actions" id="builtinDownload" hidden>
+              <button class="btn" id="builtinBtn">Let Chrome download its AI model</button>
+            </div>
+            <div class="bar" id="builtinBar" hidden><span id="builtinFill"></span></div>
+          </div>
+          <label class="option">
+            <input type="radio" name="where" id="choiceOllama" value="ollama" />
+            <span><strong>Fully private (advanced)</strong>
+            Ollama, a free app that runs an AI model on this computer. A 3.3 GB download, and a fairly fast computer helps.</span>
+          </label>
+        </div>
+      </section>
+
+      <div id="ollamaSteps" hidden>
+      <section class="step" id="stepOllama" aria-labelledby="ollamaTitle">
+        <div class="num" aria-hidden="true">2</div>
+        <div class="body">
+          <h2 id="ollamaTitle">Install Ollama</h2>
+          <p class="status" id="ollamaStatus" role="status"><span class="waiting-dot"></span>Looking for Ollama…</p>
+          <div id="ollamaHelp" hidden>
+            <p class="hint">Ollama is a free app that runs the AI on your own computer, so your messages never leave it.</p>
+            <div class="actions">
+              <a class="btn" href="https://ollama.com/download" target="_blank" rel="noopener">Download Ollama</a>
+            </div>
+            <p class="hint">Install it and open it. This page notices by itself — no need to come back and click anything.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="step waiting" id="stepModel" aria-labelledby="modelTitle">
+        <div class="num" aria-hidden="true">3</div>
+        <div class="body">
+          <h2 id="modelTitle">Get the AI model</h2>
+          <p class="status" id="modelStatus" role="status">After Ollama is running.</p>
+          <div id="modelHelp" hidden>
+            <div class="actions">
+              <button class="btn" id="pullBtn">Download the model (3.3 GB)</button>
+            </div>
+            <div class="bar" id="pullBar" hidden><span id="pullFill"></span></div>
+            <p class="hint" id="pullHint">One time only. It's about the size of a movie, so it can take a while — you can keep using your computer.</p>
+          </div>
+        </div>
+      </section>
+      </div>
+
+      <section class="step" id="stepChoices" aria-labelledby="choicesTitle">
+        <div class="num" aria-hidden="true" id="choicesNum">2</div>
+        <div class="body">
+          <h2 id="choicesTitle">Your choices</h2>
+          <p class="status">You can change these any time in Settings.</p>
+          <label class="option">
+            <input type="checkbox" id="allWebsites" checked />
+            <span><strong>Check what I write on all websites</strong>
+            Comments, posts, forms and other chat apps — not just WhatsApp. Chrome will ask you to allow this. A website can be switched off from its text box any time.</span>
+          </label>
+          <label class="option">
+            <input type="checkbox" id="incomingAnalysis" />
+            <span><strong>Also explain messages I receive</strong>
+            A small dot on a received message says how it probably reads — like "probably teasing" — when that isn't obvious. It's a guess, not a fact, and the messages stay on your computer.</span>
+          </label>
+        </div>
+      </section>
+
+      <section class="step" id="stepTry" aria-labelledby="tryTitle">
+        <div class="num" aria-hidden="true">✎</div>
+        <div class="body">
+          <h2 id="tryTitle">Try it</h2>
+          <p class="status">See what Sentiment Guide does with a message like this. Change it if you like.</p>
+          <label for="tryText" class="hint" style="display:block">Message to check</label>
+          <textarea class="try-text" id="tryText" rows="2">honestly you're so useless, I'm done with you</textarea>
+          <div class="actions"><button class="btn secondary" id="tryBtn">Check it</button></div>
+          <div class="try-result" id="tryResult" role="status" hidden></div>
+        </div>
+      </section>
+
+      <div class="privacy" id="privacyNote">🔒 <strong>Private by design.</strong> <span id="privacyText">Your messages are checked and forgotten. No account is needed.</span></div>
+
+      <div class="finish">
+        <button class="btn" id="btnStart">Done</button>
+        <p class="ready" id="readyLine" hidden>✓ All set — open WhatsApp Web, or any website, and start typing.</p>
+      </div>
+    </main>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

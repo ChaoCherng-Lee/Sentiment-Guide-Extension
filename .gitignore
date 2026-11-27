@@ -22,3 +22,11 @@ build/
 .env.local
 *.key
 *.pem
+
+# WXT
+.output/
+.wxt/
+stats.html
+test-results/
+playwright-report/
+eval/results/

@@ -1,0 +1,84 @@
+<!doctype html>
+<!--
+  HAND-BUILT stand-in for Gmail (2026-10): a thread with an inline reply,
+  and a "Compose" button that opens a second compose window. It copies what
+  the adapter relies on — aria-labels, role="button" + data-tooltip on Send,
+  [email] / [data-hovercard-id] recipient chips, .adn / .gD / .a3s thread
+  messages, .gmail_quote — not Gmail's look. Replace it with a real saved
+  page when the selectors need checking against the live site.
+-->
+<html>
+<head><meta charset="utf-8"><title>Inbox - me@example.com - Gmail</title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+  [role="main"] { max-width: 760px; margin: 0 auto; padding: 16px; }
+  .adn { border-bottom: 1px solid #eee; padding: 12px 0; }
+  .gD { font-weight: bold; }
+  .compose { border: 1px solid #ccc; border-radius: 8px; padding: 10px; margin-top: 16px; }
+  [aria-label="Message Body"] { min-height: 80px; border: 1px solid #ddd; padding: 8px; }
+  [role="dialog"] { position: fixed; right: 20px; bottom: 0; width: 420px; background: white; }
+  [role="button"] { display: inline-block; background: #0b57d0; color: white; padding: 6px 16px; border-radius: 16px; cursor: pointer; margin-top: 8px; }
+  .gmail_quote { color: #777; border-left: 2px solid #ccc; padding-left: 8px; }
+</style>
+</head>
+<body>
+  <div role="button" id="compose-btn">Compose</div>
+  <div role="main">
+    <h2>Saturday plans</h2>
+    <div class="adn ads" data-message-id="#msg-f:1">
+      <h3><span class="gD" email="alex@example.com" name="Alex Rivera">Alex Rivera</span></h3>
+      <div class="a3s aiL"><div>Hi! Are we still on for Saturday? Let me know by Thursday.</div></div>
+    </div>
+    <div class="adn ads" data-message-id="#msg-f:2">
+      <h3><span class="gD" email="me@example.com" name="Me">Me</span></h3>
+      <div class="a3s aiL"><div>Yes, should be fine.</div></div>
+    </div>
+    <div class="adn ads" data-message-id="#msg-f:3">
+      <h3><span class="gD" email="alex@example.com" name="Alex Rivera">Alex Rivera</span></h3>
+      <div class="a3s aiL"><div>Great. Bring the board game this time, you forgot it last week.</div><div class="gmail_quote">On Mon, Me wrote: Yes, should be fine.</div></div>
+    </div>
+
+    <!-- Inline reply -->
+    <div class="compose" id="reply">
+      <div>To: <span email="alex@example.com" class="afV">Alex Rivera</span></div>
+      <div aria-label="Message Body" contenteditable="true" role="textbox" g_editable="true"><div><br></div><div class="gmail_quote">On Sat, Alex wrote: you're such an idiot sometimes</div></div>
+      <div role="button" data-tooltip="Send (Ctrl-Enter)" aria-label="Send (Ctrl-Enter)">Send</div>
+    </div>
+  </div>
+<script>
+  window.sent = []
+  // Send: record what was sent and empty the box, as Gmail does
+  function wireSend(root) {
+    const body = root.querySelector('[aria-label="Message Body"]')
+    const send = () => {
+      const copy = body.cloneNode(true)
+      copy.querySelectorAll('.gmail_quote').forEach(q => q.remove())
+      window.sent.push(copy.innerText.trim())
+      if (root.getAttribute('role') === 'dialog') root.remove()
+      else body.innerHTML = '<div><br></div>'
+    }
+    root.querySelector('[data-tooltip^="Send"]').addEventListener('click', send)
+    body.addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send() } })
+  }
+  wireSend(document.getElementById('reply'))
+  document.getElementById('compose-btn').addEventListener('click', () => {
+    const d = document.createElement('div')
+    d.setAttribute('role', 'dialog')
+    d.className = 'compose'
+    d.innerHTML = '<div>To: <div data-hovercard-id="sam@example.com" style="display:inline">Sam</div></div>' +
+      '<input name="subjectbox" placeholder="Subject">' +
+      '<div aria-label="Message Body" contenteditable="true" role="textbox" g_editable="true"><div><br></div></div>' +
+      '<div role="button" data-tooltip="Send (Ctrl-Enter)">Send</div>'
+    document.body.appendChild(d)
+    wireSend(d)
+  })
+  // Test hook: a new email arrives in the thread
+  window.addIncoming = (text) => {
+    const m = document.createElement('div'); m.className = 'adn ads'
+    m.innerHTML = '<h3><span class="gD" email="alex@example.com">Alex Rivera</span></h3><div class="a3s aiL"><div></div></div>'
+    m.querySelector('.a3s div').textContent = text
+    document.getElementById('reply').before(m)
+  }
+</script>
+</body>
+</html>

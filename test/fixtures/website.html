@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>A website</title>
+  <style>
+    body { font: 15px/1.5 Georgia, serif; margin: 40px; }
+    textarea, .editor { display: block; width: 420px; margin: 0 0 24px; padding: 10px; border: 1px solid #999; }
+    textarea { height: 90px; font: 15px/1.5 Georgia, serif; }
+    .editor { min-height: 60px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Comments</h1>
+  <form id="comment" onsubmit="event.preventDefault(); this.querySelector('textarea').value = ''">
+    <textarea id="comment-box" name="comment" placeholder="Write a comment"></textarea>
+    <button type="submit">Post</button>
+  </form>
+  <div class="editor" id="post-box" contenteditable="true"></div>
+  <textarea id="code-box" data-gramm="false" placeholder="Code goes here"></textarea>
+  <textarea id="hidden-box" class="hidden"></textarea>
+  <h2>Fields left alone (Plan 11.2)</h2>
+  <textarea class="sensitive" autocomplete="street-address" placeholder="Where should we deliver?"></textarea>
+  <textarea class="sensitive" autocomplete="one-time-code"></textarea>
+  <textarea class="sensitive" name="cardNumber"></textarea>
+  <div class="editor sensitive" contenteditable="true" aria-label="Billing address"></div>
+  <form id="login" onsubmit="event.preventDefault()">
+    <input type="password" name="pw">
+    <textarea class="sensitive" placeholder="Anything else?"></textarea>
+  </form>
+</body>
+</html>

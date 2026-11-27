@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Sentiment Guide — Privacy policy</title>
+    <!--
+      Plan 12.4: the privacy policy. Built into the extension (policy.html,
+      linked from Settings → Privacy) and self-contained, so the same file can
+      be published as the store listing's policy page.
+    -->
+    <style>
+      :root { --bg: #f7f7fb; --card: #fff; --text: #111827; --muted: #4b5563; --line: #e5e7eb; --accent: #4f46e5; }
+      @media (prefers-color-scheme: dark) {
+        :root { --bg: #0f1117; --card: #1a1d27; --text: #e5e7eb; --muted: #9ca3af; --line: #262a36; --accent: #a5b4fc; }
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 40px 16px; background: var(--bg); color: var(--text); font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+      main { max-width: 680px; margin: 0 auto; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 28px 28px 20px; }
+      h1 { font-size: 24px; margin: 0 0 4px; }
+      h2 { font-size: 17px; margin: 28px 0 8px; }
+      p, li { color: var(--text); }
+      .muted { color: var(--muted); font-size: 13px; }
+      ul { padding-left: 20px; }
+      li + li { margin-top: 4px; }
+      table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }
+      th, td { text-align: left; vertical-align: top; padding: 8px; border-top: 1px solid var(--line); }
+      th { width: 34%; }
+      a { color: var(--accent); }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Privacy policy</h1>
+      <p class="muted">Sentiment Guide, a Chrome extension · Last updated 21 November 2026</p>
+
+      <p>Sentiment Guide checks how a message you are writing might come across, before you send it. This page says what it reads, where that goes, and what it keeps. In short: <strong>what you write is never stored, logged, sold or used to train AI.</strong></p>
+
+      <h2>What it reads</h2>
+      <ul>
+        <li>The message you are writing, in the text box you are using, while checking is on.</li>
+        <li>If you turn on <em>Chat context</em>: the last few messages in that chat, to judge yours fairly. Only with an AI on your own computer.</li>
+        <li>If you turn on <em>Read received messages</em>: a received message you ask about.</li>
+      </ul>
+      <p>It never reads password, card, one-time-code or address fields, or anything in a login form. Banking, health and government websites are off until you turn them on.</p>
+
+      <h2>Where your message goes</h2>
+      <p>You choose which AI does the checking (Settings → The AI):</p>
+      <table>
+        <tr><th>Chrome's built-in AI</th><td>Runs on your computer. Nothing you write leaves it.</td></tr>
+        <tr><th>Ollama</th><td>Runs on your computer. Nothing you write leaves it.</td></tr>
+        <tr><th>Private cloud check</th><td>The message being checked is sent over an encrypted connection to our checking service, which asks a hosted AI model and sends back the result. Our service doesn't store or log the message, and the AI provider is used with its settings for not keeping requests or training on them. The chat around it, your answers about the chat, and what "It's fine" taught the extension are never sent.</td></tr>
+      </table>
+
+      <h2>What it keeps, on your computer only</h2>
+      <ul>
+        <li>Your settings, and the sites and chats you turned off.</li>
+        <li>A weekly tally of how many messages were flagged and changed (numbers only).</li>
+        <li>Short, scrubbed snippets of messages you marked "It's fine", so it stops flagging ones like them. The chat's name, phone numbers and email addresses are taken out first, and each snippet is cut to 120 characters.</li>
+        <li>Your answers about a chat (for example, "close friend").</li>
+      </ul>
+      <p><strong>Settings → Privacy → Delete everything</strong> removes all of it. Uninstalling the extension removes it too.</p>
+
+      <h2>Diagnostics (off unless you turn them on)</h2>
+      <p>If you turn on <em>Help improve Sentiment Guide</em>, it sends anonymous counts once a day: how many checks and flags, how long checks took, which AI, the kind of site (chat, email or other), and when a site stops working with the extension. Never what you write, never which sites you use, and nothing that identifies you.</p>
+
+      <h2>Parent sharing (family edition only)</h2>
+      <p>The family edition can share counts with a parent, only after the person using it reads what is shared, agrees, and enters the parent's pairing code. Per flagged message it shares: yellow or red, a category from a fixed list, confidence, whether the suggestion was taken, the kind of app, and the time. Never message text, rewrites, contacts or chat context. <em>Unlink and delete my data</em> removes everything shared; the server deletes it after 90 days anyway. The standard edition has no sharing at all.</p>
+
+      <h2>Selling and advertising</h2>
+      <p>We don't sell or share data with anyone, show ads, or use data for anything other than the checks described here.</p>
+
+      <h2>Permissions</h2>
+      <ul>
+        <li><strong>Read and change data on websites you allow</strong>: to check the box you are writing in and, when you pick a rewrite, put it in. WhatsApp Web is on from install; Instagram, Gmail and all other websites only when you allow them.</li>
+        <li><strong>Storage, alarms</strong>: to keep the settings above and resume after a pause.</li>
+        <li><strong>Offscreen document, scripting, network rules</strong>: to run Chrome's built-in AI, start checking on sites you allow, and reach Ollama on your computer.</li>
+      </ul>
+
+      <h2>Children</h2>
+      <p>The standard edition is meant for adults. The family edition is meant to be set up by a parent with their child, and collects no more than described above.</p>
+
+      <h2>Changes and contact</h2>
+      <p>If this policy changes, the new version will be shown here and in the extension's What's new. Questions: see the contact details on the extension's store page.</p>
+    </main>
+  </body>
+</html>

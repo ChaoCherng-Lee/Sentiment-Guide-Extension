@@ -1,87 +1,164 @@
 # Sentiment Guide Chrome Extension
 
-A Chrome extension that analyses tone as you type on WhatsApp Web — like Grammarly, but for kindness. It flags harsh or unkind language in outgoing messages and helps you understand the tone of incoming ones.
+A Chrome extension that analyses tone as you type — on WhatsApp Web, Instagram DMs, Gmail and the text boxes of any other website — like Grammarly, but for kindness. It flags harsh or unkind language in what you write.
 
 ## Features
 
 - **Outgoing analysis** — as you type, a popup appears if your message sounds harsh, with an explanation and a kinder alternative you can accept in one click
-- **Incoming analysis** — a small coloured dot appears on received messages with strong tone; hover to see an explanation
+- **Emoji-aware** — emoji count as tone: "sure 🙂" can read as cold, "💀" usually means laughing
+- **Chat context** *(opt-in, off by default)* — checks can read the last 6 messages in the chat, so a joke reads differently from an argument. Names, emails and phone numbers are taken out first, and the messages only go to your local model
+- **Incoming analysis** *(opt-in, off by default)* — a small dot on a received message says how it probably reads ("probably teasing", "might be sarcastic") when that isn't obvious; hover or focus it for a short, hedged explanation. It explains — it never judges the sender
+- **Every website** *(on by default from the setup page)* — comments, posts, forms and other chat apps are checked too, in plain text boxes and rich editors alike. Discord, Messenger, Telegram Web, X, Reddit, LinkedIn and Slack each have a test page with that site's editor Chrome asks for permission once. Any website can be switched off from its text box (**Don't check this site**) or the toolbar popup, and Instagram DMs and Gmail can also be switched on by themselves under **Settings → Sites**
+- **Email-aware on Gmail** — checks the paragraph you're writing as you go, and the whole email when you press Send (a flagged email waits for you to fix it or choose **Send anyway**). Rewrites default to Formal, and quoted replies and signatures are left alone
 - **Runs entirely locally** — tone analysis is done by a local Ollama model (`gemma3:4b`) on your own machine; nothing is sent to any external AI service, and no API key is required
+- **Your week** — the toolbar popup keeps a private tally and cheers you on ("This week: you took 6 suggestions 🎉"). It stays on your computer and isn't part of parent sharing
 - **Personalised suggestions** — an onboarding flow collects your role, age range, texting style, and goals so the model tailors its language to you
-- **Private by default** — messages never leave your device; your profile stays on-device only. Optional Supabase logging (for a parent dashboard) is off unless you configure it yourself
+- **Parent dashboard** *(optional)* — a separate web app (`dashboard/`) where a parent sees a weekly summary: suggestions taken, yellow and red flags per week, and which apps and kinds of message. Counts only, never message text. Try it with made-up data: `cd dashboard && npm install && npm run dev`, then open `/?demo`
+- **Keeps working when a site changes** — if WhatsApp, Instagram or Gmail change their pages so a chat is open but its message box isn't recognised, the box you write in is checked the generic way instead
+- **Opt-in diagnostics** *(off by default; Settings → Privacy)* — anonymous daily counts (checks, flags, how long checks took, which AI, the kind of site) and "a site stopped working" reports. Never what you write, never which sites
+- **Works from the keyboard** — **Alt+↓** in the message box moves into the card, the arrow keys pick a rewrite, **Tab** goes on to use it, and **Escape** goes back to writing. A newly flagged message is announced to screen readers
+- **Privacy tab** — says, for the AI you use, what leaves this computer (nothing on this computer; just the message being checked with the cloud check), and **Delete everything** clears all it keeps here: settings, the weekly tally, what "It's fine" taught it and your answers about chats
+- **Stays out of sensitive places** — password, card, one-time-code and address fields, and anything in a login form, are never checked. Banking, health and government websites are off until you turn them on from the badge's menu
+- **Private by default** — with Chrome's built-in AI or Ollama, messages never leave your device; with the cloud check, each message is checked and forgotten, and the chat around it stays on your device. Your profile stays on-device only. Sharing with a parent's dashboard is optional: it needs a Supabase project configured at build time *and* the child entering their parent's pairing code
 
 ## How It Works
 
-Every outgoing/incoming message is sent to a local Ollama server (`http://localhost:11434`) running the `gemma3:4b` model, along with your onboarding profile as context. It returns:
-- `tone` — `green`, `yellow`, or `red`
-- `label` — a short description (e.g. "A little sharp")
-- `explanation` — 1–2 warm sentences about how the message might land
-- `flagged_phrase` — the exact word or phrase that triggered it
-- `suggestion` — a kinder rewrite of the full message (outgoing only)
+Each message you write is checked by a local Ollama server (`http://localhost:11434`) running the `gemma3:4b` model, in two steps:
+
+1. **A quick check** (about 2–3 s): `tone` (`green`, `yellow` or `red`), `confidence`, and the `flagged_phrase` that caused it
+2. **Advice**, only for yellow and red: a short `label`, an `explanation`, up to 3 phrase swaps (`edits`), a kinder rewrite of the whole message (`suggestion`), notes on emoji, and a `category` from a fixed list
 
 Because the model runs on your own computer, there's no per-message API cost, no rate limit, and no key to manage.
 
 ## Setup
 
-### 1. Install and start Ollama
+### 1. Build and load the extension
 
-1. Download Ollama for your OS from [ollama.com/download](https://ollama.com/download) and install it
-2. Start the Ollama server (the installer usually starts it automatically as a background app; if not, run in a terminal):
-   ```
-   ollama serve
-   ```
-3. Pull the model this extension uses:
-   ```
-   ollama pull gemma3:4b
-   ```
-4. Leave Ollama running in the background — the extension talks to it over `http://localhost:11434` any time you're using WhatsApp Web
+The extension is built with [WXT](https://wxt.dev) and needs Node.js 20+.
 
-### 2. Load the extension
+```
+npm install
+npm run build      # production build → .output/chrome-mv3
+```
 
 1. Go to `chrome://extensions` in Chrome
 2. Enable **Developer mode** (top right)
-3. Click **Load unpacked** and select this folder
+3. Click **Load unpacked** and select the `.output/chrome-mv3` folder
 
-### 3. Check the connection
+There are two editions (Plan 11.1). The default **consumer** build is for adults and leaves out parent pairing and sharing entirely; `BUILD_EDITION=family npm run build` adds them back. `npm run check:editions` builds both and fails if any sharing code is in the consumer build. The end-to-end tests use the family build.
 
-1. Click the Sentiment Guide icon in the Chrome toolbar
-2. The popup shows a green dot with "Ollama running · gemma3:4b" once it can reach the local model. If it shows red, it'll tell you which command to run (`ollama serve` or `ollama pull gemma3:4b`)
+For development, `npm run dev` opens a Chrome window with the extension
+loaded and reloads it on every change (from its own folder,
+`.output/chrome-mv3-dev`). `npm run zip` makes a store-ready zip.
 
-### 4. Complete onboarding (optional)
+### 2. Follow the setup page
 
-On first install, an onboarding page opens automatically. It asks:
-- **Who is setting this up** — child/teenager or parent/carer
-- **Age range** — 8–10, 11–13, 14–16, or 17+
-- **Texting style** — e.g. "I say it straight", "I use lots of slang"
-- **Goals** — e.g. sounding kinder, avoiding arguments, understanding replies
-- **Suggestion voice** — casual, gentle, or direct
+A setup page opens when the extension is installed. No terminal is needed:
 
-You can skip onboarding and adjust settings later via the popup.
+1. **Where should checks happen?**
+   - **Recommended** (the default): Chrome's built-in AI if this computer can run it (one button lets Chrome download its model), otherwise the private cloud check. Nothing to install
+   - **Fully private (advanced)**: Ollama on this computer. The page links to [ollama.com/download](https://ollama.com/download), notices by itself once Ollama is open, then downloads `gemma3:4b` (3.3 GB) with one button and a progress bar (a download that stops can be carried on)
+2. **Your choices** — checking all websites (on by default; Chrome asks to allow it when you press Done) and whether to explain messages you receive
+3. **Try it** — check a sample message (or your own) to see what a flag looks like
+
+The setup page opens again whenever the AI isn't ready: from the amber badge in a message box, or **Set up** in the toolbar popup. **Settings → The AI** lists all three with how each one stands, and switches between them; Sentiment Guide never switches by itself. Prefer a terminal? `ollama pull gemma3:4b` does the same as the model download.
 
 ## Usage
 
-1. Open [web.whatsapp.com](https://web.whatsapp.com) and start a chat
-2. Type a message — if it contains harsh language, a popup appears above the compose box
-3. Read the explanation, then either **Accept** the suggestion (replaces your text) or **Ignore** to send as-is
-4. For incoming messages, look for a small coloured dot on bubbles — hover to read the tone note
+1. Open [web.whatsapp.com](https://web.whatsapp.com) and start a chat, or click into a text box on any website (if you allowed all websites during setup)
+2. Type. The round badge in the corner of the box shows what's happening: a spinner while checking, a green ✓ when it sounds fine, yellow or red ! when it might hurt. On ordinary websites it only shows on the box you're using. Red opens the suggestion card straight away; for yellow, rest the pointer on the underlined words or click the badge
+3. Read the explanation, then **Apply** a single phrase swap (only those words change), pick one of the **2–3 rewrites** (they keep your language, length, slang and emoji; `Tab` takes the first), **Replace all (Tab)** with the full rewrite, or **It's fine** to leave it as it is. The card then asks what it was (a joke between you, they know what you mean, it's true and needs saying); answering is optional and the count stays on your computer
+4. In a chat (WhatsApp, Instagram) or a form on another website, pressing **Send** on a **red** message shows the card first; **Send anyway** is one click, or `Ctrl+Enter`. Yellow messages are never held, and a check that's still running holds a send for half a second at most. Switch it off under **Settings → General → Pause before sending hurtful messages**
+5. Checks are tested in English. A message clearly in another language isn't guessed at: its badge says **Not checked: Spanish isn't supported yet** (or *this language* when it can't tell which). Short or mixed messages ("can lah, see you at 7") are checked as usual
+6. Pick **how much to flag** under **Settings → General**: **Gentle** (only what would clearly hurt), **Balanced** (the default) or **Strict** (also cold or curt messages). It applies from the next message. Then pick how rewrites should sound — **Casual**, **Formal** or **Direct** — under **Settings → General** (your default) or with the style buttons on the card (remembered for that chat). Chats you marked as formal in the context form start in Formal
+7. After your first flagged chat message, the card offers **chat context**: with it on, checks read the last 6 messages in the chat so they know what you're replying to. The card says *Checked with the last few messages in this chat* when it was used. Switch it on or off any time under **Settings → General**
+8. To take a break, use the ◆ toolbar popup: switch it off, **Pause 1 hour** or **Pause until tomorrow**. `Alt+Shift+G` turns it on or off. The popup also has an **on/off switch for the site you're on**; the badge's menu or the card's ⋯ menu has **Don't check this chat** (on WhatsApp, Instagram, Gmail) or **Don't check this site** (elsewhere). Sites you switched off are listed under **Settings → Sites**. The toolbar icon shows `OFF` or `II` while it isn't checking
+9. To get help reading messages you receive, switch on **Messages you receive** under **Settings → General** (or tick it during setup). Only the last 3 received messages are read when a chat opens, then new ones as they arrive. Your own checks always go first. **Was this helpful?** 👍/👎 is counted on your computer only
 
-## Files
+The toolbar popup also says whether the AI is ready (with **Set up** when it isn't) and how your week is going. **Settings** has tabs for General, Sites, Privacy and The AI, plus Parent sharing in the family edition.
 
-| File | Purpose |
+See [CHANGES.md](CHANGES.md) for what is new compared with the original extension.
+
+## Project layout
+
+| Path | Purpose |
 |---|---|
-| `manifest.json` | Extension manifest (MV3) |
-| `background.js` | Service worker — calls local Ollama for tone analysis, optional Supabase logging |
-| `content_script.js` | Injected into WhatsApp Web — UI, popup, highlighting |
-| `popup.html` / `popup.js` | Extension toolbar popup — shows local Ollama connection status |
-| `onboarding.html` / `onboarding.js` | First-run setup wizard |
+| `wxt.config.ts` | Build config; the manifest is generated from it |
+| `entrypoints/background.ts` | Service worker — queues tone checks to the local Ollama, AI status, optional Supabase logging |
+| `entrypoints/*.content.ts` | Content scripts — each picks a site's adapter and starts the engine (`web.content.ts`: every other website) |
+| `entrypoints/popup/`, `entrypoints/onboarding/` | Toolbar popup (on/off, this site, AI status, your week) and the setup page |
+| `src/analysis/` | Prompts, JSON schema + validation, request queue; `backend.ts` is the one interface every AI backend implements (`ollama.ts` today) |
+| `src/platforms/` | One adapter per site (WhatsApp, Instagram, Gmail, and `web.ts` for any other website); all page selectors live here. `sites.ts` lists the optional sites |
+| `entrypoints/options/` | Settings: General, Sites, Parent sharing, The AI |
+| `src/engine/` | `ComposeSession` (one per compose box) and the engine that wires everything |
+| `src/ui/` | Suggestion card, highlight, context form, status badge (Shadow DOM); `box-text.ts` reads and measures text in textareas and rich editors alike |
+| `src/settings/` | Typed settings and per-chat data (`store.ts`); the private weekly tally (`week.ts`) |
+| `eval/` | Labelled messages and the tone evaluation runner |
+| `dashboard/` | Parent dashboard: a separate React web app reading the shared counts (see `dashboard/README.md`) |
+| `supabase/migrations/` | Database schema and rules for parent sharing (apply in order with `supabase db push`) |
+| `test/` | Unit tests (Vitest), database-rule tests (`test/db/`, the real migrations in PGlite) and end-to-end tests (Playwright + fixture pages) |
+
+## Development
+
+```
+npm run dev        # Chrome with the extension loaded, reloads on change
+npm test           # unit tests
+npm run test:e2e   # builds, then runs the extension against fixture pages (~5 min): most tests use a
+                   # stand-in model, two use your local Ollama
+                   # (its own build in .output/chrome-mv3-e2e, with every optional site pre-allowed)
+npm run eval       # tone evaluation on eval/messages.jsonl (needs Ollama running)
+```
+
+Run `npm run eval` before and after any prompt change and include the
+summary line in the commit message. `npm run eval -- --backend cloud`
+scores the deployed cloud check instead.
+
+**CI** (`.github/workflows/ci.yml`, GitHub Actions) runs on every push: the
+type-check, unit and database tests, `check:editions`, and the end-to-end
+tests with the stand-in model. When `src/analysis`, the cloud function or
+the eval change, it also runs the eval against the cloud check, if the
+repository has the secrets `CLOUD_URL` (the deployed `tone-check` URL) and
+`CLOUD_ANON_KEY`; the report is kept as a build artifact.
+
+### The private cloud check (for whoever runs the Supabase project)
+
+The cloud check is a Supabase Edge Function in the same project as parent
+sharing (`supabase/functions/tone-check`). It asks a hosted model the
+extension's own questions and keeps nothing. To run it:
+
+1. Run `supabase/migrations/20261121000000_cloud_rate_limit.sql` (SQL Editor, or `supabase db push`)
+2. Set its secrets: `supabase secrets set TONE_TOKEN_SECRET=<40+ random characters> TONE_API_KEY=<model provider key>`.
+   It uses Anthropic's Claude Haiku by default; `TONE_PROVIDER=openai-compatible` with `TONE_BASE_URL` and `TONE_MODEL` uses another provider. Turn on the provider's zero-data-retention setting if it has one
+3. `supabase functions deploy tone-check --no-verify-jwt` (the function checks its own install tokens; Supabase's newer `sb_publishable_` keys aren't JWTs)
+
+### Sending out new site selectors
+
+When WhatsApp, Instagram or Gmail change their pages, new selectors can reach everyone without a store update (Plan 12.3). The extension fetches a signed JSON file once a day, keeps it only if its signature matches the public key it was built with and its version is higher, and tries its selectors before the built-in ones. It holds selectors only, never code.
+
+1. Once: `node scripts/selectors.mjs keygen ~/sg-selectors-key.jwk`. Keep the private key out of the repository. Put the printed `WXT_SELECTORS_PUBLIC_KEY` and the file's address `WXT_SELECTORS_URL` in `.env`, then build. The host must allow other origins (`Access-Control-Allow-Origin: *`), as GitHub raw files do
+2. Each update: write `{ "version": <last + 1>, "selectors": { "whatsapp": { "compose": ["…"], "title": ["…"], "sendButton": ["…"] } } }` (sites: whatsapp, instagram, gmail), run `node scripts/selectors.mjs sign in.json ~/sg-selectors-key.jwk out.json`, and publish `out.json` at that address
+
+Diagnostics (opt-in) go to the `diagnostics` table: run `supabase/migrations/20261122000000_diagnostics.sql`. Anyone with the anon key can add a day of counts; nobody can read them back through the API, so read them in the dashboard.
+
+The prompt code in `supabase/functions/_shared/analysis` is a copy of
+`src/analysis`. After changing a prompt, run `npm run sync:function` and
+deploy again; a unit test fails while the copy is out of date.
+
+### Publishing
+
+`store/listing.md` has the store text, the permission justifications and the data disclosures. The privacy policy is `entrypoints/policy/index.html` (built into the extension as `policy.html`, linked from Settings → Privacy); publish the same file and give its address in the listing. `npm run screenshots` takes the four 1280 × 800 screenshots into `store/screenshots/`. Settings shows **What's new** from `src/whats-new.ts`, opened after an update until read; add an entry whenever the version goes up (a unit test checks).
 
 ## Privacy
 
 - Your messages are never stored or logged by this extension
+- Incoming analysis is off unless you turn it on. Received messages are read from the page, sent only to your local Ollama, and never stored, logged or sent to Supabase; readings are kept in memory for the open tab only
+- With the **cloud check** (if you choose it), each message you write is sent to the project's tone-check function and a hosted AI model, checked, and forgotten: neither keeps the text, and the function logs only timing and status. The chat's context answers (e.g. "close friend") go with it; the chat itself never does. Chat context isn't offered with the cloud check. Each browser has an anonymous token so the function can limit checks per hour (300) without knowing who you are
+- Chat context is off unless you turn it on. When on, the last 6 messages (each cut to 200 characters, with the contact's name, emails and phone numbers removed) are read from the page at check time, sent only to your local Ollama, and never stored, logged or sent to Supabase
 - Text is only sent to your local Ollama server (`http://localhost:11434`) — never to an external server
 - Your profile is stored locally using `chrome.storage.local`
+- With **all websites** on, the extension can read text boxes on every site, which is why Chrome asks first. It only reads the box you're writing in, and only sends that text to your local Ollama
 - No API key is required or used
-- Optional: if you set up your own Supabase project and fill in `SUPABASE_URL`/`SUPABASE_ANON_KEY` in `background.js`, flagged events can be logged there for a parent dashboard. This is off by default.
+- Optional sharing with a parent: only if the extension was built with a Supabase project (`WXT_SUPABASE_URL` / `WXT_SUPABASE_ANON_KEY` in `.env`, see `.env.example`) **and** the child reads what is shared, agrees, and links to a parent with a 6-digit pairing code under **Settings → Parent sharing**. Until then nothing is sent. Only counts are shared — per flagged message: yellow/red, a category from a fixed list (e.g. "sarcasm"), confidence, whether the suggestion was taken, the app (WhatsApp, Instagram, Gmail, or just "other websites" — never which one), and the time. Never message text, rewrites, flagged words, contacts, chat context, incoming readings or context answers. "Shared with parent: on" shows in the toolbar popup, **Unlink and delete my data** removes everything shared, and the server deletes events after 90 days. The database rules (`supabase/migrations/`) let each child write only their own rows and a parent read only rows of children linked to them
 
 ## Requirements
 

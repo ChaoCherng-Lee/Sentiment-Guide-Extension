@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>WhatsApp (test page: markup changed)</title>
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; margin: 40px; }
+    .composer { display: block; width: 460px; min-height: 44px; padding: 10px; border: 1px solid #999; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <!-- Plan 12.2: as if WhatsApp changed its page, so the WhatsApp adapter finds no message box -->
+  <div id="main">
+    <header><span title="Sam">Sam</span></header>
+  </div>
+  <section class="conversation-v2">
+    <div class="composer" contenteditable="true" role="textbox" aria-label="Type a message" id="box"></div>
+  </section>
+</body>
+</html>

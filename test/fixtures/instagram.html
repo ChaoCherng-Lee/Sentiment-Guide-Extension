@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Instagram (fixture)</title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+  [role="main"] { display: flex; flex-direction: column; height: 100vh; max-width: 700px; margin: 0 auto; }
+  header { padding: 12px; border-bottom: 1px solid #ddd; }
+  [role="grid"] { flex: 1; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+  [role="row"] { display: flex; }
+  [role="row"].mine { justify-content: flex-end; }
+  [role="gridcell"] div[dir] { padding: 6px 12px; border-radius: 16px; background: #efefef; max-width: 60%; }
+  .mine [role="gridcell"] div[dir] { background: #3797f0; color: white; }
+  .composer { display: flex; gap: 8px; padding: 12px; border-top: 1px solid #ddd; }
+  [role="textbox"] { flex: 1; border: 1px solid #ccc; border-radius: 20px; padding: 8px 12px; min-height: 20px; }
+</style>
+</head>
+<body>
+  <!-- No "You sent" labels here: who sent a message comes from the bubble's side -->
+  <div role="main">
+    <header><div role="button"><h2 dir="auto">Alex Rivera</h2></div></header>
+    <div role="grid" aria-label="Messages in conversation with Alex Rivera"></div>
+    <div class="composer">
+      <div aria-label="Message" contenteditable="true" role="textbox"></div>
+      <div role="button" aria-label="Send" tabindex="0">Send</div>
+    </div>
+  </div>
+  <!-- A search box that must never be checked -->
+  <div role="textbox" contenteditable="true" aria-label="Search" style="position:fixed;top:0;left:0;width:120px">search</div>
+<script>
+  const grid = document.querySelector('[role="grid"]')
+  const box  = document.querySelector('[aria-label="Message"]')
+  function row(mine, text) {
+    const r = document.createElement('div'); r.setAttribute('role', 'row'); if (mine) r.className = 'mine'
+    const c = document.createElement('div'); c.setAttribute('role', 'gridcell')
+    const t = document.createElement('div'); t.setAttribute('dir', 'auto'); t.textContent = text
+    c.appendChild(t); r.appendChild(c); grid.appendChild(r)
+  }
+  function send() {
+    const t = box.innerText.trim(); if (!t) return
+    row(true, t); box.innerHTML = ''
+  }
+  document.querySelector('[aria-label="Send"]').addEventListener('click', send)
+  box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setTimeout(send) } })
+  window.addIncoming = text => row(false, text)
+  window.addOutgoing = text => row(true, text)
+</script>
+</body>
+</html>

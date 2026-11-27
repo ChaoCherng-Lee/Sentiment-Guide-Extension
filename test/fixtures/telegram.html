@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Telegram Web (test page)</title>
+  <style>
+    body { font: 15px/1.5 system-ui, sans-serif; margin: 40px; }
+    #box { display: block; width: 460px; min-height: 44px; padding: 10px; border: 1px solid #999; border-radius: 8px; }
+  </style>
+</head>
+<body>
+  <!-- Test page for Plan 10.3: the editor markup Telegram Web uses, not its real page -->
+  <ul id="log"></ul>
+  <div class="input-message-container"><div class="input-message-input is-empty scrollable scrollable-y no-scrollbar" contenteditable="true" dir="auto" data-placeholder="Message" id="box"></div></div><button class="btn-icon btn-send" id="sendbtn">Send</button>
+  <script>
+  const EMPTY = ""
+  const MODE = "enter"
+
+  const box = document.getElementById('box')
+  const log = document.getElementById('log')
+  const textOf = () => (box.value !== undefined ? box.value : box.innerText).trim()
+  function send() {
+    const t = textOf(); if (!t) return
+    const li = document.createElement('li'); li.className = 'sent'; li.textContent = t; log.appendChild(li)
+    if (box.value !== undefined) box.value = ''; else box.innerHTML = EMPTY
+  }
+  const mode = MODE
+  if (mode === 'enter') box.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); setTimeout(send) } })
+  const btn = document.getElementById('sendbtn')
+  if (btn && mode !== 'form') btn.addEventListener('click', () => send())
+  const form = document.getElementById('send')
+  if (form) form.addEventListener('submit', e => { e.preventDefault(); send() })
+
+  </script>
+</body>
+</html>

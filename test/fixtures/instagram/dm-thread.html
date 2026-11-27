@@ -1,0 +1,45 @@
+<!--
+  HAND-BUILT stand-in for a saved Instagram DM page (2026-10). It copies the
+  structure the adapter relies on — roles, aria-labels, dir="auto" text and
+  the "You sent" screen-reader labels — with scrambled-looking class names.
+  Replace it with a real saved page ("Save page as… > HTML only" on
+  instagram.com/direct/t/…, then strip personal data) and keep the test
+  passing; add one file per Instagram version you capture.
+  Expected: see the comments marked EXPECT, read by test/unit/instagram.test.ts.
+  EXPECT title: Alex Rivera
+  EXPECT recent: them:hey are you coming tonight? | me:yeah! what time | them:8ish, bring snacks lol | me:ok 👍
+-->
+<div class="x9f619 x1n2onr6" role="main">
+  <header class="x78zum5">
+    <div role="button" tabindex="0" class="x1i10hfl">
+      <h2 class="x1lliihq" dir="auto">Alex Rivera</h2>
+    </div>
+  </header>
+  <div class="x1uvtmcs" role="grid" aria-label="Messages in conversation with Alex Rivera">
+    <div role="row" class="x1n2onr6"><div class="x6s0dn4">Today 7:41 PM</div></div>
+    <div role="row" class="x1n2onr6">
+      <h6 class="x1i10hfl xjbqb8w">Alex Rivera sent</h6>
+      <div role="gridcell" class="x1cy8zhl"><div class="x6prxxf"><div dir="auto" class="html-div">hey are you coming tonight?</div></div></div>
+    </div>
+    <div role="row" class="x1n2onr6">
+      <h6 class="x1i10hfl xjbqb8w">You sent</h6>
+      <div role="gridcell" class="x1cy8zhl"><div class="x6prxxf"><div dir="auto" class="html-div">yeah! what time</div></div></div>
+    </div>
+    <div role="row" class="x1n2onr6">
+      <h6 class="x1i10hfl xjbqb8w">Alex Rivera sent</h6>
+      <div role="gridcell" class="x1cy8zhl"><div class="x6prxxf"><img alt="Photo" src="data:,"></div></div>
+    </div>
+    <div role="row" class="x1n2onr6">
+      <h6 class="x1i10hfl xjbqb8w">Alex Rivera sent</h6>
+      <div role="gridcell" class="x1cy8zhl"><div class="x6prxxf"><div dir="auto" class="html-div">8ish, bring snacks lol</div></div></div>
+    </div>
+    <div role="row" class="x1n2onr6">
+      <h6 class="x1i10hfl xjbqb8w">You sent</h6>
+      <div role="gridcell" class="x1cy8zhl"><div class="x6prxxf"><div dir="auto" class="html-div">ok 👍</div></div></div>
+    </div>
+  </div>
+  <div class="x1n2onr6 xh8yej3">
+    <div aria-label="Message" class="xzsf02u x1a2a7pz" contenteditable="true" role="textbox" spellcheck="true" tabindex="0" aria-describedby="Message" data-lexical-editor="true"><p class="xat24cr"><br></p></div>
+    <div role="button" tabindex="0" aria-label="Send">Send</div>
+  </div>
+</div>
